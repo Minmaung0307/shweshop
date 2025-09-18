@@ -120,6 +120,13 @@ categorySelect.addEventListener('change', () => {
   sidebar.classList.remove('open');
 });
 
+// ✅ Search icon ကို sidebar ဖွင့်ချင်တာသာ — DB မခေါ်ပါ
+const btnSearch = document.getElementById('btnSearch');
+btnSearch?.addEventListener('click', () => {
+  document.getElementById('sidebar')?.classList.add('open');
+  document.getElementById('searchInput')?.focus();
+});
+
 // Views
 navLinks.forEach(b=>{
   b.addEventListener('click', ()=>{
@@ -453,45 +460,84 @@ async function sendEmail(order){
 }
 
 // Orders list
-async function loadOrders(){
-  if(!state.user){ $("#ordersList").innerHTML='<p class="small">Sign in to see orders.</p>'; return }
-  const qref = query(collection(db,'orders'), where('userId','==', state.user.uid), orderBy('createdAt','desc'), limit(50));
-  const snap = await getDocs(qref);
-  const wrap = $("#ordersList"); wrap.innerHTML='';
-  snap.forEach(docu=>{
-    const o = docu.data();
-    const card = h('div'); card.className='card'; card.innerHTML = `
-      <div class="pad">
-        <div class="row between">
-          <div class="card-title">Order #${docu.id.slice(-6).toUpperCase()}</div>
-          <div class="small">${o.orderDate||''}</div>
+// === Orders (fixed) ===
+async function loadOrders() {
+  const wrap = $("#ordersList");
+  if (!state.user) {
+    wrap.innerHTML = '<p class="small">Sign in to see orders.</p>';
+    return;
+  }
+  try {
+    const qref = query(
+      collection(db, 'orders'),
+      where('userId', '==', state.user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+    const snap = await getDocs(qref);
+
+    wrap.innerHTML = '';
+    if (snap.empty) {
+      wrap.innerHTML = '<p class="small">No orders yet.</p>';
+      return;
+    }
+
+    snap.forEach((docu) => {
+      const o = docu.data();
+      const card = h('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="pad">
+          <div class="row between">
+            <div class="card-title">Order #${docu.id.slice(-6).toUpperCase()}</div>
+            <div class="small">${o.orderDate || ''}</div>
+          </div>
+          <div class="small">Channel: ${o.channel || '-'} — Status: ${o.status || '-'}</div>
+          <ul class="disc small">
+            ${(o.items || [])
+              .map(it => `<li>${it.title} × ${it.qty} — ${fmt((it.price || 0) * (it.qty || 0))}</li>`)
+              .join('')}
+          </ul>
+          <div class="row between">
+            <div>Total</div><div class="price">${fmt(o.pricing?.total || 0)}</div>
+          </div>
         </div>
-        <div class="small">Channel: ${o.channel} — Status: ${o.status}</div>
-        <ul class="disc small">
-          ${o.items.map(it=>`<li>${it.title} × ${it.qty} — ${fmt(it.price*it.qty)}</li>`).join('')}
-        </ul>
-        <div class="row between">
-          <div>Total</div><div class="price">${fmt(o.pricing.total)}</div>
-        </div>
-      </div>
-    `;
-    wrap.appendChild(card);
-  });
+      `;
+      wrap.appendChild(card);
+    });
+  } catch (e) {
+    console.warn('orders load blocked', e);
+    wrap.innerHTML = '<p class="small">Unable to load orders.</p>';
+  }
 }
 
-// Membership
-$("#btnMembership").addEventListener('click', ()=>memberModal.showModal());
-$("#buyMembership").addEventListener('click', async ()=>{
-  if(!state.user){ authModal.showModal(); return }
-  const plan = (document.querySelector('input[name="mplan"]:checked')?.value)||'basic';
-  const rate = plan==='plus' ? 0.03 : 0.02;
-  const now = Date.now(), year = 365*86400000;
-  state.membership = { plan, rate, startTs: now, expiresTs: now+year };
-  await updateDoc(doc(db,'users', state.user.uid), { member: state.membership });
+// === Membership (unchanged, just tidy) ===
+document.getElementById("btnMembership")?.addEventListener('click', () => memberModal.showModal());
+
+document.getElementById("buyMembership")?.addEventListener('click', async () => {
+  if (!state.user) { authModal.showModal(); return; }
+  const plan = (document.querySelector('input[name="mplan"]:checked')?.value) || 'basic';
+  const rate = plan === 'plus' ? 0.03 : 0.02;
+  const now = Date.now(), year = 365 * 86400000;
+  state.membership = { plan, rate, startTs: now, expiresTs: now + year };
+  try {
+    await updateDoc(doc(db, 'users', state.user.uid), { member: state.membership });
+  } catch (e) {
+    // user doc မတည်ရှိသေးလို့ fail ဖြစ်နိုင်လို့ fallback
+    await setDoc(doc(db, 'users', state.user.uid), {
+      email: state.user.email || null,
+      name: state.user.displayName || '',
+      createdAt: serverTimestamp(),
+      member: state.membership,
+      totalSpent: 0,
+      firstOrderAt: null
+    }, { merge: true });
+  }
   memberModal.close();
   renderMember();
   toast('Membership activated');
 });
+
 function renderMember(){
   const m = state.membership;
   if(!state.user){ memberStatus.textContent='Sign in to see status'; return }
@@ -501,33 +547,107 @@ function renderMember(){
 }
 
 // Analytics
-async function renderAnalytics(){
-  const since = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
-  const qref = query(collection(db,'orders'), where('orderDate','>=', since), limit(500));
-  const snap = await getDocs(qref);
-  const days = Array.from({length:30}, (_,i)=>{
-    const d = new Date(Date.now()-(29-i)*86400000).toISOString().slice(0,10);
-    return {d, v:0}
-  });
-  const tally = {};
-  snap.forEach(docu=>{
-    const o = docu.data();
-    const day = days.find(x=>x.d===o.orderDate);
-    if(day) day.v += Number(o.pricing?.total||0);
-    (o.items||[]).forEach(it=>{ tally[it.title] = (tally[it.title]||0) + it.qty; });
-  });
-  new Chart(document.getElementById('revChart'), {
-    type:'line',
-    data:{ labels:days.map(x=>x.d.slice(5)), datasets:[{ label:'Revenue', data:days.map(x=>x.v) }]},
-    options:{ responsive:true, plugins:{ legend:{ display:false } } }
-  });
-  const top = Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,7);
-  new Chart(document.getElementById('topChart'), {
-    type:'bar',
-    data:{ labels:top.map(([k])=>k), datasets:[{ label:'Qty', data:top.map(([,v])=>v) }]},
-    options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ maxRotation:45 }}} }
-  });
+// Put these near the top of app.js (once only)
+let revChartInst = null;
+let topChartInst = null;
+
+// === Replace your existing renderAnalytics with this whole function ===
+async function renderAnalytics() {
+  const revEl = document.getElementById('revChart');
+  const topEl = document.getElementById('topChart');
+  if (!revEl || !topEl) return; // canvases not mounted yet
+
+  // helper: destroy old charts to avoid duplicate-instance errors
+  const destroyCharts = () => {
+    try { revChartInst?.destroy(); } catch {}
+    try { topChartInst?.destroy(); } catch {}
+    revChartInst = null;
+    topChartInst = null;
+  };
+
+  // helper: draw empty charts (for logged-out or error states)
+  const drawEmptyCharts = () => {
+    destroyCharts();
+    revChartInst = new Chart(revEl, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Revenue', data: [] }] },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+    topChartInst = new Chart(topEl, {
+      type: 'bar',
+      data: { labels: [], datasets: [{ label: 'Qty', data: [] }] },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+  };
+
+  // ✅ If not signed in, do NOT call Firestore. Show empty charts quietly.
+  if (!state.user) {
+    drawEmptyCharts();
+    return;
+  }
+
+  try {
+    // === Firestore query (last 30 days) ===
+    const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const qref = query(
+      collection(db, 'orders'),
+      where('orderDate', '>=', since),
+      limit(500)
+    );
+    const snap = await getDocs(qref);
+
+    // Prepare x-axis days
+    const days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10);
+      return { d, v: 0 };
+    });
+
+    // Tally revenue per day and top sellers
+    const tally = {}; // title -> qty
+    snap.forEach(docu => {
+      const o = docu.data();
+      const day = days.find(x => x.d === o.orderDate);
+      if (day) day.v += Number(o?.pricing?.total || 0);
+      (o.items || []).forEach(it => {
+        const key = it.title || '—';
+        tally[key] = (tally[key] || 0) + (it.qty || 0);
+      });
+    });
+
+    // Draw charts
+    destroyCharts();
+
+    // Revenue line
+    revChartInst = new Chart(revEl, {
+      type: 'line',
+      data: {
+        labels: days.map(x => x.d.slice(5)), // MM-DD
+        datasets: [{ label: 'Revenue', data: days.map(x => x.v) }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Top sellers bar (top 7)
+    const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 7);
+    topChartInst = new Chart(topEl, {
+      type: 'bar',
+      data: {
+        labels: top.map(([k]) => k),
+        datasets: [{ label: 'Qty', data: top.map(([, v]) => v) }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { maxRotation: 45 } } }
+      }
+    });
+  } catch (e) {
+    console.warn('analytics blocked', e);
+    // If Firestore blocked by rules or offline, show empty charts instead of throwing
+    drawEmptyCharts();
+  }
 }
+
 function trackSale(order){
   addDoc(collection(db,'analytics'),{
     type:'sale',
