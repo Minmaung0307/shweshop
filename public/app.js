@@ -1,5 +1,7 @@
-import { firebaseConfig } from './index.html'; // only to help IDEs; actual config is in index.html <script type="module">
+// import { firebaseConfig } from './index.html'; // only to help IDEs; actual config is in index.html <script type="module">
 // Firebase modular imports
+import { firebaseConfig } from './config.js';
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
