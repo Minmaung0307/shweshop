@@ -5,11 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ShweShop — Mobile-first Store</title>
   <link rel="stylesheet" href="./styles.css" />
+  <!-- Icons -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <!-- Replace client-id -->
+  <!-- PayPal SDK (replace YOUR_PAYPAL_CLIENT_ID) -->
   <script src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD" defer></script>
+  <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 </head>
 <body>
@@ -27,10 +32,29 @@
 
   <nav id="sidebar" class="sidebar">
     <div class="nav-header">
-      <div class="nav-title">Menu</div>
+      <div class="nav-title">Browse</div>
       <button id="closeSidebar" class="icon-btn">✕</button>
     </div>
     <div class="nav-body">
+      <div class="filter-block">
+        <label class="lbl">Category</label>
+        <select id="categorySelect" class="input">
+          <option value="">All</option>
+        </select>
+      </div>
+      <div class="filter-block">
+        <label class="lbl">Search</label>
+        <input id="searchInput" class="input" placeholder="Search products..." />
+      </div>
+      <div class="filter-block">
+        <label class="lbl">Promo Code</label>
+        <div class="row">
+          <input id="promoCode" class="input" placeholder="e.g. BUYMORE10" />
+          <button id="applyPromo" class="btn">Apply</button>
+        </div>
+        <p class="hint">>100 subtotal = auto 5% off</p>
+      </div>
+      <hr>
       <div class="member-card">
         <div class="row between">
           <div>
@@ -60,24 +84,6 @@
           <p>Modern • Clean • Fast — Mobile first shopping</p>
         </div>
       </div>
-
-      <!-- ✅ Main-page Filters (moved from burger menu) -->
-      <div class="filters" id="filters">
-        <div class="row wrap">
-          <select id="categorySelect" class="input">
-            <option value="">All categories</option>
-          </select>
-          <input id="searchInput" class="input grow" placeholder="Search products…">
-        </div>
-        <div class="chip-row" id="audienceChips">
-          <button class="chip active" data-aud="all">For All</button>
-          <button class="chip" data-aud="men">For Men</button>
-          <button class="chip" data-aud="women">For Women</button>
-          <button class="chip" data-aud="kids">For Kids</button>
-          <button class="chip" data-aud="pets">For Pets</button>
-        </div>
-      </div>
-
       <div id="productGrid" class="grid"></div>
       <div id="loadMoreWrap" class="center">
         <button id="loadMore" class="btn btn-soft">Load more</button>
@@ -110,38 +116,25 @@
       <h2>About ShweShop</h2>
       <p>Demo app built with Firebase + PayPal + EmailJS.</p>
       <ul class="disc">
-        <li>Cart, promotions (per-item), membership cashback</li>
+        <li>Cart, promotions, membership cashback</li>
         <li>Myanmar wallets (KBZ/CB/Aya) demo via QR / deeplink</li>
         <li>Data analytics dashboard</li>
       </ul>
     </section>
   </main>
 
-  <!-- Product Detail Modal (Amazon-like) -->
+  <!-- Product Detail Modal -->
   <dialog id="productModal" class="modal">
     <div class="modal-body">
       <button class="icon-btn modal-close" data-close="productModal">✕</button>
-
       <div class="product-detail">
         <div class="pd-media">
           <img id="pdImg" alt="">
-          <!-- ✅ Thumbnails -->
-          <div id="pdThumbs" class="thumbs"></div>
         </div>
-
         <div class="pd-info">
           <h3 id="pdTitle"></h3>
           <p id="pdPrice" class="price"></p>
           <p id="pdDesc" class="desc"></p>
-
-          <ul id="pdSpecs" class="disc small"></ul>
-
-          <div class="info-box small">
-            <div>🚚 Shipping: 2–5 days (standard)</div>
-            <div>↩️ Returns: 30-day return policy</div>
-            <div>💬 Questions? support@shweshop.example</div>
-          </div>
-
           <div class="row">
             <label class="lbl">Qty</label>
             <input id="pdQty" class="input" type="number" min="1" value="1" />
@@ -151,12 +144,6 @@
             <button class="btn btn-soft" data-close="productModal">Close</button>
           </div>
         </div>
-      </div>
-
-      <!-- ✅ Related items -->
-      <div class="related">
-        <h4>Customers also viewed</h4>
-        <div id="relatedGrid" class="related-grid"></div>
       </div>
     </div>
   </dialog>
@@ -210,7 +197,7 @@
           <div id="paypal-button-container"></div>
         </div>
         <div id="payPanel-kbz" class="pay-panel">
-          <div class="wallet-box">
+          <div id="kbzBox" class="wallet-box">
             <canvas id="kbzQR" width="180" height="180"></canvas>
             <p class="hint">Scan with KBZPay app</p>
             <button id="kbzPaid" class="btn">I have paid</button>
@@ -244,8 +231,8 @@
     </div>
   </dialog>
 
-  <!-- App -->
-   <script type="module" src="./config.js"></script>
+  <!-- Config + App -->
+  <script type="module" src="./config.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

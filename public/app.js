@@ -1,10 +1,20 @@
-import { firebaseConfig } from './config.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+// === Replace with your own config (or import from config.js if you already use it) ===
+const firebaseConfig = {
+  apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+        authDomain: "shweshop-mm.firebaseapp.com",
+        projectId: "shweshop-mm",
+        storageBucket: "shweshop-mm.firebasestorage.app",
+        messagingSenderId: "361216212375",
+        appId: "1:361216212375:web:fed19b7fe4072000c298d2",
+        measurementId: "G-WBJJZZNLX6",
+};
+
 // EmailJS init
-window.addEventListener('load', () => { if (window.emailjs) emailjs.init({ publicKey: "YOUR_EMAILJS_PUBLIC_KEY" }); });
+window.addEventListener('load', () => { if (window.emailjs) emailjs.init({ publicKey: "WT0GOYrL9HnDKvLUf" }); });
 
 // App
 const app = initializeApp(firebaseConfig);
@@ -18,8 +28,9 @@ const state = {
   categories: [],
   page: 0,
   pageSize: 20,
+  audience: 'all',             // 'all' | 'men' | 'women' | 'kids' | 'pets'
   cart: loadJSON('cart', []),
-  promo: null,
+  itemPromos: {},              // { [productId]: { code, type, value } }
   membership: null,
 };
 
@@ -33,42 +44,116 @@ function clamp(n,min,max){ return Math.max(min, Math.min(max, n)) }
 function uid(){ return Math.random().toString(36).slice(2,10) }
 function todayISO(){ return new Date().toISOString().slice(0,10) }
 
-// DEMO PRODUCTS (more items)
+// Demo products with multiple images + audience + specs
 const DEMO_PRODUCTS = [
-  {id:'p1', title:'Classic Sushi Set', price:19.9, cat:'Food', img:'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=800&auto=format&fit=crop', desc:'Fresh nigiri & rolls.'},
-  {id:'p2', title:'Matcha Latte', price:4.9, cat:'Drinks', img:'https://images.unsplash.com/photo-1498804103079-a6351b050096?q=80&w=800&auto=format&fit=crop', desc:'Creamy, earthy, energizing.'},
-  {id:'p3', title:'Bluetooth Earbuds', price:39.0, cat:'Electronics', img:'https://images.unsplash.com/photo-1518442072051-99d3c131e1c1?q=80&w=800&auto=format&fit=crop', desc:'Clear sound, long battery.'},
-  {id:'p4', title:'Handmade Tote', price:24.5, cat:'Fashion', img:'https://images.unsplash.com/photo-1547949003-9792a18a2601?q=80&w=800&auto=format&fit=crop', desc:'Durable canvas everyday bag.'},
-  {id:'p5', title:'AyaPay Gift Card', price:25.0, cat:'Gift', img:'https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?q=80&w=800&auto=format&fit=crop', desc:'Send love instantly.'},
-  {id:'p6', title:'KBZPay Top-Up', price:10.0, cat:'Topup', img:'https://images.unsplash.com/photo-1535223289827-42f1e9919769?q=80&w=800&auto=format&fit=crop', desc:'Digital wallet recharge.'},
-  {id:'p7', title:'Salmon Sashimi', price:12.9, cat:'Food', img:'https://images.unsplash.com/photo-1559305616-3f99cd43e353?q=80&w=800&auto=format&fit=crop', desc:'Premium cut, melt-in-mouth.'},
-  {id:'p8', title:'Tuna Roll', price:7.9, cat:'Food', img:'https://images.unsplash.com/photo-1562158070-0bdc6aab9476?q=80&w=800&auto=format&fit=crop', desc:'Light and tasty roll.'},
-  {id:'p9', title:'Iced Americano', price:3.5, cat:'Drinks', img:'https://images.unsplash.com/photo-1498804103079-a6351b050096?q=80&w=800&auto=format&fit=crop', desc:'Bold & refreshing.'},
-  {id:'p10', title:'Green Tea', price:2.2, cat:'Drinks', img:'https://images.unsplash.com/photo-1442512595331-e89e73853f31?q=80&w=800&auto=format&fit=crop', desc:'Healthy classic brew.'},
-  {id:'p11', title:'USB-C Cable', price:6.9, cat:'Electronics', img:'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?q=80&w=800&auto=format&fit=crop', desc:'Fast charging, durable.'},
-  {id:'p12', title:'Phone Stand', price:8.0, cat:'Electronics', img:'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800&auto=format&fit=crop', desc:'Adjustable, sturdy.'},
-  {id:'p13', title:'Graphic T-shirt', price:14.5, cat:'Fashion', img:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop', desc:'Soft cotton tee.'},
-  {id:'p14', title:'Hoodie', price:29.0, cat:'Fashion', img:'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800&auto=format&fit=crop', desc:'Cozy & warm.'},
-  {id:'p15', title:'Gift Box S', price:9.9, cat:'Gift', img:'https://images.unsplash.com/photo-1487700160041-babef9c3cb55?q=80&w=800&auto=format&fit=crop', desc:'For small surprises.'},
-  {id:'p16', title:'Gift Box L', price:19.9, cat:'Gift', img:'https://images.unsplash.com/photo-1487700160041-babef9c3cb55?q=80&w=800&auto=format&fit=crop', desc:'For big surprises.'},
-  {id:'p17', title:'Jasmine Tea', price:3.0, cat:'Drinks', img:'https://images.unsplash.com/photo-1451748266019-3c100abf4f68?q=80&w=800&auto=format&fit=crop', desc:'Floral aroma.'},
-  {id:'p18', title:'Nigiri Mix', price:16.9, cat:'Food', img:'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=800&auto=format&fit=crop', desc:'Chef selection.'},
-  {id:'p19', title:'Chopsticks Set', price:5.9, cat:'Food', img:'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=800&auto=format&fit=crop', desc:'Reusable bamboo.'},
-  {id:'p20', title:'Thermal Bottle', price:18.0, cat:'Electronics', img:'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?q=80&w=800&auto=format&fit=crop', desc:'Hot or cold all day.'},
-  {id:'p21', title:'Sushi Knife', price:44.0, cat:'Food', img:'https://images.unsplash.com/photo-1604907053170-1c812f3b5481?q=80&w=800&auto=format&fit=crop', desc:'Sharp & precise.'},
-  {id:'p22', title:'Cordless Trimmer', price:25.0, cat:'Electronics', img:'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop', desc:'Portable grooming.'},
-  {id:'p23', title:'Canvas Cap', price:11.0, cat:'Fashion', img:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop', desc:'Daily essential.'},
-  {id:'p24', title:'Sticker Pack', price:3.2, cat:'Gift', img:'https://images.unsplash.com/photo-1587300003388-59208cc962cb?q=80&w=800&auto=format&fit=crop', desc:'Fun & colorful.'},
+  {
+    id:'p1', title:'Classic Sushi Set', price:19.9, cat:'Food', aud:'all',
+    img:'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=800&auto=format&fit=crop',
+    images:[
+      'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1562158070-0bdc6aab9476?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1559305616-3f99cd43e353?q=80&w=800&auto=format&fit=crop'
+    ],
+    desc:'Fresh nigiri & rolls.',
+    specs:['12 pcs set','Wasabi & ginger included','Soy sauce sachet','Keep refrigerated']
+
+    // နမူနာကြည့်ရန် လေ့လာရန်
+//     img: 'images/products/men/p100-shirt/thumb.jpg',
+//   images: [
+//     'images/products/men/p100-shirt/main.jpg',
+//     'images/products/men/p100-shirt/1.jpg',
+//     'images/products/men/p100-shirt/2.jpg'
+//   ],
+//   desc: 'Soft cotton tee.',
+//   specs: ['100% cotton', 'Regular fit', 'Machine washable']
+  },
+  {
+    id:'p3', title:'Bluetooth Earbuds', price:39.0, cat:'Electronics', aud:'all',
+    img:'https://images.unsplash.com/photo-1518442072051-99d3c131e1c1?q=80&w=800&auto=format&fit=crop',
+    images:[
+      'https://images.unsplash.com/photo-1518442072051-99d3c131e1c1?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800&auto=format&fit=crop'
+    ],
+    desc:'Clear sound, long battery.',
+    specs:['BT 5.3','24h battery with case','USB-C charging','IPX4 splash resistant']
+  },
+  {
+    id:'p13', title:'Graphic T-shirt', price:14.5, cat:'Fashion', aud:'men',
+    img:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
+    images:[
+      'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800&auto=format&fit=crop'
+    ],
+    desc:'Soft cotton tee.',
+    specs:['100% cotton','Regular fit','Machine washable']
+  },
+  {
+    id:'p14', title:'Cozy Hoodie', price:29.0, cat:'Fashion', aud:'women',
+    img:'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800&auto=format&fit=crop',
+    images:[
+      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800&auto=format&fit=crop'
+    ],
+    desc:'Warm & soft.',
+    specs:['Blend fleece','Kangaroo pocket','Relaxed fit']
+  },
+  {
+    id:'p25', title:'Kids Bottle 300ml', price:9.5, cat:'Kids', aud:'kids',
+    img:'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?q=80&w=800&auto=format&fit=crop',
+    images:[
+      'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?q=80&w=800&auto=format&fit=crop'
+    ],
+    desc:'Leak-proof bottle for kids.',
+    specs:['BPA-free','Dishwasher safe','Lightweight']
+  },
+  {
+    id:'p26', title:'Pet Treats Pack', price:6.5, cat:'Pets', aud:'pets',
+    img:'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=800&auto=format&fit=crop',
+    images:[
+      'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=800&auto=format&fit=crop'
+    ],
+    desc:'Crunchy treats for dogs.',
+    specs:['Chicken flavor','No artificial colors','Resealable bag']
+  },
+  // More simple items
+  {id:'p2', title:'Matcha Latte', price:4.9, cat:'Drinks', aud:'all', img:'https://images.unsplash.com/photo-1498804103079-a6351b050096?q=80&w=800&auto=format&fit=crop', images:null, desc:'Creamy, earthy, energizing.'},
+  {id:'p4', title:'Handmade Tote', price:24.5, cat:'Fashion', aud:'women', img:'https://images.unsplash.com/photo-1547949003-9792a18a2601?q=80&w=800&auto=format&fit=crop', images:null, desc:'Durable canvas everyday bag.'},
+  {id:'p5', title:'AyaPay Gift Card', price:25.0, cat:'Gift', aud:'all', img:'https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?q=80&w=800&auto=format&fit=crop', images:null, desc:'Send love instantly.'},
+  {id:'p6', title:'KBZPay Top-Up', price:10.0, cat:'Topup', aud:'all', img:'https://images.unsplash.com/photo-1535223289827-42f1e9919769?q=80&w=800&auto=format&fit=crop', images:null, desc:'Digital wallet recharge.'},
+  {id:'p7', title:'Salmon Sashimi', price:12.9, cat:'Food', aud:'all', img:'https://images.unsplash.com/photo-1559305616-3f99cd43e353?q=80&w=800&auto=format&fit=crop', images:null, desc:'Premium cut, melt-in-mouth.'},
+  {id:'p8', title:'Tuna Roll', price:7.9, cat:'Food', aud:'all', img:'https://images.unsplash.com/photo-1562158070-0bdc6aab9476?q=80&w=800&auto=format&fit=crop', images:null, desc:'Light and tasty roll.'},
+  {id:'p9', title:'Iced Americano', price:3.5, cat:'Drinks', aud:'all', img:'https://images.unsplash.com/photo-1498804103079-a6351b050096?q=80&w=800&auto=format&fit=crop', images:null, desc:'Bold & refreshing.'},
+  {id:'p10', title:'Green Tea', price:2.2, cat:'Drinks', aud:'all', img:'https://images.unsplash.com/photo-1442512595331-e89e73853f31?q=80&w=800&auto=format&fit=crop', images:null, desc:'Healthy classic brew.'},
+  {id:'p11', title:'USB-C Cable', price:6.9, cat:'Electronics', aud:'all', img:'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?q=80&w=800&auto=format&fit=crop', images:null, desc:'Fast charging, durable.'},
+  {id:'p12', title:'Phone Stand', price:8.0, cat:'Electronics', aud:'all', img:'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800&auto=format&fit=crop', images:null, desc:'Adjustable, sturdy.'},
+  {id:'p15', title:'Gift Box S', price:9.9, cat:'Gift', aud:'all', img:'https://images.unsplash.com/photo-1487700160041-babef9c3cb55?q=80&w=800&auto=format&fit=crop', images:null, desc:'For small surprises.'},
+  {id:'p16', title:'Gift Box L', price:19.9, cat:'Gift', aud:'all', img:'https://images.unsplash.com/photo-1487700160041-babef9c3cb55?q=80&w=800&auto=format&fit=crop', images:null, desc:'For big surprises.'},
+  {id:'p17', title:'Jasmine Tea', price:3.0, cat:'Drinks', aud:'all', img:'https://images.unsplash.com/photo-1451748266019-3c100abf4f68?q=80&w=800&auto=format&fit=crop', images:null, desc:'Floral aroma.'},
+  {id:'p18', title:'Nigiri Mix', price:16.9, cat:'Food', aud:'all', img:'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=800&auto=format&fit=crop', images:null, desc:'Chef selection.'},
+  {id:'p19', title:'Chopsticks Set', price:5.9, cat:'Food', aud:'all', img:'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=800&auto=format&fit=crop', images:null, desc:'Reusable bamboo.'},
+  {id:'p20', title:'Thermal Bottle', price:18.0, cat:'Electronics', aud:'all', img:'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?q=80&w=800&auto=format&fit=crop', images:null, desc:'Hot or cold all day.'},
+  {id:'p21', title:'Sushi Knife', price:44.0, cat:'Food', aud:'men', img:'https://images.unsplash.com/photo-1604907053170-1c812f3b5481?q=80&w=800&auto=format&fit=crop', images:null, desc:'Sharp & precise.'},
+  {id:'p22', title:'Cordless Trimmer', price:25.0, cat:'Electronics', aud:'men', img:'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop', images:null, desc:'Portable grooming.'},
+  {id:'p23', title:'Canvas Cap', price:11.0, cat:'Fashion', aud:'all', img:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop', images:null, desc:'Daily essential.'},
+  {id:'p24', title:'Sticker Pack', price:3.2, cat:'Gift', aud:'kids', img:'https://images.unsplash.com/photo-1587300003388-59208cc962cb?q=80&w=800&auto=format&fit=crop', images:null, desc:'Fun & colorful.'},
 ];
+
+// Promo map (per-item)
+const PROMO_MAP = {
+  'BUYMORE10': {type:'percent', value:10},
+  'WELCOME5' : {type:'amount',  value:5}
+};
 
 // Elements
 const sidebar = $("#sidebar");
 const btnMenu = $("#btnMenu");
 const closeSidebar = $("#closeSidebar");
+const btnSearch = $("#btnSearch");
 const main = $("#main");
 const grid = $("#productGrid");
 const categorySelect = $("#categorySelect");
 const searchInput = $("#searchInput");
+const audienceChips = $("#audienceChips");
 const loadMoreBtn = $("#loadMore");
 
 const cartDrawer = $("#cartDrawer");
@@ -81,17 +166,17 @@ const grandTotalEl = $("#grandTotal");
 
 const productModal = $("#productModal");
 const pdImg = $("#pdImg");
+const pdThumbs = $("#pdThumbs");
 const pdTitle = $("#pdTitle");
 const pdPrice = $("#pdPrice");
 const pdDesc = $("#pdDesc");
+const pdSpecs = $("#pdSpecs");
 const pdQty = $("#pdQty");
 const pdAdd = $("#pdAdd");
-
-const promoCodeInput = $("#promoCode");
-const applyPromoBtn = $("#applyPromo");
+const relatedGrid = $("#relatedGrid");
 
 const payTabs = document.querySelectorAll(".pay-tabs .chip");
-// const panels = document.querySelectorAll(".pay-panel");
+const payPanels = document.querySelectorAll(".pay-panel");
 const kbzPaid = $("#kbzPaid");
 const cbPaid = $("#cbPaid");
 const ayaPaid = $("#ayaPaid");
@@ -110,21 +195,14 @@ const btnGoogle = $("#btnGoogle");
 
 const navLinks = document.querySelectorAll(".nav-links .link");
 
-// Sidebar open/close
+// Sidebar
 btnMenu.addEventListener('click', () => sidebar.classList.add('open'));
 closeSidebar.addEventListener('click', () => sidebar.classList.remove('open'));
 
-// Auto-close sidebar when category changed ✅
-categorySelect.addEventListener('change', () => {
-  renderGrid();
-  sidebar.classList.remove('open');
-});
-
-// ✅ Search icon ကို sidebar ဖွင့်ချင်တာသာ — DB မခေါ်ပါ
-const btnSearch = document.getElementById('btnSearch');
-btnSearch?.addEventListener('click', () => {
-  document.getElementById('sidebar')?.classList.add('open');
-  document.getElementById('searchInput')?.focus();
+// Search button – scroll to filters (no DB call)
+btnSearch.addEventListener('click', ()=>{
+  document.getElementById('filters')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  searchInput?.focus();
 });
 
 // Views
@@ -162,6 +240,7 @@ onAuthStateChanged(auth, async (user)=>{
   if(user) await ensureUser(user);
   renderMember();
 });
+
 async function ensureUser(user){
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
@@ -179,25 +258,51 @@ async function ensureUser(user){
   }
 }
 
-// Products (demo page)
+// Filters
 function fillCategoriesOnce(){
-  const cats = Array.from(new Set(DEMO_PRODUCTS.map(p=>p.cat)));
+  const cats = Array.from(new Set(DEMO_PRODUCTS.map(p=>p.cat))).sort();
   state.categories = cats;
   cats.forEach(c=>{
     const opt = h('option'); opt.value=c; opt.textContent=c;
     categorySelect.appendChild(opt);
   });
 }
+categorySelect.addEventListener('change', renderGrid);
+searchInput.addEventListener('input', renderGrid);
+audienceChips.querySelectorAll('button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    audienceChips.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    state.audience = btn.dataset.aud;
+    renderGrid();
+  });
+});
+
+// Products paging
+function loadProductsPage(){
+  if(state.page===0 && state.products.length===0){
+    state.products = DEMO_PRODUCTS.slice(); // in real app: fetch/paginate
+    fillCategoriesOnce();
+  }
+  state.page++;
+  renderGrid();
+}
+
+// Render grid with per-card promo & quick view
 function renderGrid(){
   const cat = categorySelect.value.trim().toLowerCase();
   const q = (searchInput.value||'').trim().toLowerCase();
+  const aud = state.audience;
+
   grid.innerHTML = '';
-  const filtered = DEMO_PRODUCTS.filter(p=>{
+  const filtered = state.products.filter(p=>{
     const okCat = !cat || p.cat.toLowerCase()===cat;
-    const hay = (p.title+' '+p.desc).toLowerCase();
+    const hay = (p.title+' '+(p.desc||'')).toLowerCase();
     const okQ = !q || hay.includes(q);
-    return okCat && okQ;
+    const okAud = aud==='all' || (p.aud||'all')===aud;
+    return okCat && okQ && okAud;
   });
+
   filtered.forEach(p=>{
     const card = h('div'); card.className='card';
     card.innerHTML = `
@@ -208,23 +313,155 @@ function renderGrid(){
           <div class="price">${fmt(p.price)}</div>
           <button class="btn btn-soft">View</button>
         </div>
+        <!-- ✅ per-card promo -->
+        <div class="promo-inline">
+          <input placeholder="Promo code" aria-label="promo for ${p.title}">
+          <button class="btn-mini btn-outline">Apply</button>
+        </div>
       </div>
     `;
+    // အသုံးပြုရန် နမူနာ
+// inside filtered.forEach(p=>{ ... })
+// const card = document.createElement('div'); 
+// card.className = 'card';
+// card.innerHTML = `
+//   <img class="thumb"
+//        src="${p.img}"
+//        alt="${p.title}"
+//        width="600" height="600"
+//        loading="lazy" decoding="async">
+//   <div class="pad">
+//     <div class="card-title">${p.title}</div>
+//     <div class="row between">
+//       <div class="price">${fmt(p.price)}</div>
+//       <button class="btn btn-soft">View</button>
+//     </div>
+//     <!-- per-card promo -->
+//     <div class="promo-inline">
+//       <input placeholder="Promo code" aria-label="promo for ${p.title}">
+//       <button class="btn-mini btn-outline">Apply</button>
+//     </div>
+//   </div>
+// `;
+// card.querySelector('.btn').addEventListener('click', ()=>openProduct(p));
+// card.querySelector('img').addEventListener('click', ()=>openProduct(p));
+
+// // promo handlers
+// const [promoInput, promoBtn] = card.querySelectorAll('.promo-inline > *');
+// promoBtn.addEventListener('click', ()=>{
+//   const code = (promoInput.value||'').trim().toUpperCase();
+//   const rule = PROMO_MAP[code] || null;
+//   if(!code){ delete state.itemPromos[p.id]; toast('Promo cleared'); renderCart(); return; }
+//   if(!rule){ toast('Invalid code'); return; }
+//   state.itemPromos[p.id] = { code, ...rule };
+//   toast(`Promo ${code} applied to ${p.title}`);
+//   renderCart();
+// });
+
+// grid.appendChild(card);
+
+    // handlers
     card.querySelector('.btn').addEventListener('click', ()=>openProduct(p));
     card.querySelector('img').addEventListener('click', ()=>openProduct(p));
+    const [promoInput, promoBtn] = card.querySelectorAll('.promo-inline > *');
+    promoBtn.addEventListener('click', ()=>{
+      const code = (promoInput.value||'').trim().toUpperCase();
+      const rule = PROMO_MAP[code] || null;
+      if(!code){ delete state.itemPromos[p.id]; toast('Promo cleared'); renderCart(); return; }
+      if(!rule){ toast('Invalid code'); return; }
+      state.itemPromos[p.id] = { code, ...rule };
+      toast(`Promo ${code} applied to ${p.title}`);
+      renderCart();
+    });
     grid.appendChild(card);
   });
 }
-searchInput.addEventListener('input', renderGrid);
 
-// Product modal
+// Product modal (gallery, specs, related)
 let currentProduct = null;
 function openProduct(p){
   currentProduct = p;
-  pdImg.src = p.img; pdImg.alt = p.title;
+  const imgs = p.images && p.images.length ? p.images : [p.img];
+
+//   // inside openProduct(p) after you set const imgs = ...
+// const main = imgs[0]; // e.g. images/products/men/p100-shirt/main.jpg
+// const base = main.replace(/(\.avif|\.webp|\.jpe?g)$/i, ''); // strip ext
+// const jpg = base + '.jpg';
+// const jpg800 = base + '-800.jpg';
+// const webp = base + '.webp';
+// const webp800 = base + '-800.webp';
+// const avif = base + '.avif';
+// const avif800 = base + '-800.avif';
+
+// pdMedia.innerHTML = `
+//   <picture>
+//     <source type="image/avif"
+//             srcset="${avif800} 800w, ${avif} 1200w"
+//             sizes="(max-width: 768px) 100vw, 50vw">
+//     <source type="image/webp"
+//             srcset="${webp800} 800w, ${webp} 1200w"
+//             sizes="(max-width: 768px) 100vw, 50vw">
+//     <img id="pdImg"
+//          src="${jpg}"
+//          srcset="${jpg800} 800w, ${jpg} 1200w"
+//          sizes="(max-width: 768px) 100vw, 50vw"
+//          alt="${p.title}"
+//          width="1200" height="1200"
+//          loading="eager" decoding="async">
+//   </picture>
+// `;
+
+//   const pdMedia = document.querySelector('.pd-media'); // main big image container
+
+  pdImg.src = imgs[0]; pdImg.alt = p.title;
   pdTitle.textContent = p.title;
   pdPrice.textContent = fmt(p.price);
-  pdDesc.textContent = p.desc;
+  pdDesc.textContent = p.desc || '';
+
+  // specs
+  pdSpecs.innerHTML = (p.specs||[]).map(s=>`<li>${s}</li>`).join('');
+
+  // thumbs
+  pdThumbs.innerHTML = '';
+  imgs.forEach((src, i)=>{
+    const im = h('img'); im.src = src; im.alt = p.title + ' ' + (i+1);
+    if(i===0) im.classList.add('active');
+    im.addEventListener('click', ()=>{
+      pdThumbs.querySelectorAll('img').forEach(x=>x.classList.remove('active'));
+      im.classList.add('active');
+      pdImg.src = src;
+    });
+    pdThumbs.appendChild(im);
+  });
+//   နမူနာလေ့လာရန်ဖြစ်သည်
+// pdThumbs.innerHTML = '';
+//   imgs.forEach((src, i)=>{
+//     const im = document.createElement('img');
+//     im.src = src;
+//     im.alt = `${p.title} ${i+1}`;
+//     im.width = 120; im.height = 120;
+//     im.loading = 'lazy';
+//     if(i===0) im.classList.add('active');
+//     im.addEventListener('click', ()=>{
+//       pdThumbs.querySelectorAll('img').forEach(x=>x.classList.remove('active'));
+//       im.classList.add('active');
+//       // If you used <picture>, also rebuild picture here (4B)
+//       pdImg.src = src;
+//       pdImg.alt = `${p.title} ${i+1}`;
+//     });
+//     pdThumbs.appendChild(im);
+//   });
+
+  // related (same cat OR same audience)
+  const related = state.products.filter(x=>x.id!==p.id && (x.cat===p.cat || (x.aud||'all')===(p.aud||'all'))).slice(0,6);
+  relatedGrid.innerHTML = related.map(r=>`<img src="${r.img}" alt="${r.title}" data-id="${r.id}">`).join('');
+  relatedGrid.querySelectorAll('img').forEach(img=>{
+    img.addEventListener('click', ()=>{
+      const r = state.products.find(z=>z.id===img.dataset.id);
+      if(r) openProduct(r);
+    });
+  });
+
   pdQty.value = 1;
   productModal.showModal();
 }
@@ -238,12 +475,8 @@ pdAdd.addEventListener('click', ()=>{
 // Cart
 btnCart.addEventListener('click', openCart);
 closeCart.addEventListener('click', ()=>cartDrawer.classList.remove('open'));
-
-// ✅ Click outside main area to close cart
 main.addEventListener('click', (e)=>{
-  if(cartDrawer.classList.contains('open') &&
-     !cartDrawer.contains(e.target) &&
-     !btnCart.contains(e.target)){
+  if(cartDrawer.classList.contains('open') && !cartDrawer.contains(e.target) && !btnCart.contains(e.target)){
     cartDrawer.classList.remove('open');
   }
 });
@@ -296,6 +529,7 @@ function renderCart(){
             <input type="number" value="${item.qty}" min="1">
             <button class="icon-btn" aria-label="inc">+</button>
           </div>
+          ${state.itemPromos[item.id] ? `<div class="small">Promo: ${state.itemPromos[item.id].code}</div>`:''}
         </div>
         <button class="icon-btn" aria-label="remove">✕</button>
       `;
@@ -309,49 +543,52 @@ function renderCart(){
   }
   computeTotals();
 }
+
+// Totals (with per-item promos + threshold + membership)
 function computeTotals(){
-  const subtotal = state.cart.reduce((a,b)=>a + b.price*b.qty, 0);
-  let promoCut = 0;
-  let memberCut = 0;
-  if(subtotal > 100) promoCut += 0.05 * subtotal;
-  if(state.promo){
-    if(state.promo.type==='percent') promoCut += (state.promo.value/100)*subtotal;
-    if(state.promo.type==='amount') promoCut += state.promo.value;
-  }
-  const rate = state.membership?.rate || 0;
-  memberCut += rate * subtotal;
+  let subtotal = 0;
+  let itemPromoCut = 0;
+
+  state.cart.forEach(ci=>{
+    const rowSub = ci.price * ci.qty;
+    subtotal += rowSub;
+    const promo = state.itemPromos[ci.id];
+    if(promo){
+      if(promo.type==='percent') itemPromoCut += (promo.value/100)*rowSub;
+      if(promo.type==='amount')  itemPromoCut += promo.value * ci.qty; // per item
+    }
+  });
+
+  // Auto threshold 5% global if subtotal > 100
+  const thresholdCut = subtotal > 100 ? 0.05 * subtotal : 0;
+
+  // Membership discount on subtotal
+  const memberRate = state.membership?.rate || 0;
+  const memberCut  = memberRate * subtotal;
+
+  const promoCut = itemPromoCut + thresholdCut;
   const total = Math.max(0, subtotal - promoCut - memberCut);
+
   subtotalEl.textContent = fmt(subtotal);
   promoAmountEl.textContent = '-'+fmt(promoCut);
   memberDiscEl.textContent = '-'+fmt(memberCut);
   grandTotalEl.textContent = fmt(total);
+
   return { subtotal, promoCut, memberCut, total };
 }
 
-// Promo
-applyPromoBtn.addEventListener('click', ()=>{
-  const code = (promoCodeInput.value||'').trim().toUpperCase();
-  if(!code){ state.promo=null; computeTotals(); return }
-  const MAP = { 'BUYMORE10': {type:'percent', value:10}, 'WELCOME5':  {type:'amount',  value:5} };
-  state.promo = MAP[code] || null;
-  toast(state.promo ? 'Promo applied' : 'Invalid code');
-  computeTotals();
-});
-
 // Pay tabs
-const panels = document.querySelectorAll(".pay-panel"); // re-define after update?
 payTabs.forEach(t=>{
   t.addEventListener('click', ()=>{
     payTabs.forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
-    panels.forEach(p=>p.classList.remove('active'));
+    payPanels.forEach(p=>p.classList.remove('active'));
     $("#payPanel-"+t.dataset.paytab).classList.add('active');
-    if(t.dataset.paytab==='paypal') setupPayPalButtons();
-    else drawWalletQRs();
+    if(t.dataset.paytab==='paypal') setupPayPalButtons(); else drawWalletQRs();
   });
 });
 
-// Wallet “QR”
+// Wallet “QR” demo
 function drawQR(canvas, text){
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#0d1624'; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -385,7 +622,6 @@ async function walletPaid(channel){
 }
 
 // PayPal
-let paypalButtonsRendered=false;
 function setupPayPalButtons(){
   if(!window.paypal) return;
   const container = document.getElementById('paypal-button-container');
@@ -405,7 +641,7 @@ function setupPayPalButtons(){
   }).render('#paypal-button-container');
 }
 
-// Orders & Checkout
+// Orders + Checkout
 function currentOrderId(){ return sessionStorage.getItem('currentOrderId') }
 function setCurrentOrderId(id){ sessionStorage.setItem('currentOrderId', id) }
 
@@ -417,7 +653,7 @@ async function placeOrder(extra={}){
     userId: state.user.uid,
     items: state.cart.map(i=>({id:i.id, title:i.title, price:i.price, qty:i.qty})),
     pricing: sums,
-    promo: state.promo,
+    promos: state.itemPromos,
     membership: state.membership,
     channel: extra.channel||'',
     status: extra.status||'pending',
@@ -459,8 +695,7 @@ async function sendEmail(order){
   }catch(e){ console.warn('EmailJS failed', e) }
 }
 
-// Orders list
-// === Orders (fixed) ===
+// Orders (syntactically fixed)
 async function loadOrders() {
   const wrap = $("#ordersList");
   if (!state.user) {
@@ -481,7 +716,6 @@ async function loadOrders() {
       wrap.innerHTML = '<p class="small">No orders yet.</p>';
       return;
     }
-
     snap.forEach((docu) => {
       const o = docu.data();
       const card = h('div');
@@ -511,33 +745,30 @@ async function loadOrders() {
   }
 }
 
-// === Membership (unchanged, just tidy) ===
-document.getElementById("btnMembership")?.addEventListener('click', () => memberModal.showModal());
-
-document.getElementById("buyMembership")?.addEventListener('click', async () => {
-  if (!state.user) { authModal.showModal(); return; }
-  const plan = (document.querySelector('input[name="mplan"]:checked')?.value) || 'basic';
-  const rate = plan === 'plus' ? 0.03 : 0.02;
-  const now = Date.now(), year = 365 * 86400000;
-  state.membership = { plan, rate, startTs: now, expiresTs: now + year };
+// Membership
+btnMembership?.addEventListener('click', ()=>memberModal.showModal());
+buyMembership?.addEventListener('click', async ()=>{
+  if(!state.user){ authModal.showModal(); return }
+  const plan = (document.querySelector('input[name="mplan"]:checked')?.value)||'basic';
+  const rate = plan==='plus' ? 0.03 : 0.02;
+  const now = Date.now(), year = 365*86400000;
+  state.membership = { plan, rate, startTs: now, expiresTs: now+year };
   try {
-    await updateDoc(doc(db, 'users', state.user.uid), { member: state.membership });
-  } catch (e) {
-    // user doc မတည်ရှိသေးလို့ fail ဖြစ်နိုင်လို့ fallback
-    await setDoc(doc(db, 'users', state.user.uid), {
+    await updateDoc(doc(db,'users', state.user.uid), { member: state.membership });
+  } catch {
+    await setDoc(doc(db,'users', state.user.uid), {
       email: state.user.email || null,
       name: state.user.displayName || '',
       createdAt: serverTimestamp(),
       member: state.membership,
       totalSpent: 0,
       firstOrderAt: null
-    }, { merge: true });
+    }, { merge:true });
   }
   memberModal.close();
   renderMember();
   toast('Membership activated');
 });
-
 function renderMember(){
   const m = state.membership;
   if(!state.user){ memberStatus.textContent='Sign in to see status'; return }
@@ -546,122 +777,53 @@ function renderMember(){
   memberStatus.textContent = `Active: ${m.plan} (${Math.round(m.rate*100)}% cashback). ${daysLeft} days left.`;
 }
 
-// Analytics
-// Put these near the top of app.js (once only)
-let revChartInst = null;
-let topChartInst = null;
-
-// === Replace your existing renderAnalytics with this whole function ===
+// Analytics with guard + empty charts
+let revChartInst = null, topChartInst = null;
 async function renderAnalytics() {
   const revEl = document.getElementById('revChart');
   const topEl = document.getElementById('topChart');
-  if (!revEl || !topEl) return; // canvases not mounted yet
-
-  // helper: destroy old charts to avoid duplicate-instance errors
-  const destroyCharts = () => {
-    try { revChartInst?.destroy(); } catch {}
-    try { topChartInst?.destroy(); } catch {}
-    revChartInst = null;
-    topChartInst = null;
-  };
-
-  // helper: draw empty charts (for logged-out or error states)
+  if (!revEl || !topEl) return;
+  const destroyCharts = () => { try{revChartInst?.destroy()}catch{}; try{topChartInst?.destroy()}catch{}; revChartInst=null; topChartInst=null; };
   const drawEmptyCharts = () => {
     destroyCharts();
-    revChartInst = new Chart(revEl, {
-      type: 'line',
-      data: { labels: [], datasets: [{ label: 'Revenue', data: [] }] },
-      options: { responsive: true, plugins: { legend: { display: false } } }
-    });
-    topChartInst = new Chart(topEl, {
-      type: 'bar',
-      data: { labels: [], datasets: [{ label: 'Qty', data: [] }] },
-      options: { responsive: true, plugins: { legend: { display: false } } }
-    });
+    revChartInst = new Chart(revEl, { type:'line', data:{labels:[],datasets:[{label:'Revenue',data:[]}]}, options:{plugins:{legend:{display:false}}}});
+    topChartInst = new Chart(topEl, { type:'bar', data:{labels:[],datasets:[{label:'Qty',data:[]}]}, options:{plugins:{legend:{display:false}}}});
   };
-
-  // ✅ If not signed in, do NOT call Firestore. Show empty charts quietly.
-  if (!state.user) {
-    drawEmptyCharts();
-    return;
-  }
-
-  try {
-    // === Firestore query (last 30 days) ===
-    const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    const qref = query(
-      collection(db, 'orders'),
-      where('orderDate', '>=', since),
-      limit(500)
-    );
+  if (!state.user) { drawEmptyCharts(); return; }
+  try{
+    const since = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+    const qref = query(collection(db,'orders'), where('orderDate','>=', since), limit(500));
     const snap = await getDocs(qref);
-
-    // Prepare x-axis days
-    const days = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10);
-      return { d, v: 0 };
+    const days = Array.from({length:30}, (_,i)=>{
+      const d = new Date(Date.now()-(29-i)*86400000).toISOString().slice(0,10);
+      return {d, v:0}
     });
-
-    // Tally revenue per day and top sellers
-    const tally = {}; // title -> qty
-    snap.forEach(docu => {
+    const tally = {};
+    snap.forEach(docu=>{
       const o = docu.data();
-      const day = days.find(x => x.d === o.orderDate);
-      if (day) day.v += Number(o?.pricing?.total || 0);
-      (o.items || []).forEach(it => {
-        const key = it.title || '—';
-        tally[key] = (tally[key] || 0) + (it.qty || 0);
-      });
+      const day = days.find(x=>x.d===o.orderDate);
+      if(day) day.v += Number(o.pricing?.total||0);
+      (o.items||[]).forEach(it=>{ tally[it.title] = (tally[it.title]||0) + (it.qty||0); });
     });
-
-    // Draw charts
     destroyCharts();
-
-    // Revenue line
     revChartInst = new Chart(revEl, {
-      type: 'line',
-      data: {
-        labels: days.map(x => x.d.slice(5)), // MM-DD
-        datasets: [{ label: 'Revenue', data: days.map(x => x.v) }]
-      },
-      options: { responsive: true, plugins: { legend: { display: false } } }
+      type:'line',
+      data:{ labels:days.map(x=>x.d.slice(5)), datasets:[{ label:'Revenue', data:days.map(x=>x.v) }]},
+      options:{ responsive:true, plugins:{ legend:{ display:false } } }
     });
-
-    // Top sellers bar (top 7)
-    const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 7);
+    const top = Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,7);
     topChartInst = new Chart(topEl, {
-      type: 'bar',
-      data: {
-        labels: top.map(([k]) => k),
-        datasets: [{ label: 'Qty', data: top.map(([, v]) => v) }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { x: { ticks: { maxRotation: 45 } } }
-      }
+      type:'bar',
+      data:{ labels:top.map(([k])=>k), datasets:[{ label:'Qty', data:top.map(([,v])=>v) }]},
+      options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ maxRotation:45 }}} }
     });
-  } catch (e) {
-    console.warn('analytics blocked', e);
-    // If Firestore blocked by rules or offline, show empty charts instead of throwing
-    drawEmptyCharts();
-  }
-}
-
-function trackSale(order){
-  addDoc(collection(db,'analytics'),{
-    type:'sale',
-    amount: order.pricing.total,
-    at: serverTimestamp(),
-    items: order.items.map(i=>({id:i.id, qty:i.qty})),
-    userId: order.userId
-  });
+  }catch(e){ console.warn('analytics blocked', e); drawEmptyCharts(); }
 }
 
 // Init
 function init(){
   fillCategoriesOnce();
-  renderGrid();
+  loadProductsPage();
   updateCartCount();
   document.querySelectorAll('[data-close]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ const id=btn.getAttribute('data-close'); document.getElementById(id).close(); })
@@ -679,3 +841,6 @@ function toast(msg){
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), 1800);
 }
+
+// Analytics navigation helper (optional)
+// window.renderAnalytics = renderAnalytics;
