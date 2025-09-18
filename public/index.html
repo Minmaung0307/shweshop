@@ -1,279 +1,238 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ShweShop — Mobile-first Store</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <!-- Icons -->
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ShweShop — Mobile-first Store</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Icons -->
     <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Chart.js for Analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <!-- PayPal SDK (replace YOUR_PAYPAL_CLIENT_ID) -->
-    <script
-      src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD"
-      defer
-    ></script>
-    <!-- EmailJS -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
-      defer
-    ></script>
-    <!-- Firebase v10 Modular SDKs -->
-    <!-- <script type="module">
-      // --- Replace with your Firebase config ---
-      export const firebaseConfig = {
-        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
-        authDomain: "shweshop-mm.firebaseapp.com",
-        projectId: "shweshop-mm",
-        storageBucket: "shweshop-mm.firebasestorage.app",
-        messagingSenderId: "361216212375",
-        appId: "1:361216212375:web:fed19b7fe4072000c298d2",
-        measurementId: "G-WBJJZZNLX6",
-      };
-    </script> -->
-  </head>
-  <body>
-    <header class="topbar">
-      <button id="btnMenu" class="icon-btn" aria-label="Menu">☰</button>
-      <div class="brand">ShweShop</div>
-      <div class="top-actions">
-        <button id="btnSearch" class="icon-btn" aria-label="Search">🔎</button>
-        <button id="btnCart" class="icon-btn badge" aria-label="Cart">
-          🛒 <span id="cartCount" class="badge-dot">0</span>
-        </button>
-        <button id="btnUser" class="icon-btn" aria-label="Account">👤</button>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <!-- PayPal SDK (replace YOUR_PAYPAL_CLIENT_ID) -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD" defer></script>
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <button id="btnMenu" class="icon-btn" aria-label="Menu">☰</button>
+    <div class="brand">ShweShop</div>
+    <div class="top-actions">
+      <button id="btnSearch" class="icon-btn" aria-label="Search">🔎</button>
+      <button id="btnCart" class="icon-btn badge" aria-label="Cart">
+        🛒 <span id="cartCount" class="badge-dot">0</span>
+      </button>
+      <button id="btnUser" class="icon-btn" aria-label="Account">👤</button>
+    </div>
+  </header>
+
+  <nav id="sidebar" class="sidebar">
+    <div class="nav-header">
+      <div class="nav-title">Browse</div>
+      <button id="closeSidebar" class="icon-btn">✕</button>
+    </div>
+    <div class="nav-body">
+      <div class="filter-block">
+        <label class="lbl">Category</label>
+        <select id="categorySelect" class="input">
+          <option value="">All</option>
+        </select>
       </div>
-    </header>
-
-    <nav id="sidebar" class="sidebar">
-      <div class="nav-header">
-        <div class="nav-title">Browse</div>
-        <button id="closeSidebar" class="icon-btn">✕</button>
+      <div class="filter-block">
+        <label class="lbl">Search</label>
+        <input id="searchInput" class="input" placeholder="Search products..." />
       </div>
-      <div class="nav-body">
-        <div class="filter-block">
-          <label class="lbl">Category</label>
-          <select id="categorySelect" class="input">
-            <option value="">All</option>
-          </select>
-        </div>
-        <div class="filter-block">
-          <label class="lbl">Search</label>
-          <input
-            id="searchInput"
-            class="input"
-            placeholder="Search products..."
-          />
-        </div>
-        <div class="filter-block">
-          <label class="lbl">Promo Code</label>
-          <div class="row">
-            <input id="promoCode" class="input" placeholder="e.g. BUYMORE10" />
-            <button id="applyPromo" class="btn">Apply</button>
-          </div>
-          <p class="hint">>100 subtotal = auto 5% off</p>
-        </div>
-        <hr />
-        <div class="member-card">
-          <div class="row between">
-            <div>
-              <div class="member-title">Membership</div>
-              <div class="member-sub">2%/3% cashback all year</div>
-            </div>
-            <button id="btnMembership" class="btn btn-outline">
-              Buy / Manage
-            </button>
-          </div>
-          <div id="memberStatus" class="member-status"></div>
-        </div>
-        <hr />
-        <div class="nav-links">
-          <button data-view="shop" class="link active">🛍️ Shop</button>
-          <button data-view="analytics" class="link">📈 Analytics</button>
-          <button data-view="orders" class="link">🧾 Orders</button>
-          <button data-view="about" class="link">ℹ️ About</button>
-        </div>
-      </div>
-    </nav>
-
-    <main id="main">
-      <!-- Shop View -->
-      <section id="view-shop" class="view active">
-        <div id="hero" class="hero">
-          <div>
-            <h1>Find your favorites</h1>
-            <p>Modern • Clean • Fast — Mobile first shopping</p>
-          </div>
-        </div>
-
-        <div id="productGrid" class="grid"></div>
-        <div id="loadMoreWrap" class="center">
-          <button id="loadMore" class="btn btn-soft">Load more</button>
-        </div>
-      </section>
-
-      <!-- Analytics View -->
-      <section id="view-analytics" class="view">
-        <h2>Store Analytics</h2>
-        <div class="cards">
-          <div class="card">
-            <div class="card-title">Revenue (last 30 days)</div>
-            <canvas id="revChart" height="180"></canvas>
-          </div>
-          <div class="card">
-            <div class="card-title">Top Sellers</div>
-            <canvas id="topChart" height="180"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <!-- Orders View -->
-      <section id="view-orders" class="view">
-        <h2>My Orders</h2>
-        <div id="ordersList" class="stack"></div>
-      </section>
-
-      <!-- About View -->
-      <section id="view-about" class="view">
-        <h2>About ShweShop</h2>
-        <p>Demo app built with Firebase + PayPal + EmailJS.</p>
-        <ul class="disc">
-          <li>Cart, promotions, membership cashback</li>
-          <li>Myanmar wallets (KBZ/CB/Aya) demo via QR / deeplink</li>
-          <li>Data analytics dashboard</li>
-        </ul>
-      </section>
-    </main>
-
-    <!-- Product Detail Modal -->
-    <dialog id="productModal" class="modal">
-      <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="productModal">
-          ✕
-        </button>
-        <div class="product-detail">
-          <div class="pd-media">
-            <img id="pdImg" alt="" />
-          </div>
-          <div class="pd-info">
-            <h3 id="pdTitle"></h3>
-            <p id="pdPrice" class="price"></p>
-            <p id="pdDesc" class="desc"></p>
-            <div class="row">
-              <label class="lbl">Qty</label>
-              <input id="pdQty" class="input" type="number" min="1" value="1" />
-            </div>
-            <div class="row">
-              <button id="pdAdd" class="btn">Add to Cart</button>
-              <button class="btn btn-soft" data-close="productModal">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </dialog>
-
-    <!-- Membership Modal -->
-    <dialog id="memberModal" class="modal">
-      <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="memberModal">✕</button>
-        <h3>Membership</h3>
-        <p>Enjoy cashback on every order for one year.</p>
-        <div class="stack">
-          <label class="radio"
-            ><input type="radio" name="mplan" value="basic" checked /> Basic —
-            2% cashback</label
-          >
-          <label class="radio"
-            ><input type="radio" name="mplan" value="plus" /> Plus — 3%
-            cashback</label
-          >
-        </div>
+      <div class="filter-block">
+        <label class="lbl">Promo Code</label>
         <div class="row">
-          <button id="buyMembership" class="btn">Buy (PayPal)</button>
-          <button class="btn btn-soft" data-close="memberModal">Close</button>
+          <input id="promoCode" class="input" placeholder="e.g. BUYMORE10" />
+          <button id="applyPromo" class="btn">Apply</button>
         </div>
+        <p class="hint">>100 subtotal = auto 5% off</p>
       </div>
-    </dialog>
-
-    <!-- Cart Drawer -->
-    <aside id="cartDrawer" class="drawer">
-      <div class="drawer-head">
-        <div class="title">Your Cart</div>
-        <button id="closeCart" class="icon-btn">✕</button>
-      </div>
-      <div id="cartItems" class="drawer-body"></div>
-      <div class="drawer-foot">
+      <hr>
+      <div class="member-card">
         <div class="row between">
-          <div>Subtotal</div>
-          <div id="subtotal">$0.00</div>
-        </div>
-        <div class="row between small">
-          <div>Promo</div>
-          <div id="promoAmount">-$0.00</div>
-        </div>
-        <div class="row between small">
-          <div>Member Discount</div>
-          <div id="memberDisc">-$0.00</div>
-        </div>
-        <hr />
-        <div class="row between total">
-          <div>Total</div>
-          <div id="grandTotal">$0.00</div>
-        </div>
-        <div class="stack">
-          <div class="pay-tabs">
-            <button data-paytab="paypal" class="chip active">PayPal</button>
-            <button data-paytab="kbz" class="chip">KBZPay</button>
-            <button data-paytab="cb" class="chip">CBPay</button>
-            <button data-paytab="aya" class="chip">AyaPay</button>
+          <div>
+            <div class="member-title">Membership</div>
+            <div class="member-sub">2%/3% cashback all year</div>
           </div>
-          <div id="payPanel-paypal" class="pay-panel active">
-            <div id="paypal-button-container"></div>
+          <button id="btnMembership" class="btn btn-outline">Buy / Manage</button>
+        </div>
+        <div id="memberStatus" class="member-status"></div>
+      </div>
+      <hr>
+      <div class="nav-links">
+        <button data-view="shop" class="link active">🛍️ Shop</button>
+        <button data-view="analytics" class="link">📈 Analytics</button>
+        <button data-view="orders" class="link">🧾 Orders</button>
+        <button data-view="about" class="link">ℹ️ About</button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main">
+    <!-- Shop View -->
+    <section id="view-shop" class="view active">
+      <div id="hero" class="hero">
+        <div>
+          <h1>Find your favorites</h1>
+          <p>Modern • Clean • Fast — Mobile first shopping</p>
+        </div>
+      </div>
+      <div id="productGrid" class="grid"></div>
+      <div id="loadMoreWrap" class="center">
+        <button id="loadMore" class="btn btn-soft">Load more</button>
+      </div>
+    </section>
+
+    <!-- Analytics View -->
+    <section id="view-analytics" class="view">
+      <h2>Store Analytics</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card-title pad">Revenue (last 30 days)</div>
+          <canvas id="revChart" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title pad">Top Sellers</div>
+          <canvas id="topChart" height="180"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Orders View -->
+    <section id="view-orders" class="view">
+      <h2>My Orders</h2>
+      <div id="ordersList" class="stack"></div>
+    </section>
+
+    <!-- About View -->
+    <section id="view-about" class="view">
+      <h2>About ShweShop</h2>
+      <p>Demo app built with Firebase + PayPal + EmailJS.</p>
+      <ul class="disc">
+        <li>Cart, promotions, membership cashback</li>
+        <li>Myanmar wallets (KBZ/CB/Aya) demo via QR / deeplink</li>
+        <li>Data analytics dashboard</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Product Detail Modal -->
+  <dialog id="productModal" class="modal">
+    <div class="modal-body">
+      <button class="icon-btn modal-close" data-close="productModal">✕</button>
+      <div class="product-detail">
+        <div class="pd-media">
+          <img id="pdImg" alt="">
+        </div>
+        <div class="pd-info">
+          <h3 id="pdTitle"></h3>
+          <p id="pdPrice" class="price"></p>
+          <p id="pdDesc" class="desc"></p>
+          <div class="row">
+            <label class="lbl">Qty</label>
+            <input id="pdQty" class="input" type="number" min="1" value="1" />
           </div>
-          <div id="payPanel-kbz" class="pay-panel">
-            <div id="kbzBox" class="wallet-box">
-              <canvas id="kbzQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with KBZPay app</p>
-              <button id="kbzPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-          <div id="payPanel-cb" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="cbQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with CBPay app</p>
-              <button id="cbPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-          <div id="payPanel-aya" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="ayaQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with AyaPay app</p>
-              <button id="ayaPaid" class="btn">I have paid</button>
-            </div>
+          <div class="row">
+            <button id="pdAdd" class="btn">Add to Cart</button>
+            <button class="btn btn-soft" data-close="productModal">Close</button>
           </div>
         </div>
       </div>
-    </aside>
+    </div>
+  </dialog>
 
-    <!-- Auth mini modal -->
-    <dialog id="authModal" class="modal">
-      <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="authModal">✕</button>
-        <h3>Welcome</h3>
-        <p>Sign in to save orders and earn cashback.</p>
-        <button id="btnGoogle" class="btn">Continue with Google</button>
+  <!-- Membership Modal -->
+  <dialog id="memberModal" class="modal">
+    <div class="modal-body">
+      <button class="icon-btn modal-close" data-close="memberModal">✕</button>
+      <h3>Membership</h3>
+      <p class="modal-desc">Enjoy cashback on every order for one year.</p>
+      <div class="stack">
+        <label class="radio"><input type="radio" name="mplan" value="basic" checked> Basic — 2% cashback</label>
+        <label class="radio"><input type="radio" name="mplan" value="plus"> Plus — 3% cashback</label>
       </div>
-    </dialog>
+      <div class="row">
+        <button id="buyMembership" class="btn">Buy (PayPal)</button>
+        <button class="btn btn-soft" data-close="memberModal">Close</button>
+      </div>
+    </div>
+  </dialog>
 
-    <script type="module" src="./app.js"></script>
-  </body>
+  <!-- Cart Drawer -->
+  <aside id="cartDrawer" class="drawer">
+    <div class="drawer-head">
+      <div class="title">Your Cart</div>
+      <button id="closeCart" class="icon-btn">✕</button>
+    </div>
+    <div id="cartItems" class="drawer-body"></div>
+    <div class="drawer-foot">
+      <div class="row between strong">
+        <div>Subtotal</div><div id="subtotal">$0.00</div>
+      </div>
+      <div class="row between small">
+        <div>Promo</div><div id="promoAmount">-$0.00</div>
+      </div>
+      <div class="row between small">
+        <div>Member Discount</div><div id="memberDisc">-$0.00</div>
+      </div>
+      <hr>
+      <div class="row between total">
+        <div>Total</div><div id="grandTotal">$0.00</div>
+      </div>
+      <div class="stack pay-stack">
+        <div class="pay-tabs">
+          <button data-paytab="paypal" class="chip active">PayPal</button>
+          <button data-paytab="kbz" class="chip">KBZPay</button>
+          <button data-paytab="cb" class="chip">CBPay</button>
+          <button data-paytab="aya" class="chip">AyaPay</button>
+        </div>
+        <div id="payPanel-paypal" class="pay-panel active">
+          <div id="paypal-button-container"></div>
+        </div>
+        <div id="payPanel-kbz" class="pay-panel">
+          <div id="kbzBox" class="wallet-box">
+            <canvas id="kbzQR" width="180" height="180"></canvas>
+            <p class="hint">Scan with KBZPay app</p>
+            <button id="kbzPaid" class="btn">I have paid</button>
+          </div>
+        </div>
+        <div id="payPanel-cb" class="pay-panel">
+          <div class="wallet-box">
+            <canvas id="cbQR" width="180" height="180"></canvas>
+            <p class="hint">Scan with CBPay app</p>
+            <button id="cbPaid" class="btn">I have paid</button>
+          </div>
+        </div>
+        <div id="payPanel-aya" class="pay-panel">
+          <div class="wallet-box">
+            <canvas id="ayaQR" width="180" height="180"></canvas>
+            <p class="hint">Scan with AyaPay app</p>
+            <button id="ayaPaid" class="btn">I have paid</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Auth mini modal -->
+  <dialog id="authModal" class="modal">
+    <div class="modal-body">
+      <button class="icon-btn modal-close" data-close="authModal">✕</button>
+      <h3>Welcome</h3>
+      <p>Sign in to save orders and earn cashback.</p>
+      <button id="btnGoogle" class="btn">Continue with Google</button>
+    </div>
+  </dialog>
+
+  <!-- Config + App -->
+  <script type="module" src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
 </html>
