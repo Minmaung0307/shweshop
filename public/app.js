@@ -90,11 +90,18 @@ function updateCartCount() {
 // === Image placeholders ===
 const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
 const THUMB_PLACE = "https://picsum.photos/seed/shweshopthumb/160/160";
-function withImgFallback(imgEl, src, isThumb = false) {
-  imgEl.src = src || (isThumb ? THUMB_PLACE : IMG_PLACE);
+// === Distinct image placeholders (seeded by product id) ===
+function ph(size, seed) {
+  const s = encodeURIComponent(seed || Math.random().toString(36).slice(2));
+  return `https://picsum.photos/seed/${s}/${size}/${size}`;
+}
+
+function withImgFallback(imgEl, src, isThumb = false, seed = 'default') {
+  const fallback = ph(isThumb ? 160 : 600, seed);
+  imgEl.src = src || fallback;
   imgEl.onerror = () => {
     imgEl.onerror = null;
-    imgEl.src = isThumb ? THUMB_PLACE : IMG_PLACE;
+    imgEl.src = fallback;
   };
 }
 
@@ -627,7 +634,7 @@ function renderHomeSections() {
         <div class="small">${fmt(p.price)}</div>
       `;
       const im = item.querySelector("img.thumb");
-      if (im) withImgFallback(im, p.img, true);
+if (im) withImgFallback(im, p.img, true, p.id);
 
       im?.addEventListener("click", () => openProduct(p));
       cont?.appendChild(item);
@@ -704,7 +711,7 @@ function renderGrid(opts = {}) {
 
     // ✅ image fallback (no 404)
     const imc = card.querySelector("img.thumb");
-    if (imc) withImgFallback(imc, p.img, true);
+if (imc) withImgFallback(imc, p.img, true, p.id);
 
     // open product
     card.querySelector(".btn")?.addEventListener("click", () => openProduct(p));
@@ -745,28 +752,22 @@ function showShopGrid(cat) {
 
 // === Part 8: Product Modal ===
 function openProduct(p) {
-  // inside openProduct(p)
-  let cur = 0;
-  function show(i) {
-    cur = (i + imgs.length) % imgs.length;
-    withImgFallback(pdImg, imgs[cur], false);
-    $$("#pdThumbs img").forEach((x, idx) =>
-      x.classList.toggle("active", idx === cur)
-    );
-  }
-  $("#pdPrev")?.addEventListener("click", () => show(cur - 1));
-  $("#pdNext")?.addEventListener("click", () => show(cur + 1));
-  show(0);
-  const imgs = p.images && p.images.length ? p.images : [p.img];
+  // product images (fallback if empty)
+  const imgs = (p.images && p.images.length) ? p.images : [p.img];
 
+  // reset thumbs
+  if (pdThumbs) pdThumbs.innerHTML = "";
+
+  // main image
   if (pdImg) {
-    withImgFallback(pdImg, imgs[0], false);
+    withImgFallback(pdImg, imgs[0], false, p.id + "-main");
     pdImg.alt = p.title;
   }
 
+  // thumbnails
   imgs.forEach((src, i) => {
     const im = h("img");
-    withImgFallback(im, src, true);
+    withImgFallback(im, src, true, p.id + "-t" + i);
     im.alt = `${p.title} ${i + 1}`;
     im.width = 120;
     im.height = 120;
@@ -775,38 +776,31 @@ function openProduct(p) {
     im.addEventListener("click", () => {
       $$("#pdThumbs img").forEach((x) => x.classList.remove("active"));
       im.classList.add("active");
-      withImgFallback(pdImg, src, false);
+      withImgFallback(pdImg, src, false, p.id + "-main-" + i);
     });
-    pdThumbs.appendChild(im);
+    pdThumbs?.appendChild(im);
   });
 
+  // slider next/prev
+  let cur = 0;
+  function show(i) {
+    cur = (i + imgs.length) % imgs.length;
+    withImgFallback(pdImg, imgs[cur], false, p.id + "-slide-" + cur);
+    $$("#pdThumbs img").forEach((x, idx) =>
+      x.classList.toggle("active", idx === cur)
+    );
+  }
+  $("#pdPrev")?.addEventListener("click", () => show(cur - 1));
+  $("#pdNext")?.addEventListener("click", () => show(cur + 1));
+  show(0);
+
+  // meta info
   if (pdTitle) pdTitle.textContent = p.title;
   if (pdPrice) pdPrice.textContent = fmt(p.price);
   if (pdDesc) pdDesc.textContent = p.desc || "";
   if (pdSpecs)
     pdSpecs.innerHTML = (p.specs || []).map((s) => `<li>${s}</li>`).join("");
 
-  if (pdThumbs) {
-    pdThumbs.innerHTML = "";
-    imgs.forEach((src, i) => {
-      const im = h("img");
-      im.src = src;
-      im.alt = `${p.title} ${i + 1}`;
-      im.width = 120;
-      im.height = 120;
-      im.loading = "lazy";
-      if (i === 0) im.classList.add("active");
-      im.addEventListener("click", () => {
-        $$("#pdThumbs img").forEach((x) => x.classList.remove("active"));
-        im.classList.add("active");
-        if (pdImg) {
-          pdImg.src = src;
-          pdImg.alt = `${p.title} ${i + 1}`;
-        }
-      });
-      pdThumbs.appendChild(im);
-    });
-  }
   productModal?.showModal();
 }
 

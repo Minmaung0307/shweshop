@@ -31,12 +31,12 @@ body {
   height: 100%;
 }
 html {
-  --fs: 1;
+  --fs: 1.05;
 }
 body {
   margin: 0;
   font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-  color: var(--fg);
+  color:#eef6ff;
   background: linear-gradient(180deg, #0b0f14, #0b0f14 60%, #0d1520);
   font-size: calc(16px * var(--fs));
 }
@@ -69,8 +69,12 @@ strong,
 }
 .small {
   font-size: 0.93rem;
-  color: var(--muted);
+  /* color: var(--muted); */
 }
+.desc {
+  /* color: var(--muted); */
+}
+.small, .desc { color:#cfe0f5; }
 
 .topbar {
   position: sticky;
@@ -243,10 +247,13 @@ strong,
 .input {
   width: 100%;
   padding: 0.7rem 0.75rem;
-  background: #0f1622;
+  /* background: #0f1622; */
   border: 1px solid var(--border);
   border-radius: 0.75rem;
-  color: var(--fg);
+  /* color: var(--fg); */
+  color:#f8fbff; 
+  background:#0e1626; 
+  border-color:#4a6287;
 }
 
 .chip-row {
@@ -305,17 +312,17 @@ strong,
   font-weight: 800;
   margin-bottom: 0.25rem;
 }
+.card, .modal-body { color:#eef6ff; }
+.card .card-title { color:#ffffff; }
 .price {
   font-weight: 800;
-}
-.desc {
-  color: var(--muted);
+  color:#ffffff;
 }
 .btn {
   appearance: none;
   color: #fff;
   background: linear-gradient(180deg, #1d2a3e, #152033);
-  border: 1px solid #3a4a67;
+  border: 1px solid #4a6287;
   padding: 0.65rem 1rem;
   border-radius: 0.9rem;
   font-weight: 700;
@@ -327,14 +334,17 @@ strong,
 }
 .btn-soft {
   color: #eaf2fb;
-  background: #0f1a2a;
+  /* background: #0f1a2a; */
   border-color: #3a4a67;
-  border-color: #223147;
+  /* border-color: #223147; */
+  background:#132037; 
+  border-color:#4a6287; 
 }
 .btn-outline {
   color: #eaf2fb;
   background: transparent;
-  border-color: #4a6287;
+  /* border-color: #4a6287; */
+  border-color:#6b86ad;
 }
 .promo-inline {
   display: flex;
@@ -348,9 +358,10 @@ strong,
   border: 1px solid #3a4b66;
   border-radius: 0.6rem;
   color: #f8fbff;
-  background: #0d1524;
+  /* background: #0d1524; */
   border-color: #4a6287;
   font-weight: 700;
+  background:#0e1626; 
 }
 .btn-mini {
   padding: 0.45rem 0.7rem;
@@ -669,7 +680,7 @@ strong,
   border: 1px dashed var(--border);
   border-radius: 0.6rem;
   /* color: var(--muted); */
-  color: #cfe2ff;
+  color: #e6f0ff;;
   background: #0e1622;
 }
 
