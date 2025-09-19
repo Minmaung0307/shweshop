@@ -612,9 +612,9 @@ const PROMO_MAP = {
 };
 
 // Elements
-const sidebar   = document.getElementById("sidebar");
-const btnMenu   = document.getElementById("btnMenu");
-const closeSidebar = document.getElementById("closeSidebar");
+const sidebar = $("#sidebar");
+const btnMenu = $("#btnMenu");
+const closeSidebar = $("#closeSidebar");
 const btnSearch = $("#btnSearch");
 const main = $("#main");
 // const grid = $("#productGrid");
@@ -662,15 +662,13 @@ const btnGoogle = $("#btnGoogle");
 
 const navLinks = document.querySelectorAll(".nav-links .link");
 
-// Sidebar
+// Sidebar (SAFE: elements might not exist in new layout)
 btnMenu?.addEventListener("click", () => sidebar?.classList.add("open"));
 closeSidebar?.addEventListener("click", () => sidebar?.classList.remove("open"));
 
-// Search button – scroll to filters (no DB call)
-btnSearch.addEventListener("click", () => {
-  document
-    .getElementById("filters")
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+// Search icon button (SAFE: may not exist now)
+btnSearch?.addEventListener("click", () => {
+  document.getElementById("filters")?.scrollIntoView({ behavior: "smooth", block: "start" });
   searchInput?.focus();
 });
 
@@ -679,10 +677,9 @@ navLinks.forEach((b) => {
   b.addEventListener("click", () => {
     navLinks.forEach((x) => x.classList.remove("active"));
     b.classList.add("active");
-    document
-      .querySelectorAll(".view")
-      .forEach((v) => v.classList.remove("active"));
+    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
     $("#view-" + b.dataset.view).classList.add("active");
+    // ⬇️ sidebar may not exist now
     sidebar?.classList.remove("open");
     if (b.dataset.view === "analytics") renderAnalytics();
     if (b.dataset.view === "orders") loadOrders();
