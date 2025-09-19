@@ -635,17 +635,6 @@ function wireSearchInputs() {
   });
 }
 
-function wireSearchInputs() {
-  const handler = () => {
-    showShopGrid(currentCategory || "All Categories");
-  };
-  searchInputDesktop?.addEventListener("input", handler);
-  searchInputMobile?.addEventListener("input", () => {
-    searchInputDesktop.value = searchInputMobile.value;
-    handler();
-  });
-}
-
 // === Part 7A: Home sections ===
 // --- Ad inventory demo ---
 const ADS = [
@@ -1449,11 +1438,12 @@ function fillCategoriesOnce() {
 function init() {
   buildNavChips();
   wireSearchInputs();
-  // products first
-  fillCategoriesOnce();
   // home & shop
   renderHomeSections();
   showShopGrid("All Categories");
+  // products first
+  fillCategoriesOnce();
+  loadProductsPage();
   // misc
   updateCartCount();
   fetchPromos();
