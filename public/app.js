@@ -1591,10 +1591,10 @@ function toast(msg) {
 
 // Analytics navigation helper (optional)
 // window.renderAnalytics = renderAnalytics;
-
+document.getElementById("searchInput")?.addEventListener("input", renderGrid);
 document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("searchInput");
-  searchInput?.addEventListener("input", () => {
-    renderGrid();
-  });
+  if (searchInput) {
+    searchInput.addEventListener("input", renderGrid);
+  }
 });
