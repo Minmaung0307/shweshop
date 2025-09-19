@@ -726,15 +726,24 @@ async function ensureUser(user) {
 
 // Filters
 function fillCategoriesOnce() {
-  const cats = Array.from(new Set(DEMO_PRODUCTS.map((p) => p.cat))).sort();
+  // categories ကို product list ကနေ တွဲယူ
+  const cats = Array.from(new Set((DEMO_PRODUCTS || []).map(p => p.cat))).filter(Boolean).sort();
   state.categories = cats;
-  cats.forEach((c) => {
-    const opt = h("option");
+
+  // SELECT UI မရှိတဲ့ layout ထဲမှာ null ဖြစ်နိုင် — guard
+  const sel = document.getElementById('categorySelect');
+  if (!sel) return; // <-- select မရှိရင် အလွတ်ဖြတ်
+
+  // SELECT UI ရှိတယ်ဆိုရင်ပဲ options ပြည့်စုံပြီး เติม
+  sel.innerHTML = '<option value="">All categories</option>';
+  cats.forEach(c => {
+    const opt = document.createElement('option');
     opt.value = c;
     opt.textContent = c;
-    categorySelect.appendChild(opt);
+    sel.appendChild(opt);
   });
 }
+
 categorySelect?.addEventListener("change", renderGrid);
 searchInput?.addEventListener("input", renderGrid);
 (audienceChips?.querySelectorAll("button") || []).forEach((btn) => {
@@ -1474,12 +1483,25 @@ function init() {
   fetchPromos(); // banner injects into homeSections
 
   // close buttons for dialogs
-  document.querySelectorAll("[data-close]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-close");
-      document.getElementById(id)?.close();
+  // ✅ universal close handler: [data-close="dialogId"]
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-close]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-close');
+  const dlg = document.getElementById(id);
+  if (dlg && typeof dlg.close === 'function') {
+    dlg.close();
+  }
+});
+
+// optional: Esc နဲ့ modal အားလုံး ပိတ်မယ်
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('dialog[open]').forEach(d => {
+      try { d.close(); } catch {}
     });
-  });
+  }
+});
 }
 init();
 
