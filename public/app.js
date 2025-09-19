@@ -663,8 +663,8 @@ const btnGoogle = $("#btnGoogle");
 const navLinks = document.querySelectorAll(".nav-links .link");
 
 // Sidebar
-btnMenu.addEventListener("click", () => sidebar.classList.add("open"));
-closeSidebar.addEventListener("click", () => sidebar.classList.remove("open"));
+btnMenu?.addEventListener("click", () => sidebar?.classList.add("open"));
+closeSidebar?.addEventListener("click", () => sidebar?.classList.remove("open"));
 
 // Search button – scroll to filters (no DB call)
 btnSearch.addEventListener("click", () => {
@@ -738,18 +738,20 @@ function fillCategoriesOnce() {
     categorySelect.appendChild(opt);
   });
 }
-categorySelect.addEventListener("change", renderGrid);
-searchInput.addEventListener("input", renderGrid);
-audienceChips.querySelectorAll("button").forEach((btn) => {
+categorySelect?.addEventListener("change", renderGrid);
+searchInput?.addEventListener("input", renderGrid);
+(audienceChips?.querySelectorAll("button") || []).forEach((btn) => {
   btn.addEventListener("click", () => {
-    audienceChips
-      .querySelectorAll("button")
+    (audienceChips?.querySelectorAll("button") || [])
       .forEach((x) => x.classList.remove("active"));
     btn.classList.add("active");
     state.audience = btn.dataset.aud;
     renderGrid();
   });
 });
+
+// (optional) If you had a "Load more" button:
+loadMoreBtn?.addEventListener("click", loadProductsPage);
 
 // Products paging
 function loadProductsPage() {
