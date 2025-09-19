@@ -105,43 +105,6 @@ function withImgFallback(imgEl, src, isThumb = false, seed = "default") {
   };
 }
 
-// === Horizontal drag-scroll confined to the carousel only ===
-function makeDragScroll(container){
-  if(!container) return;
-  let isDown = false, startX = 0, startY = 0, scrollLeft = 0;
-
-  const onDown = (e) => {
-    isDown = true;
-    container.classList.add('dragging');
-    startX = ('touches' in e ? e.touches[0].pageX : e.pageX);
-    startY = ('touches' in e ? e.touches[0].pageY : e.pageY);
-    scrollLeft = container.scrollLeft;
-  };
-  const onMove = (e) => {
-    if(!isDown) return;
-    const x = ('touches' in e ? e.touches[0].pageX : e.pageX);
-    const y = ('touches' in e ? e.touches[0].pageY : e.pageY);
-    const dx = x - startX;
-    const dy = y - startY;
-    // Horizontal intent → drag the row; prevent page scroll
-    if(Math.abs(dx) > Math.abs(dy)){
-      e.preventDefault();
-      e.stopPropagation();
-      container.scrollLeft = scrollLeft - dx;
-    }
-  };
-  const onUp = () => { isDown = false; container.classList.remove('dragging'); };
-
-  container.addEventListener('mousedown', onDown);
-  container.addEventListener('mousemove', onMove);
-  container.addEventListener('mouseup', onUp);
-  container.addEventListener('mouseleave', onUp);
-
-  container.addEventListener('touchstart', onDown, { passive:false });
-  container.addEventListener('touchmove',  onMove, { passive:false });
-  container.addEventListener('touchend',   onUp);
-}
-
 // === Horizontal drag-scroll for carousels ===
 function makeDragScroll(container){
   if(!container) return;
