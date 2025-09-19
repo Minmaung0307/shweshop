@@ -612,9 +612,9 @@ const PROMO_MAP = {
 };
 
 // Elements
-const sidebar = $("#sidebar");
-const btnMenu = $("#btnMenu");
-const closeSidebar = $("#closeSidebar");
+const sidebar   = document.getElementById("sidebar");
+const btnMenu   = document.getElementById("btnMenu");
+const closeSidebar = document.getElementById("closeSidebar");
 const btnSearch = $("#btnSearch");
 const main = $("#main");
 // const grid = $("#productGrid");
