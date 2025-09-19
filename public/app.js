@@ -683,7 +683,7 @@ navLinks.forEach((b) => {
       .querySelectorAll(".view")
       .forEach((v) => v.classList.remove("active"));
     $("#view-" + b.dataset.view).classList.add("active");
-    sidebar.classList.remove("open");
+    sidebar?.classList.remove("open");
     if (b.dataset.view === "analytics") renderAnalytics();
     if (b.dataset.view === "orders") loadOrders();
   });
