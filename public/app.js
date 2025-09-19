@@ -25,19 +25,21 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Open auth mini modal
-document.getElementById('btnUser')?.addEventListener('click', ()=>{
-  if(state.user){ return toast('Already signed in'); }
-  document.getElementById('authModal')?.showModal();
+document.getElementById("btnUser")?.addEventListener("click", () => {
+  if (state.user) {
+    return toast("Already signed in");
+  }
+  document.getElementById("authModal")?.showModal();
 });
 
 // Google sign-in (redirect ကို သုံး—popup warn မတက်)
-document.getElementById('btnGoogle')?.addEventListener('click', async ()=>{
+document.getElementById("btnGoogle")?.addEventListener("click", async () => {
   const provider = new GoogleAuthProvider();
   try {
     await signInWithRedirect(auth, provider);
   } catch (e) {
-    console.warn('sign-in failed', e);
-    toast('Sign-in failed. Check API keys / authorized domains.');
+    console.warn("sign-in failed", e);
+    toast("Sign-in failed. Check API keys / authorized domains.");
   }
 });
 
@@ -83,6 +85,17 @@ function updateCartCount() {
   const el = $("#cartCount");
   if (el)
     el.textContent = String(state.cart.reduce((a, c) => a + c.qty, 0) || 0);
+}
+
+// === Image placeholders ===
+const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
+const THUMB_PLACE = "https://picsum.photos/seed/shweshopthumb/160/160";
+function withImgFallback(imgEl, src, isThumb = false) {
+  imgEl.src = src || (isThumb ? THUMB_PLACE : IMG_PLACE);
+  imgEl.onerror = () => {
+    imgEl.onerror = null;
+    imgEl.src = isThumb ? THUMB_PLACE : IMG_PLACE;
+  };
 }
 
 // === Part 2: DEMO PRODUCTS (sample) ===
@@ -152,98 +165,248 @@ const DEMO_PRODUCTS = [
     desc: "5m RGB",
   },
   // Fashion (Men)
-  { id:'m101', title:'Men Running Shorts', price:18, cat:'Fashion', aud:'men',
-    img:'images/products/men/m101/thumb.jpg',
-    images:['images/products/men/m101/main.jpg','images/products/men/m101/1.jpg','images/products/men/m101/2.jpg'],
-    desc:'Lightweight quick-dry shorts', specs:['100% polyester','Drawstring','2 pockets'], new:true },
-  { id:'m102', title:'Men Graphic Tee', price:14.5, cat:'Fashion', aud:'men',
-    img:'images/products/men/m102/thumb.jpg',
-    images:['images/products/men/m102/main.jpg','images/products/men/m102/1.jpg'],
-    desc:'Soft cotton tee', specs:['100% cotton','Regular fit','Machine washable'] },
+  {
+    id: "m101",
+    title: "Men Running Shorts",
+    price: 18,
+    cat: "Fashion",
+    aud: "men",
+    img: "images/products/men/m101/thumb.jpg",
+    images: [
+      "images/products/men/m101/main.jpg",
+      "images/products/men/m101/1.jpg",
+      "images/products/men/m101/2.jpg",
+    ],
+    desc: "Lightweight quick-dry shorts",
+    specs: ["100% polyester", "Drawstring", "2 pockets"],
+    new: true,
+  },
+  {
+    id: "m102",
+    title: "Men Graphic Tee",
+    price: 14.5,
+    cat: "Fashion",
+    aud: "men",
+    img: "images/products/men/m102/thumb.jpg",
+    images: [
+      "images/products/men/m102/main.jpg",
+      "images/products/men/m102/1.jpg",
+    ],
+    desc: "Soft cotton tee",
+    specs: ["100% cotton", "Regular fit", "Machine washable"],
+  },
 
   // Fashion (Women)
-  { id:'w201', title:'Women Yoga Mat', price:22, cat:'Beauty', aud:'women',
-    img:'images/products/women/w201/thumb.jpg',
-    images:['images/products/women/w201/main.jpg','images/products/women/w201/1.jpg'],
-    desc:'Non-slip TPE yoga mat', specs:['183×61cm','6mm thick'], new:true },
-  { id:'w202', title:'Women Tote Bag', price:19, cat:'Fashion', aud:'women',
-    img:'images/products/women/w202/thumb.jpg',
-    images:['images/products/women/w202/main.jpg'],
-    desc:'Everyday canvas tote', specs:['Canvas','Inner pocket'] },
+  {
+    id: "w201",
+    title: "Women Yoga Mat",
+    price: 22,
+    cat: "Beauty",
+    aud: "women",
+    img: "images/products/women/w201/thumb.jpg",
+    images: [
+      "images/products/women/w201/main.jpg",
+      "images/products/women/w201/1.jpg",
+    ],
+    desc: "Non-slip TPE yoga mat",
+    specs: ["183×61cm", "6mm thick"],
+    new: true,
+  },
+  {
+    id: "w202",
+    title: "Women Tote Bag",
+    price: 19,
+    cat: "Fashion",
+    aud: "women",
+    img: "images/products/women/w202/thumb.jpg",
+    images: ["images/products/women/w202/main.jpg"],
+    desc: "Everyday canvas tote",
+    specs: ["Canvas", "Inner pocket"],
+  },
 
   // Kids / Baby
-  { id:'k301', title:'Kids Story Book', price:6, cat:'Baby', aud:'kids',
-    img:'images/products/kids/k301/thumb.jpg',
-    images:['images/products/kids/k301/main.jpg'],
-    desc:'Colorful bedtime tales', specs:['Hardcover','Ages 4-8'] },
-  { id:'k302', title:'Kids Water Bottle', price:9, cat:'Baby', aud:'kids',
-    img:'images/products/kids/k302/thumb.jpg',
-    images:['images/products/kids/k302/main.jpg'],
-    desc:'Leak-proof bottle', specs:['BPA-free','350ml'] },
+  {
+    id: "k301",
+    title: "Kids Story Book",
+    price: 6,
+    cat: "Baby",
+    aud: "kids",
+    img: "images/products/kids/k301/thumb.jpg",
+    images: ["images/products/kids/k301/main.jpg"],
+    desc: "Colorful bedtime tales",
+    specs: ["Hardcover", "Ages 4-8"],
+  },
+  {
+    id: "k302",
+    title: "Kids Water Bottle",
+    price: 9,
+    cat: "Baby",
+    aud: "kids",
+    img: "images/products/kids/k302/thumb.jpg",
+    images: ["images/products/kids/k302/main.jpg"],
+    desc: "Leak-proof bottle",
+    specs: ["BPA-free", "350ml"],
+  },
 
   // Pets
-  { id:'p401', title:'Pet Chew Toy', price:7, cat:'Pets', aud:'pets',
-    img:'images/products/pets/p401/thumb.jpg',
-    images:['images/products/pets/p401/main.jpg'],
-    desc:'Durable rubber toy', specs:['Teething safe','Dishwasher safe'] },
-  { id:'p402', title:'Pet Bed (S)', price:24, cat:'Pets', aud:'pets',
-    img:'images/products/pets/p402/thumb.jpg',
-    images:['images/products/pets/p402/main.jpg'],
-    desc:'Cozy plush bed', specs:['50×40cm','Anti-slip bottom'] },
+  {
+    id: "p401",
+    title: "Pet Chew Toy",
+    price: 7,
+    cat: "Pets",
+    aud: "pets",
+    img: "images/products/pets/p401/thumb.jpg",
+    images: ["images/products/pets/p401/main.jpg"],
+    desc: "Durable rubber toy",
+    specs: ["Teething safe", "Dishwasher safe"],
+  },
+  {
+    id: "p402",
+    title: "Pet Bed (S)",
+    price: 24,
+    cat: "Pets",
+    aud: "pets",
+    img: "images/products/pets/p402/thumb.jpg",
+    images: ["images/products/pets/p402/main.jpg"],
+    desc: "Cozy plush bed",
+    specs: ["50×40cm", "Anti-slip bottom"],
+  },
 
   // Auto
-  { id:'a501', title:'Car Phone Mount', price:9, cat:'Auto', aud:'all',
-    img:'images/products/auto/a501/thumb.jpg',
-    images:['images/products/auto/a501/main.jpg'],
-    desc:'360° rotation mount', specs:['Vent-clip','One-click lock'] },
-  { id:'a502', title:'Microfiber Wash Mitt', price:5.5, cat:'Auto', aud:'all',
-    img:'images/products/auto/a502/thumb.jpg',
-    images:['images/products/auto/a502/main.jpg'],
-    desc:'Scratch-free wash', specs:['Microfiber','Elastic cuff'] },
+  {
+    id: "a501",
+    title: "Car Phone Mount",
+    price: 9,
+    cat: "Auto",
+    aud: "all",
+    img: "images/products/auto/a501/thumb.jpg",
+    images: ["images/products/auto/a501/main.jpg"],
+    desc: "360° rotation mount",
+    specs: ["Vent-clip", "One-click lock"],
+  },
+  {
+    id: "a502",
+    title: "Microfiber Wash Mitt",
+    price: 5.5,
+    cat: "Auto",
+    aud: "all",
+    img: "images/products/auto/a502/thumb.jpg",
+    images: ["images/products/auto/a502/main.jpg"],
+    desc: "Scratch-free wash",
+    specs: ["Microfiber", "Elastic cuff"],
+  },
 
   // Home
-  { id:'h601', title:'Home LED Strip 5m', price:12, cat:'Home', aud:'all',
-    img:'images/products/home/h601/thumb.jpg',
-    images:['images/products/home/h601/main.jpg'],
-    desc:'RGB with remote', specs:['5m','USB powered'], new:true },
-  { id:'h602', title:'Aroma Diffuser', price:16, cat:'Home', aud:'all',
-    img:'images/products/home/h602/thumb.jpg',
-    images:['images/products/home/h602/main.jpg'],
-    desc:'Ultrasonic diffuser', specs:['300ml','Auto-off'] },
+  {
+    id: "h601",
+    title: "Home LED Strip 5m",
+    price: 12,
+    cat: "Home",
+    aud: "all",
+    img: "images/products/home/h601/thumb.jpg",
+    images: ["images/products/home/h601/main.jpg"],
+    desc: "RGB with remote",
+    specs: ["5m", "USB powered"],
+    new: true,
+  },
+  {
+    id: "h602",
+    title: "Aroma Diffuser",
+    price: 16,
+    cat: "Home",
+    aud: "all",
+    img: "images/products/home/h602/thumb.jpg",
+    images: ["images/products/home/h602/main.jpg"],
+    desc: "Ultrasonic diffuser",
+    specs: ["300ml", "Auto-off"],
+  },
 
   // Beauty
-  { id:'b701', title:'Face Sheet Mask (5)', price:8, cat:'Beauty', aud:'women',
-    img:'images/products/beauty/b701/thumb.jpg',
-    images:['images/products/beauty/b701/main.jpg'],
-    desc:'Hydrating masks', specs:['Hyaluronic','5 sheets'] },
-  { id:'b702', title:'Men Face Wash', price:7.5, cat:'Beauty', aud:'men',
-    img:'images/products/beauty/b702/thumb.jpg',
-    images:['images/products/beauty/b702/main.jpg'],
-    desc:'Oil-control cleanser', specs:['150ml','Daily use'] },
+  {
+    id: "b701",
+    title: "Face Sheet Mask (5)",
+    price: 8,
+    cat: "Beauty",
+    aud: "women",
+    img: "images/products/beauty/b701/thumb.jpg",
+    images: ["images/products/beauty/b701/main.jpg"],
+    desc: "Hydrating masks",
+    specs: ["Hyaluronic", "5 sheets"],
+  },
+  {
+    id: "b702",
+    title: "Men Face Wash",
+    price: 7.5,
+    cat: "Beauty",
+    aud: "men",
+    img: "images/products/beauty/b702/thumb.jpg",
+    images: ["images/products/beauty/b702/main.jpg"],
+    desc: "Oil-control cleanser",
+    specs: ["150ml", "Daily use"],
+  },
 
   // Electronics (New Arrivals tag demo)
-  { id:'e801', title:'Wireless Earbuds', price:25, cat:'Electronics', aud:'all',
-    img:'images/products/all/e801/thumb.jpg',
-    images:['images/products/all/e801/main.jpg','images/products/all/e801/1.jpg'],
-    desc:'ENC mic + 20h battery', specs:['BT 5.3','USB-C'], new:true },
-  { id:'e802', title:'Power Bank 10,000mAh', price:15, cat:'Electronics', aud:'all',
-    img:'images/products/all/e802/thumb.jpg',
-    images:['images/products/all/e802/main.jpg'],
-    desc:'Slim + fast charge', specs:['10Ah','Type-C in/out'] },
+  {
+    id: "e801",
+    title: "Wireless Earbuds",
+    price: 25,
+    cat: "Electronics",
+    aud: "all",
+    img: "images/products/all/e801/thumb.jpg",
+    images: [
+      "images/products/all/e801/main.jpg",
+      "images/products/all/e801/1.jpg",
+    ],
+    desc: "ENC mic + 20h battery",
+    specs: ["BT 5.3", "USB-C"],
+    new: true,
+  },
+  {
+    id: "e802",
+    title: "Power Bank 10,000mAh",
+    price: 15,
+    cat: "Electronics",
+    aud: "all",
+    img: "images/products/all/e802/thumb.jpg",
+    images: ["images/products/all/e802/main.jpg"],
+    desc: "Slim + fast charge",
+    specs: ["10Ah", "Type-C in/out"],
+  },
 
   // Fashion (Kids Men Women extra)
-  { id:'m103', title:'Men Hoodie', price:28, cat:'Fashion', aud:'men',
-    img:'images/products/men/m103/thumb.jpg',
-    images:['images/products/men/m103/main.jpg'],
-    desc:'Fleece lined', specs:['Poly-cotton','Front pocket'] },
-  { id:'w203', title:'Women Leggings', price:17, cat:'Fashion', aud:'women',
-    img:'images/products/women/w203/thumb.jpg',
-    images:['images/products/women/w203/main.jpg'],
-    desc:'High-waist stretch', specs:['Nylon/Spandex'] },
-  { id:'k303', title:'Kids Sneakers', price:21, cat:'Fashion', aud:'kids',
-    img:'images/products/kids/k303/thumb.jpg',
-    images:['images/products/kids/k303/main.jpg'],
-    desc:'Lightweight runners', specs:['Sizes 28–34'] }
+  {
+    id: "m103",
+    title: "Men Hoodie",
+    price: 28,
+    cat: "Fashion",
+    aud: "men",
+    img: "images/products/men/m103/thumb.jpg",
+    images: ["images/products/men/m103/main.jpg"],
+    desc: "Fleece lined",
+    specs: ["Poly-cotton", "Front pocket"],
+  },
+  {
+    id: "w203",
+    title: "Women Leggings",
+    price: 17,
+    cat: "Fashion",
+    aud: "women",
+    img: "images/products/women/w203/thumb.jpg",
+    images: ["images/products/women/w203/main.jpg"],
+    desc: "High-waist stretch",
+    specs: ["Nylon/Spandex"],
+  },
+  {
+    id: "k303",
+    title: "Kids Sneakers",
+    price: 21,
+    cat: "Fashion",
+    aud: "kids",
+    img: "images/products/kids/k303/thumb.jpg",
+    images: ["images/products/kids/k303/main.jpg"],
+    desc: "Lightweight runners",
+    specs: ["Sizes 28–34"],
+  },
   // Add more as needed...
 ];
 
@@ -402,25 +565,48 @@ function wireSearchInputs() {
 // === Part 7A: Home sections ===
 // --- Ad inventory demo ---
 const ADS = [
-  { img:'images/ads/sale-fashion.jpg',  text:'Mid-season Sale • Fashion up to 40%', href:'#' },
-  { img:'images/ads/new-arrivals.jpg',  text:'New Arrivals • Fresh picks today',    href:'#' },
-  { img:'images/ads/home-deals.jpg',    text:'Home Deals • Lights & Decor',        href:'#' },
-  { img:'images/ads/pets-care.jpg',     text:'Pets Care • Toys & Beds',            href:'#' }
+  {
+    img: "images/ads/sale-fashion.jpg",
+    text: "Mid-season Sale • Fashion up to 40%",
+    href: "#",
+  },
+  {
+    img: "images/ads/new-arrivals.jpg",
+    text: "New Arrivals • Fresh picks today",
+    href: "#",
+  },
+  {
+    img: "images/ads/home-deals.jpg",
+    text: "Home Deals • Lights & Decor",
+    href: "#",
+  },
+  {
+    img: "images/ads/pets-care.jpg",
+    text: "Pets Care • Toys & Beds",
+    href: "#",
+  },
 ];
 
-function renderHomeSections(){
-  const catsAll = Array.from(new Set((DEMO_PRODUCTS||[]).map(p=>p.cat))).filter(Boolean);
-  if(!homeSections) return;
-  homeSections.innerHTML = '';
+function renderHomeSections() {
+  const catsAll = Array.from(
+    new Set((DEMO_PRODUCTS || []).map((p) => p.cat))
+  ).filter(Boolean);
+  if (!homeSections) return;
+  homeSections.innerHTML = "";
 
-  catsAll.forEach((cat, idx)=>{
-    const list = (DEMO_PRODUCTS||[]).filter(p=>{
-      const okAud = currentAudience==='all' ? true : (p.aud||'all')===currentAudience;
-      return okAud && p.cat===cat;
+  const im = item.querySelector("img");
+  withImgFallback(im, p.img, true);
+
+  catsAll.forEach((cat, idx) => {
+    const list = (DEMO_PRODUCTS || []).filter((p) => {
+      const okAud =
+        currentAudience === "all" ? true : (p.aud || "all") === currentAudience;
+      return okAud && p.cat === cat;
     });
-    if(!list.length) return;
+    if (!list.length) return;
 
-    const sec = document.createElement('div'); sec.className='section';
+    const sec = document.createElement("div");
+    sec.className = "section";
     sec.innerHTML = `
       <div class="section-head">
         <div class="strong">${cat}</div>
@@ -434,31 +620,40 @@ function renderHomeSections(){
         </a>
       </div>
     `;
-    const cont = sec.querySelector('.hlist');
-    list.slice(0,12).forEach(p=>{
-      const item = document.createElement('div'); item.className='hitem';
+    const cont = sec.querySelector(".hlist");
+    list.slice(0, 12).forEach((p) => {
+      const item = document.createElement("div");
+      item.className = "hitem";
       item.innerHTML = `
-        <img class="thumb" src="${p.img}" alt="${p.title}" loading="lazy" decoding="async">
+        <img class="thumb" src="${p.img}" alt="${
+        p.title
+      }" loading="lazy" decoding="async">
         <div class="small strong" style="margin-top:.4rem">${p.title}</div>
         <div class="small">${fmt(p.price)}</div>
       `;
-      item.querySelector('img')?.addEventListener('click', ()=>openProduct(p));
+      item
+        .querySelector("img")
+        ?.addEventListener("click", () => openProduct(p));
       cont?.appendChild(item);
     });
 
     // fill ad
     const ad = ADS[idx % ADS.length];
-    const a  = sec.querySelector('.ad-link');
-    const ai = sec.querySelector('.ad-img');
-    const at = sec.querySelector('.ad-text');
-    if(a && ai && at){
-      a.href = ad.href || '#';
-      ai.src = ad.img; ai.alt = ad.text; ai.style.maxHeight = '68px';
-      at.textContent = ' ' + ad.text;
-      a.style.display = 'inline-flex'; a.style.alignItems = 'center'; a.style.gap = '.6rem';
+    const a = sec.querySelector(".ad-link");
+    const ai = sec.querySelector(".ad-img");
+    const at = sec.querySelector(".ad-text");
+    if (a && ai && at) {
+      a.href = ad.href || "#";
+      ai.src = ad.img;
+      ai.alt = ad.text;
+      ai.style.maxHeight = "68px";
+      at.textContent = " " + ad.text;
+      a.style.display = "inline-flex";
+      a.style.alignItems = "center";
+      a.style.gap = ".6rem";
     }
 
-    sec.querySelector('[data-see]')?.addEventListener('click', ()=>{
+    sec.querySelector("[data-see]")?.addEventListener("click", () => {
       currentCategory = cat;
       showShopGrid(cat);
     });
@@ -477,6 +672,9 @@ function renderGrid(opts = {}) {
   const q = getSearchQuery();
   const cat = currentCategory.trim().toLowerCase();
   const aud = currentAudience;
+
+  const imc = card.querySelector("img.thumb");
+  withImgFallback(imc, p.img, true);
 
   if (!grid) {
     return;
@@ -540,12 +738,41 @@ function renderGrid(opts = {}) {
 
 // === Part 8: Product Modal ===
 function openProduct(p) {
+  // inside openProduct(p)
+  let cur = 0;
+  function show(i) {
+    cur = (i + imgs.length) % imgs.length;
+    withImgFallback(pdImg, imgs[cur], false);
+    $$("#pdThumbs img").forEach((x, idx) =>
+      x.classList.toggle("active", idx === cur)
+    );
+  }
+  $("#pdPrev")?.addEventListener("click", () => show(cur - 1));
+  $("#pdNext")?.addEventListener("click", () => show(cur + 1));
+  show(0);
   const imgs = p.images && p.images.length ? p.images : [p.img];
 
   if (pdImg) {
-    pdImg.src = imgs[0];
+    withImgFallback(pdImg, imgs[0], false);
     pdImg.alt = p.title;
   }
+
+  imgs.forEach((src, i) => {
+    const im = h("img");
+    withImgFallback(im, src, true);
+    im.alt = `${p.title} ${i + 1}`;
+    im.width = 120;
+    im.height = 120;
+    im.loading = "lazy";
+    if (i === 0) im.classList.add("active");
+    im.addEventListener("click", () => {
+      $$("#pdThumbs img").forEach((x) => x.classList.remove("active"));
+      im.classList.add("active");
+      withImgFallback(pdImg, src, false);
+    });
+    pdThumbs.appendChild(im);
+  });
+
   if (pdTitle) pdTitle.textContent = p.title;
   if (pdPrice) pdPrice.textContent = fmt(p.price);
   if (pdDesc) pdDesc.textContent = p.desc || "";
@@ -910,15 +1137,147 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // Cart open/close
-const cartDrawer = document.getElementById('cartDrawer');
-document.getElementById('btnCart')?.addEventListener('click', ()=> cartDrawer?.classList.add('open'));
-document.getElementById('closeCart')?.addEventListener('click', ()=> cartDrawer?.classList.remove('open'));
+const cartDrawer = document.getElementById("cartDrawer");
+document
+  .getElementById("btnCart")
+  ?.addEventListener("click", () => cartDrawer?.classList.add("open"));
+document
+  .getElementById("closeCart")
+  ?.addEventListener("click", () => cartDrawer?.classList.remove("open"));
 
 // Click outside main → close cart (optional)
-document.addEventListener('click', (e)=>{
-  const inside = e.target.closest('#cartDrawer, #btnCart');
-  if(!inside) cartDrawer?.classList.remove('open');
+document.addEventListener("click", (e) => {
+  const inside = e.target.closest("#cartDrawer, #btnCart");
+  if (!inside) cartDrawer?.classList.remove("open");
 });
+
+// === Theme & Font size ===
+const rootEl = document.documentElement;
+(function restorePrefs() {
+  try {
+    const th = localStorage.getItem("theme");
+    if (th) rootEl.setAttribute("data-theme", th);
+    const fs = parseFloat(localStorage.getItem("fs") || "1");
+    if (fs) rootEl.style.setProperty("--fs", fs);
+  } catch {}
+})();
+$("#btnTheme")?.addEventListener("click", () => {
+  const now = rootEl.getAttribute("data-theme") === "light" ? "dark" : "light";
+  if (now === "dark") rootEl.removeAttribute("data-theme");
+  else rootEl.setAttribute("data-theme", now);
+  try {
+    localStorage.setItem("theme", now);
+  } catch {}
+});
+$("#fsPlus")?.addEventListener("click", () => {
+  const cur =
+    parseFloat(getComputedStyle(rootEl).getPropertyValue("--fs")) || 1;
+  const next = Math.min(1.35, cur + 0.05);
+  rootEl.style.setProperty("--fs", next);
+  try {
+    localStorage.setItem("fs", next);
+  } catch {}
+});
+$("#fsMinus")?.addEventListener("click", () => {
+  const cur =
+    parseFloat(getComputedStyle(rootEl).getPropertyValue("--fs")) || 1;
+  const next = Math.max(0.9, cur - 0.05);
+  rootEl.style.setProperty("--fs", next);
+  try {
+    localStorage.setItem("fs", next);
+  } catch {}
+});
+
+// === Payments ===
+function switchPayTab(key) {
+  $$(".pay-panel").forEach((p) => p.classList.remove("active"));
+  $$(".pay-tabs .chip").forEach((c) => c.classList.remove("active"));
+  $(`#payPanel-${key}`)?.classList.add("active");
+  $(`[data-paytab="${key}"]`)?.classList.add("active");
+
+  if (key === "paypal") setupPayPalButtons();
+  if (key === "kbz") drawWalletQR("#kbzQR");
+  if (key === "cb") drawWalletQR("#cbQR");
+  if (key === "aya") drawWalletQR("#ayaQR");
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-paytab]");
+  if (!btn) return;
+  switchPayTab(btn.getAttribute("data-paytab"));
+});
+
+// Simple dummy-QR (placeholder) — real app မှာ backend လင့်ခ်/QR string ထည့်ပါ
+function drawWalletQR(sel) {
+  const cvs = document.querySelector(sel);
+  if (!cvs) return;
+  const ctx = cvs.getContext("2d");
+  const w = cvs.width,
+    h = cvs.height;
+  ctx.fillStyle = "#0b0f14";
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#fff";
+  ctx.font = "16px sans-serif";
+  ctx.fillText("Scan to Pay", 28, 28);
+  // fake pattern
+  for (let y = 45; y < h - 10; y += 12) {
+    for (let x = 10; x < w - 10; x += 12) {
+      ctx.fillStyle = Math.random() > 0.5 ? "#fff" : "#1f3b5a";
+      ctx.fillRect(x, y, 8, 8);
+    }
+  }
+}
+
+// PayPal Buttons
+let paypalRendered = false;
+function setupPayPalButtons() {
+  if (!window.paypal) return; // SDK not ready yet
+  if (paypalRendered) {
+    return;
+  } // render once per open
+  const host = document.getElementById("paypal-button-container");
+  if (!host) return;
+
+  host.innerHTML = ""; // clear
+  paypalRendered = true;
+  // total from your computeTotals() if available
+  const total =
+    typeof computeTotals === "function" ? computeTotals().total : 10;
+
+  window.paypal
+    .Buttons({
+      style: { layout: "horizontal", tagline: false },
+      createOrder: (data, actions) => {
+        return actions.order.create({
+          purchase_units: [{ amount: { value: String(total) } }],
+        });
+      },
+      onApprove: async (data, actions) => {
+        try {
+          const details = await actions.order.capture();
+          toast("Payment complete ✅");
+          console.log("PayPal details", details);
+          // TODO: create order doc in Firestore here
+        } catch (e) {
+          console.warn("approve failed", e);
+        }
+      },
+      onError: (err) => {
+        console.warn("paypal error", err);
+        toast("PayPal error");
+      },
+    })
+    .render(host);
+}
+
+// Open cart -> initialize payments each time
+// const cartDrawer = document.getElementById('cartDrawer');
+// document.getElementById('btnCart')?.addEventListener('click', ()=>{
+//   cartDrawer?.classList.add('open');
+//   paypalRendered = false;
+//   switchPayTab('paypal'); // default
+// });
+// document.getElementById('closeCart')?.addEventListener('click', ()=> cartDrawer?.classList.remove('open'));
 
 // === Part 13: Init ===
 function fillCategoriesOnce() {
