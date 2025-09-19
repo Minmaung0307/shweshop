@@ -538,7 +538,10 @@ const pdSpecs = $("#pdSpecs");
 function buildNavChips() {
   if (!navScroll) return;
   navScroll.innerHTML = "";
-  NAV_ITEMS.forEach((item) => {
+  // 🔧 'All Categories' ကို ပြန်မထည့်
+  const items = NAV_ITEMS.filter(it => it.key !== "allCategories");
+
+  items.forEach((item) => {
     const b = h("button");
     b.className = "nav-chip";
     b.textContent = item.label;
@@ -621,17 +624,25 @@ function switchView(name) {
 // === Part 6: Search sync ===
 function getSearchQuery() {
   return (searchInputDesktop?.value || searchInputMobile?.value || "")
-    .trim()
-    .toLowerCase();
+    .trim().toLowerCase();
 }
+
 function wireSearchInputs() {
-  const handler = () => {
-    showShopGrid(currentCategory || "All Categories");
+  const run = () => {
+    // 🔧 Search တင်သော်လည်း Category သတ်မှတ်ချက်ကို ဖျက်ပြီး All အဖြစ်ရှာ
+    currentCategory = "";
+    showShopGrid(getSearchQuery() ? "Results" : "All");
   };
-  searchInputDesktop?.addEventListener("input", handler);
-  searchInputMobile?.addEventListener("input", () => {
-    if (searchInputDesktop) searchInputDesktop.value = searchInputMobile.value;
-    handler();
+
+  [searchInputDesktop, searchInputMobile].forEach((inp, ix) => {
+    inp?.addEventListener("input", () => {
+      // mobile ↔ desktop sync
+      if (ix === 1 && searchInputDesktop) searchInputDesktop.value = inp.value;
+      run();
+    });
+    inp?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") run();
+    });
   });
 }
 
