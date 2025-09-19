@@ -96,13 +96,62 @@ function ph(size, seed) {
   return `https://picsum.photos/seed/${s}/${size}/${size}`;
 }
 
-function withImgFallback(imgEl, src, isThumb = false, seed = 'default') {
+function withImgFallback(imgEl, src, isThumb = false, seed = "default") {
   const fallback = ph(isThumb ? 160 : 600, seed);
   imgEl.src = src || fallback;
   imgEl.onerror = () => {
     imgEl.onerror = null;
     imgEl.src = fallback;
   };
+}
+
+// === Horizontal drag-scroll for carousels ===
+function makeDragScroll(container){
+  if(!container) return;
+  let isDown = false, startX = 0, startY = 0, scrollLeft = 0;
+  const onDown = (e) => {
+    isDown = true;
+    container.classList.add('dragging');
+    startX = ('touches' in e ? e.touches[0].pageX : e.pageX);
+    startY = ('touches' in e ? e.touches[0].pageY : e.pageY);
+    scrollLeft = container.scrollLeft;
+  };
+  const onMove = (e) => {
+    if(!isDown) return;
+    const x = ('touches' in e ? e.touches[0].pageX : e.pageX);
+    const y = ('touches' in e ? e.touches[0].pageY : e.pageY);
+    const dx = x - startX;
+    const dy = y - startY;
+    if(Math.abs(dx) > Math.abs(dy)) {
+      e.preventDefault(); // prevent page scroll
+      container.scrollLeft = scrollLeft - dx;
+    }
+  };
+  const onUp = () => { isDown = false; container.classList.remove('dragging'); };
+  container.addEventListener('mousedown', onDown);
+  container.addEventListener('mousemove', onMove);
+  container.addEventListener('mouseup', onUp);
+  container.addEventListener('mouseleave', onUp);
+  container.addEventListener('touchstart', onDown, { passive:false });
+  container.addEventListener('touchmove', onMove, { passive:false });
+  container.addEventListener('touchend', onUp);
+}
+
+// === Attach arrows (< >) & drag to a section ===
+function attachCarouselControls(sec){
+  const cont = sec.querySelector('.hlist');
+  if(!cont) return;
+  // arrows
+  if(!sec.querySelector('.sec-nav.prev')){
+    const prev = h('button'); prev.className = 'sec-nav prev'; prev.setAttribute('aria-label','Previous'); prev.textContent = '‹';
+    const next = h('button'); next.className = 'sec-nav next'; next.setAttribute('aria-label','Next');     next.textContent = '›';
+    sec.appendChild(prev); sec.appendChild(next);
+    const step = () => Math.max(160, Math.round(cont.clientWidth * 0.9));
+    prev.addEventListener('click', ()=> cont.scrollBy({ left: -step(), behavior:'smooth' }));
+    next.addEventListener('click', ()=> cont.scrollBy({ left:  step(), behavior:'smooth' }));
+  }
+  // drag
+  makeDragScroll(cont);
 }
 
 // === Part 2: DEMO PRODUCTS (sample) ===
@@ -592,17 +641,40 @@ const ADS = [
     text: "Pets Care • Toys & Beds",
     href: "#",
   },
+  {
+    img: "https://picsum.photos/seed/fashion/320/80",
+    text: "Mid-season Sale • Fashion up to 40%",
+    href: "#",
+  },
+  {
+    img: "https://picsum.photos/seed/arrivals/320/80",
+    text: "New Arrivals • Fresh picks today",
+    href: "#",
+  },
+  {
+    img: "https://picsum.photos/seed/home/320/80",
+    text: "Home Deals • Lights & Decor",
+    href: "#",
+  },
+  {
+    img: "https://picsum.photos/seed/pets/320/80",
+    text: "Pets Care • Toys & Beds",
+    href: "#",
+  },
 ];
 
 function renderHomeSections() {
-  const catsAll = Array.from(new Set((DEMO_PRODUCTS || []).map(p => p.cat))).filter(Boolean);
+  const catsAll = Array.from(
+    new Set((DEMO_PRODUCTS || []).map((p) => p.cat))
+  ).filter(Boolean);
   if (!homeSections) return;
   homeSections.innerHTML = "";
 
   catsAll.forEach((cat, idx) => {
     // audience + category filter
-    const list = (DEMO_PRODUCTS || []).filter(p => {
-      const okAud = currentAudience === "all" ? true : (p.aud || "all") === currentAudience;
+    const list = (DEMO_PRODUCTS || []).filter((p) => {
+      const okAud =
+        currentAudience === "all" ? true : (p.aud || "all") === currentAudience;
       return okAud && p.cat === cat;
     });
     if (!list.length) return;
@@ -634,7 +706,7 @@ function renderHomeSections() {
         <div class="small">${fmt(p.price)}</div>
       `;
       const im = item.querySelector("img.thumb");
-if (im) withImgFallback(im, p.img, true, p.id);
+      if (im) withImgFallback(im, p.img, true, p.id);
 
       im?.addEventListener("click", () => openProduct(p));
       cont?.appendChild(item);
@@ -665,12 +737,13 @@ if (im) withImgFallback(im, p.img, true, p.id);
     });
 
     homeSections.appendChild(sec);
+    attachCarouselControls(sec);
   });
 }
 
 // === Part 7B: Shop grid ===
 function renderGrid(opts = {}) {
-  const q   = getSearchQuery?.() || "";
+  const q = getSearchQuery?.() || "";
   const cat = (currentCategory || "").trim().toLowerCase();
   const aud = currentAudience || "all";
 
@@ -679,8 +752,8 @@ function renderGrid(opts = {}) {
 
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
     const okCat = !cat || (p.cat || "").toLowerCase() === cat;
-    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
-    const okQ   = !q || hay.includes(q);
+    const hay = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
     const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
     return okCat && okQ && okAud && okTag;
@@ -695,7 +768,9 @@ function renderGrid(opts = {}) {
     const card = h("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
+      <img class="thumb" alt="${
+        p.title
+      }" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
         <div class="card-title">${p.title}</div>
         <div class="row between">
@@ -711,11 +786,13 @@ function renderGrid(opts = {}) {
 
     // ✅ image fallback (no 404)
     const imc = card.querySelector("img.thumb");
-if (imc) withImgFallback(imc, p.img, true, p.id);
+    if (imc) withImgFallback(imc, p.img, true, p.id);
 
     // open product
     card.querySelector(".btn")?.addEventListener("click", () => openProduct(p));
-    card.querySelector("img.thumb")?.addEventListener("click", () => openProduct(p));
+    card
+      .querySelector("img.thumb")
+      ?.addEventListener("click", () => openProduct(p));
 
     // item-level promo
     const [promoInput, promoBtn] = card.querySelectorAll(".promo-inline > *");
@@ -728,7 +805,10 @@ if (imc) withImgFallback(imc, p.img, true, p.id);
         renderCart?.();
         return;
       }
-      if (!rule) { toast("Invalid code"); return; }
+      if (!rule) {
+        toast("Invalid code");
+        return;
+      }
       if (!state.itemPromos) state.itemPromos = {};
       state.itemPromos[p.id] = { code, ...rule };
       toast(`Promo ${code} applied to ${p.title}`);
@@ -742,7 +822,9 @@ if (imc) withImgFallback(imc, p.img, true, p.id);
 function showShopGrid(cat) {
   currentCategory = cat || "all";
   // grid UI ပြသ (home page ဖျောက်)
-  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document
+    .querySelectorAll(".view")
+    .forEach((v) => v.classList.remove("active"));
   const shopView = document.getElementById("view-shop");
   shopView?.classList.add("active");
 
@@ -753,7 +835,7 @@ function showShopGrid(cat) {
 // === Part 8: Product Modal ===
 function openProduct(p) {
   // product images (fallback if empty)
-  const imgs = (p.images && p.images.length) ? p.images : [p.img];
+  const imgs = p.images && p.images.length ? p.images : [p.img];
 
   // reset thumbs
   if (pdThumbs) pdThumbs.innerHTML = "";
@@ -1106,13 +1188,23 @@ async function checkAdmin(user) {
   return state.isAdmin;
 }
 
-function updateGreet() {
-  if (greet) {
-    greet.textContent = state.user
-      ? `Hi, ${state.user.displayName || state.user.email || "there"}`
-      : "";
-  }
+// Greeting
+function updateGreet(){
+  const name = state.user?.displayName || state.user?.email || '';
+  const el = document.getElementById('greet');
+  if(!el) return;
+  el.textContent = state.user ? `Hi, ${name.split('@')[0]}` : '';
 }
+
+// Logout button toggle + action
+const btnLogout = document.getElementById('btnLogout');
+btnLogout?.addEventListener('click', async ()=>{
+  try{
+    const { signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    await signOut(auth);
+    toast('Signed out');
+  }catch(e){ console.warn('signout failed', e); }
+});
 
 // sign-in button (if any)
 $("#btnUser")?.addEventListener("click", async () => {
@@ -1124,17 +1216,20 @@ $("#btnUser")?.addEventListener("click", async () => {
   await signInWithRedirect(auth, provider); // avoids popup COOP warnings
 });
 
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, async (user)=>{
   state.user = user || null;
-  if (user) {
+  if(user){
     await ensureUser(user);
     await checkAdmin(user);
-  } else {
+  }else{
     state.isAdmin = false;
   }
   updateGreet();
-  renderMember();
-  updateAdminUI();
+  renderMember?.();
+  updateAdminUI?.();
+  // show/hide logout button
+  const btn = document.getElementById('btnLogout');
+  if(btn) btn.style.display = state.user ? '' : 'none';
 });
 
 // Cart open/close
