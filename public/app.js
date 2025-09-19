@@ -1,4 +1,8 @@
 // === Part 0: Firebase & libs (top of file) ===
+// already imported at top:
+const provider = new GoogleAuthProvider();
+await signInWithRedirect(auth, provider);
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth,
@@ -27,7 +31,6 @@ document.getElementById('btnUser')?.addEventListener('click', ()=>{
 });
 
 // Google sign-in (redirect ကို သုံး—popup warn မတက်)
-import { GoogleAuthProvider, signInWithRedirect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 document.getElementById('btnGoogle')?.addEventListener('click', async ()=>{
   const provider = new GoogleAuthProvider();
   try {
