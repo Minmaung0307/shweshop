@@ -13,11 +13,19 @@
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 </head>
 <body>
+  <!-- Topbar -->
   <header class="topbar">
-    <button id="btnMenu" class="icon-btn" aria-label="Menu">☰</button>
-    <div class="brand">ShweShop</div>
+    <div class="left">
+      <div class="brand">ShweShop</div>
+      <span id="greet" class="greet small"></span>
+    </div>
+
+    <!-- Desktop center search -->
+    <div class="top-search">
+      <input id="searchInput" class="input" placeholder="Search products…" />
+    </div>
+
     <div class="top-actions">
-      <button id="btnSearch" class="icon-btn" aria-label="Search">🔎</button>
       <button id="btnCart" class="icon-btn badge" aria-label="Cart">
         🛒 <span id="cartCount" class="badge-dot">0</span>
       </button>
@@ -25,7 +33,12 @@
     </div>
   </header>
 
-  <nav id="sidebar" class="sidebar">
+  <!-- Mobile second-line search -->
+  <div class="top-search-row">
+    <input id="searchInputMobile" class="input" placeholder="Search products…" />
+  </div>
+
+  <nav id="navScroll" class="nav-scroll hscroll">
     <div class="nav-header">
       <div class="nav-title">Menu</div>
       <button id="closeSidebar" class="icon-btn">✕</button>
@@ -52,39 +65,24 @@
   </nav>
 
   <main id="main">
-    <!-- Shop View -->
-    <section id="view-shop" class="view active">
-      <div id="hero" class="hero">
-        <div>
-          <h1>Find your favorites</h1>
-          <p>Modern • Clean • Fast — Mobile first shopping</p>
-        </div>
-      </div>
-
-      <!-- ✅ Main-page Filters (moved from burger menu) -->
-      <div class="filters" id="filters">
-        <div class="row wrap">
-          <select id="categorySelect" class="input">
-            <option value="">All categories</option>
-          </select>
-          <input id="searchInput" class="input grow" placeholder="Search products…">
-        </div>
-        <div class="chip-row" id="audienceChips">
-          <button class="chip active" data-aud="all">For All</button>
-          <button class="chip" data-aud="men">For Men</button>
-          <button class="chip" data-aud="women">For Women</button>
-          <button class="chip" data-aud="kids">For Kids</button>
-          <button class="chip" data-aud="pets">For Pets</button>
-        </div>
-      </div>
-
-      <div id="productGrid" class="grid"></div>
-      <div id="loadMoreWrap" class="center">
-        <button id="loadMore" class="btn btn-soft">Load more</button>
+    <!-- “hero” optional -->
+    <section class="hero">
+      <div>
+        <h1>Find your favorites</h1>
+        <p>Modern • Clean • Fast — Mobile first shopping</p>
       </div>
     </section>
 
-    <!-- Analytics View -->
+    <!-- Home sections (per-category carousels + ad slots) -->
+    <section id="homeSections" class="home-sections"></section>
+
+    <!-- Full Shop Grid (when user taps “See all” or ‘All Categories’) -->
+    <section id="view-shop" class="view">
+      <h2 id="shopTitle" class="pad"></h2>
+      <div id="productGrid" class="grid"></div>
+    </section>
+
+    <!-- Analytics / Orders / About (unchanged) -->
     <section id="view-analytics" class="view">
       <h2>Store Analytics</h2>
       <div class="cards">
@@ -99,21 +97,14 @@
       </div>
     </section>
 
-    <!-- Orders View -->
     <section id="view-orders" class="view">
       <h2>My Orders</h2>
       <div id="ordersList" class="stack"></div>
     </section>
 
-    <!-- About View -->
     <section id="view-about" class="view">
       <h2>About ShweShop</h2>
       <p>Demo app built with Firebase + PayPal + EmailJS.</p>
-      <ul class="disc">
-        <li>Cart, promotions (per-item), membership cashback</li>
-        <li>Myanmar wallets (KBZ/CB/Aya) demo via QR / deeplink</li>
-        <li>Data analytics dashboard</li>
-      </ul>
     </section>
   </main>
 
@@ -232,6 +223,24 @@
         </div>
       </div>
     </div>
+    <div class="deliver-box">
+  <div class="strong">Delivery Options</div>
+  <label class="radio"><input type="radio" name="dopt" value="delivery" checked> Delivery</label>
+  <div id="deliveryFields" class="stack">
+    <input id="addrLine" class="input" placeholder="Address line">
+    <input id="addrCity" class="input" placeholder="City">
+    <input id="addrPhone" class="input" placeholder="Phone">
+    <input id="addrNote" class="input" placeholder="Note (optional)">
+  </div>
+  <label class="radio"><input type="radio" name="dopt" value="pickup"> Pickup</label>
+  <div id="pickupFields" class="stack" style="display:none">
+    <select id="pickupStore" class="input">
+      <option value="downtown">Downtown Store</option>
+      <option value="north">North Store</option>
+    </select>
+    <input id="pickupTime" class="input" type="datetime-local">
+  </div>
+</div>
   </aside>
 
   <!-- Auth mini modal -->
