@@ -105,6 +105,43 @@ function withImgFallback(imgEl, src, isThumb = false, seed = "default") {
   };
 }
 
+// === Horizontal drag-scroll confined to the carousel only ===
+function makeDragScroll(container){
+  if(!container) return;
+  let isDown = false, startX = 0, startY = 0, scrollLeft = 0;
+
+  const onDown = (e) => {
+    isDown = true;
+    container.classList.add('dragging');
+    startX = ('touches' in e ? e.touches[0].pageX : e.pageX);
+    startY = ('touches' in e ? e.touches[0].pageY : e.pageY);
+    scrollLeft = container.scrollLeft;
+  };
+  const onMove = (e) => {
+    if(!isDown) return;
+    const x = ('touches' in e ? e.touches[0].pageX : e.pageX);
+    const y = ('touches' in e ? e.touches[0].pageY : e.pageY);
+    const dx = x - startX;
+    const dy = y - startY;
+    // Horizontal intent → drag the row; prevent page scroll
+    if(Math.abs(dx) > Math.abs(dy)){
+      e.preventDefault();
+      e.stopPropagation();
+      container.scrollLeft = scrollLeft - dx;
+    }
+  };
+  const onUp = () => { isDown = false; container.classList.remove('dragging'); };
+
+  container.addEventListener('mousedown', onDown);
+  container.addEventListener('mousemove', onMove);
+  container.addEventListener('mouseup', onUp);
+  container.addEventListener('mouseleave', onUp);
+
+  container.addEventListener('touchstart', onDown, { passive:false });
+  container.addEventListener('touchmove',  onMove, { passive:false });
+  container.addEventListener('touchend',   onUp);
+}
+
 // === Horizontal drag-scroll for carousels ===
 function makeDragScroll(container){
   if(!container) return;
@@ -1190,10 +1227,14 @@ async function checkAdmin(user) {
 
 // Greeting
 function updateGreet(){
-  const name = state.user?.displayName || state.user?.email || '';
   const el = document.getElementById('greet');
   if(!el) return;
-  el.textContent = state.user ? `Hi, ${name.split('@')[0]}` : '';
+  if(state.user){
+    const name = state.user.displayName || state.user.email || 'there';
+    el.textContent = `Hi, ${String(name).split('@')[0]}`;
+  }else{
+    el.textContent = '';
+  }
 }
 
 // Logout button toggle + action
@@ -1227,9 +1268,10 @@ onAuthStateChanged(auth, async (user)=>{
   updateGreet();
   renderMember?.();
   updateAdminUI?.();
+
   // show/hide logout button
-  const btn = document.getElementById('btnLogout');
-  if(btn) btn.style.display = state.user ? '' : 'none';
+  const out = document.getElementById('btnLogout');
+  if(out) out.style.display = state.user ? '' : 'none';
 });
 
 // Cart open/close
