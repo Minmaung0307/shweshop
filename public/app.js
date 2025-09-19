@@ -1,11 +1,7 @@
-// === Part 0: Firebase & libs (top of file) ===
-// already imported at top:
-// const provider = new GoogleAuthProvider();
-// await signInWithRedirect(auth, provider);
-import { auth, db } from "./config.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+// === Part 0: Firebase & libs ===
+import { auth, db } from "./config.js"; // ✅ ONLY this import, no initializeApp/getAuth here
+
 import {
-  getAuth,
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithRedirect,
@@ -16,30 +12,23 @@ import {
   sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
+  doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// Open auth mini modal
-document.getElementById("btnUser")?.addEventListener("click", () => {
-  if (state.user) {
-    return toast("Already signed in");
-  }
+// Buttons (support both ids just in case)
+const btnLogin  = document.getElementById("btnLogin") || document.getElementById("btnUser");
+const btnGoogle = document.getElementById("btnGoogle");
+
+// Open auth modal
+btnLogin?.addEventListener("click", () => {
+  if (state.user) { return toast("Already signed in"); }
   document.getElementById("authModal")?.showModal();
 });
 
-// Google sign-in (redirect ကို သုံး—popup warn မတက်)
-document.getElementById("btnGoogle")?.addEventListener("click", async () => {
-  const provider = new GoogleAuthProvider();
+// Google sign-in
+btnGoogle?.addEventListener("click", async () => {
   try {
+    const provider = new GoogleAuthProvider();
     await signInWithRedirect(auth, provider);
   } catch (e) {
     console.warn("sign-in failed", e);
@@ -47,37 +36,13 @@ document.getElementById("btnGoogle")?.addEventListener("click", async () => {
   }
 });
 
-// TODO: replace with your own config
-export const firebaseConfig = {
-  apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
-  authDomain: "shweshop-mm.firebaseapp.com",
-  projectId: "shweshop-mm",
-  storageBucket: "shweshop-mm.firebasestorage.app",
-  messagingSenderId: "361216212375",
-  appId: "1:361216212375:web:fed19b7fe4072000c298d2",
-  measurementId: "G-WBJJZZNLX6",
-};
-
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-// Chart.js is loaded via <script> in HTML
-
-// simple state (ensure exists)
-const state =
-  window.state ||
-  (window.state = { cart: [], itemPromos: {}, user: null, isAdmin: false });
-
-const $ = (sel, root = document) => root.querySelector(sel);
+// simple state & utils
+const state = window.state || (window.state = { cart: [], itemPromos: {}, user: null, isAdmin: false });
+const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-const h = (tag) => document.createElement(tag);
-
+const h  = (tag) => document.createElement(tag);
 const fmt = (n) => "$" + Number(n || 0).toFixed(2);
-const toast = (msg) => {
-  console.log("TOAST:", msg);
-  // optional: replace with your snackbar/toast UI
-};
+const toast = (msg) => console.log("TOAST:", msg);
 
 function updateCartCount() {
   const el = $("#cartCount");
