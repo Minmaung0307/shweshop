@@ -588,19 +588,14 @@ const ADS = [
 ];
 
 function renderHomeSections() {
-  const catsAll = Array.from(
-    new Set((DEMO_PRODUCTS || []).map((p) => p.cat))
-  ).filter(Boolean);
+  const catsAll = Array.from(new Set((DEMO_PRODUCTS || []).map(p => p.cat))).filter(Boolean);
   if (!homeSections) return;
   homeSections.innerHTML = "";
 
-  const im = item.querySelector("img");
-  withImgFallback(im, p.img, true);
-
   catsAll.forEach((cat, idx) => {
-    const list = (DEMO_PRODUCTS || []).filter((p) => {
-      const okAud =
-        currentAudience === "all" ? true : (p.aud || "all") === currentAudience;
+    // audience + category filter
+    const list = (DEMO_PRODUCTS || []).filter(p => {
+      const okAud = currentAudience === "all" ? true : (p.aud || "all") === currentAudience;
       return okAud && p.cat === cat;
     });
     if (!list.length) return;
@@ -621,42 +616,47 @@ function renderHomeSections() {
       </div>
     `;
     const cont = sec.querySelector(".hlist");
+
+    // horizontal items (use fallback images)
     list.slice(0, 12).forEach((p) => {
       const item = document.createElement("div");
       item.className = "hitem";
       item.innerHTML = `
-        <img class="thumb" src="${p.img}" alt="${
-        p.title
-      }" loading="lazy" decoding="async">
+        <img class="thumb" alt="${p.title}" loading="lazy" decoding="async">
         <div class="small strong" style="margin-top:.4rem">${p.title}</div>
         <div class="small">${fmt(p.price)}</div>
       `;
-      item
-        .querySelector("img")
-        ?.addEventListener("click", () => openProduct(p));
+      const im = item.querySelector("img.thumb");
+      if (im) withImgFallback(im, p.img, true);
+
+      im?.addEventListener("click", () => openProduct(p));
       cont?.appendChild(item);
     });
 
-    // fill ad
-    const ad = ADS[idx % ADS.length];
-    const a = sec.querySelector(".ad-link");
-    const ai = sec.querySelector(".ad-img");
-    const at = sec.querySelector(".ad-text");
-    if (a && ai && at) {
-      a.href = ad.href || "#";
-      ai.src = ad.img;
-      ai.alt = ad.text;
-      ai.style.maxHeight = "68px";
-      at.textContent = " " + ad.text;
-      a.style.display = "inline-flex";
-      a.style.alignItems = "center";
-      a.style.gap = ".6rem";
+    // fill ad (guard ADS existence)
+    if (typeof ADS !== "undefined" && ADS.length) {
+      const ad = ADS[idx % ADS.length];
+      const a = sec.querySelector(".ad-link");
+      const ai = sec.querySelector(".ad-img");
+      const at = sec.querySelector(".ad-text");
+      if (a && ai && at && ad) {
+        a.href = ad.href || "#";
+        ai.alt = ad.text || "Ad";
+        if (ad.img) withImgFallback(ai, ad.img, true);
+        ai.style.maxHeight = "68px";
+        at.textContent = " " + (ad.text || "");
+        a.style.display = "inline-flex";
+        a.style.alignItems = "center";
+        a.style.gap = ".6rem";
+      }
     }
 
+    // See all → open grid
     sec.querySelector("[data-see]")?.addEventListener("click", () => {
       currentCategory = cat;
       showShopGrid(cat);
     });
+
     homeSections.appendChild(sec);
   });
 }
