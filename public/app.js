@@ -1,7 +1,7 @@
 // === Part 0: Firebase & libs (top of file) ===
 // already imported at top:
-const provider = new GoogleAuthProvider();
-await signInWithRedirect(auth, provider);
+// const provider = new GoogleAuthProvider();
+// await signInWithRedirect(auth, provider);
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
