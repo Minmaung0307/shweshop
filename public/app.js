@@ -1198,13 +1198,6 @@ async function checkAdmin(user) {
   return state.isAdmin;
 }
 
-// BOOTSTRAP: make this email admin temporarily (remove after you set Firestore role)
-if (user?.email === "minmaung0307@gmail.com") {
-  state.isAdmin = true;
-}
-updateGreet();
-updateAdminUI?.();
-
 // Greeting
 function updateGreet() {
   const el = document.getElementById("greet");
@@ -1257,6 +1250,10 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     await ensureUser(user);
     await checkAdmin(user);
+    // ✅ ဒီနေရာမှာပဲ user.email သုံးလို့ရ
+    if (user.email === "minmaung0307@gmail.com") {
+      state.isAdmin = true;
+    }
   } else {
     state.isAdmin = false;
   }
