@@ -1434,7 +1434,7 @@ function init() {
   showShopGrid("All Categories");
   // products first
   fillCategoriesOnce();
-  loadProductsPage();
+//   loadProductsPage();
   // misc
   updateCartCount();
   fetchPromos();
