@@ -23,6 +23,7 @@
       src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
       defer
     ></script>
+    <script type="module" src="./config.js"></script>
   </head>
   <body>
     <!-- Topbar -->
@@ -41,7 +42,8 @@
         <button id="btnCart" class="icon-btn badge" aria-label="Cart">
           🛒 <span id="cartCount" class="badge-dot">0</span>
         </button>
-        <button id="btnUser" class="icon-btn" aria-label="Account">👤</button>
+        <!-- topbar right side (where user icons are) -->
+        <span id="greet" class="small"></span>
         <button
           id="btnLogout"
           class="icon-btn"
@@ -50,6 +52,7 @@
         >
           ⎋
         </button>
+        <button id="btnLogin" class="icon-btn" title="Login">👤</button>
         <button id="btnTheme" class="icon-btn" title="Theme">🌓</button>
         <div class="fs-switch">
           <button id="fsMinus" class="icon-btn" title="Smaller">A−</button>
@@ -312,10 +315,46 @@
     <!-- Auth mini modal -->
     <dialog id="authModal" class="modal">
       <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="authModal">✕</button>
-        <h3>Welcome</h3>
-        <p>Sign in to save orders and earn cashback.</p>
-        <button id="btnGoogle" class="btn">Continue with Google</button>
+        <h3 class="card-title">Sign in</h3>
+
+        <div class="input-group">
+          <label>Email</label>
+          <input
+            id="authEmail"
+            type="email"
+            placeholder="you@example.com"
+            class="input"
+          />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input
+            id="authPass"
+            type="password"
+            placeholder="••••••••"
+            class="input"
+          />
+        </div>
+        <div class="row gap">
+          <button id="btnEmailLogin" class="btn">Login</button>
+          <button id="btnShowSignup" class="btn-soft">Create account</button>
+          <button id="btnShowReset" class="btn-outline">Forgot?</button>
+        </div>
+
+        <div id="signupRow" style="display: none; margin-top: 1rem">
+          <div class="row gap">
+            <button id="btnDoSignup" class="btn">Sign up</button>
+            <button data-close="authModal" class="btn-soft">Close</button>
+          </div>
+        </div>
+
+        <div id="resetRow" style="display: none; margin-top: 1rem">
+          <p class="small">We will email a reset link.</p>
+          <div class="row gap">
+            <button id="btnDoReset" class="btn">Send reset email</button>
+            <button data-close="authModal" class="btn-soft">Close</button>
+          </div>
+        </div>
       </div>
     </dialog>
 

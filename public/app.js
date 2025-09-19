@@ -2,7 +2,7 @@
 // already imported at top:
 // const provider = new GoogleAuthProvider();
 // await signInWithRedirect(auth, provider);
-
+import { auth, db } from "./config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth,
@@ -10,6 +10,10 @@ import {
   GoogleAuthProvider,
   signInWithRedirect,
   getIdTokenResult,
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore,
@@ -60,16 +64,10 @@ export const db = getFirestore(app);
 
 // Chart.js is loaded via <script> in HTML
 
-// === Part 1: State & Utils ===
-const state = {
-  user: null,
-  isAdmin: false,
-  membership: null,
-  cart: [], // assume you already manage elsewhere
-  itemPromos: {}, // per-item promo map
-  globalPromo: null, // whole-cart promo
-  categories: [],
-};
+// simple state (ensure exists)
+const state =
+  window.state ||
+  (window.state = { cart: [], itemPromos: {}, user: null, isAdmin: false });
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -539,7 +537,7 @@ function buildNavChips() {
   if (!navScroll) return;
   navScroll.innerHTML = "";
   // 🔧 'All Categories' ကို ပြန်မထည့်
-  const items = NAV_ITEMS.filter(it => it.key !== "allCategories");
+  const items = NAV_ITEMS.filter((it) => it.key !== "allCategories");
 
   items.forEach((item) => {
     const b = h("button");
@@ -617,32 +615,33 @@ function onNavClick(item, btn) {
 }
 
 function switchView(name) {
-  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document
+    .querySelectorAll(".view")
+    .forEach((v) => v.classList.remove("active"));
   document.getElementById("view-" + name)?.classList.add("active");
 }
 
 // === Part 6: Search sync ===
 function getSearchQuery() {
-  return (searchInputDesktop?.value || searchInputMobile?.value || "")
-    .trim().toLowerCase();
+  return (document.getElementById('searchInputDesktop')?.value
+       || document.getElementById('searchInputMobile')?.value
+       || '').trim().toLowerCase();
 }
 
 function wireSearchInputs() {
+  const desk = document.getElementById('searchInputDesktop');
+  const mob  = document.getElementById('searchInputMobile');
   const run = () => {
-    // 🔧 Search တင်သော်လည်း Category သတ်မှတ်ချက်ကို ဖျက်ပြီး All အဖြစ်ရှာ
-    currentCategory = "";
+    // Search တင်သော်လည်း Category filter ကိုဖျက် → အားလုံးထဲကနေရှာ
+    window.currentCategory = "";
     showShopGrid(getSearchQuery() ? "Results" : "All");
   };
-
-  [searchInputDesktop, searchInputMobile].forEach((inp, ix) => {
-    inp?.addEventListener("input", () => {
-      // mobile ↔ desktop sync
-      if (ix === 1 && searchInputDesktop) searchInputDesktop.value = inp.value;
+  [desk, mob].forEach((inp, ix) => {
+    inp?.addEventListener('input', () => {
+      if(ix===1 && desk) desk.value = inp.value; // mobile → desktop sync
       run();
     });
-    inp?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") run();
-    });
+    inp?.addEventListener('keydown', e => { if(e.key==='Enter') run(); });
   });
 }
 
@@ -771,7 +770,7 @@ function renderHomeSections() {
 
 // === Part 7B: Shop grid ===
 function renderGrid(opts = {}) {
-  const q = getSearchQuery?.() || "";
+  const q   = getSearchQuery?.() || "";
   const cat = (currentCategory || "").trim().toLowerCase();
   const aud = currentAudience || "all";
 
@@ -780,8 +779,8 @@ function renderGrid(opts = {}) {
 
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
     const okCat = !cat || (p.cat || "").toLowerCase() === cat;
-    const hay = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
-    const okQ = !q || hay.includes(q);
+    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ   = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
     const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
     return okCat && okQ && okAud && okTag;
@@ -793,19 +792,28 @@ function renderGrid(opts = {}) {
   }
 
   filtered.forEach((p) => {
+    // ✅ ensure product has an id (needed for data-id)
+    if (!p.id) {
+      p.id = 'p_' + String(p.title || 'item')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    }
+
     const card = h("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="thumb" alt="${
-        p.title
-      }" width="600" height="600" loading="lazy" decoding="async">
+      <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
         <div class="card-title">${p.title}</div>
-        <div class="row between">
+        <div class="row between" style="gap:.5rem; align-items:center;">
           <div class="price">${fmt(p.price)}</div>
-          <button class="btn btn-soft">View</button>
+          <div class="row" style="gap:.4rem;">
+            <button class="btn btn-soft btn-view">View</button>
+            <button class="btn btn-mini btn-add" data-id="${p.id}" aria-label="Add ${p.title} to cart">Add to Cart</button>
+          </div>
         </div>
-        <div class="promo-inline">
+        <div class="promo-inline" style="margin-top:.5rem">
           <input placeholder="Promo code" aria-label="promo for ${p.title}">
           <button class="btn-mini">Apply</button>
         </div>
@@ -816,30 +824,31 @@ function renderGrid(opts = {}) {
     const imc = card.querySelector("img.thumb");
     if (imc) withImgFallback(imc, p.img, true, p.id);
 
-    // open product
-    card.querySelector(".btn")?.addEventListener("click", () => openProduct(p));
-    card
-      .querySelector("img.thumb")
-      ?.addEventListener("click", () => openProduct(p));
+    // View → open product
+    card.querySelector(".btn-view")?.addEventListener("click", () => openProduct(p));
+    card.querySelector("img.thumb")?.addEventListener("click",  () => openProduct(p));
 
-    // item-level promo
+    // Add to Cart
+    card.querySelector(".btn-add")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      addToCart?.(p);
+    });
+
+    // Item-level promo
     const [promoInput, promoBtn] = card.querySelectorAll(".promo-inline > *");
     promoBtn?.addEventListener("click", () => {
       const code = (promoInput?.value || "").trim().toUpperCase();
-      const rule = PROMO_MAP[code] || null;
+      const rule = PROMO_MAP?.[code] || null;
       if (!code) {
-        delete state.itemPromos?.[p.id];
-        toast("Promo cleared");
+        if (state.itemPromos) delete state.itemPromos[p.id];
+        toast?.("Promo cleared");
         renderCart?.();
         return;
       }
-      if (!rule) {
-        toast("Invalid code");
-        return;
-      }
+      if (!rule) { toast?.("Invalid code"); return; }
       if (!state.itemPromos) state.itemPromos = {};
       state.itemPromos[p.id] = { code, ...rule };
-      toast(`Promo ${code} applied to ${p.title}`);
+      toast?.(`Promo ${code} applied to ${p.title}`);
       renderCart?.();
     });
 
@@ -847,10 +856,86 @@ function renderGrid(opts = {}) {
   });
 }
 
-function showShopGrid(title, opts = {}) {
-  shopTitle.textContent = title || "Shop";
-  switchView("shop");
-  renderGrid(opts);
+function addToCart(p, qty = 1){
+  if (!state.cart) state.cart = [];
+  const i = state.cart.findIndex(x => x.id === p.id);
+  if (i >= 0) state.cart[i].qty += qty;
+  else state.cart.push({ id:p.id, title:p.title, price:p.price, img:p.img, qty });
+  updateCartCount?.();
+  renderCart?.();
+  toast?.('Added to cart');
+}
+
+document.addEventListener('click', (e)=>{
+  const addBtn = e.target.closest('.btn-add');
+  if(addBtn){
+    const pid = addBtn.getAttribute('data-id');
+    const p = (DEMO_PRODUCTS||[]).find(x=>x.id===pid);
+    if(p){ addToCart(p); }
+  }
+});
+
+// Open login modal
+document.getElementById('btnLogin')?.addEventListener('click', ()=>{
+  document.getElementById('signupRow').style.display = 'none';
+  document.getElementById('resetRow').style.display  = 'none';
+  document.getElementById('authModal')?.showModal();
+});
+
+// Toggle sections
+document.getElementById('btnShowSignup')?.addEventListener('click', ()=>{
+  document.getElementById('signupRow').style.display = '';
+  document.getElementById('resetRow').style.display  = 'none';
+});
+document.getElementById('btnShowReset')?.addEventListener('click', ()=>{
+  document.getElementById('signupRow').style.display = 'none';
+  document.getElementById('resetRow').style.display  = '';
+});
+
+// Email login
+document.getElementById('btnEmailLogin')?.addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail')?.value.trim();
+  const pass  = document.getElementById('authPass')?.value;
+  if(!email || !pass){ toast?.('Enter email & password'); return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+    document.getElementById('authModal')?.close();
+  }catch(e){ console.warn(e); toast?.('Login failed'); }
+});
+
+// Signup
+document.getElementById('btnDoSignup')?.addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail')?.value.trim();
+  const pass  = document.getElementById('authPass')?.value;
+  if(!email || !pass){ toast?.('Enter email & password'); return; }
+  try{
+    await createUserWithEmailAndPassword(auth, email, pass);
+    toast?.('Account created, signed in');
+    document.getElementById('authModal')?.close();
+  }catch(e){ console.warn(e); toast?.('Sign up failed'); }
+});
+
+// Forgot
+document.getElementById('btnDoReset')?.addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail')?.value.trim();
+  if(!email){ toast?.('Enter your email first'); return; }
+  try{
+    await sendPasswordResetEmail(auth, email);
+    toast?.('Reset email sent');
+    document.getElementById('authModal')?.close();
+  }catch(e){ console.warn(e); toast?.('Reset failed'); }
+});
+
+// Logout
+document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
+  try{ await signOut(auth); toast?.('Signed out'); } catch(e){ console.warn(e); }
+});
+
+function showShopGrid(title, opts={}) {
+  const shopTitle = document.getElementById("shopTitle");
+  if (shopTitle) shopTitle.textContent = title || "Shop";
+  switchView?.("shop");
+  renderGrid?.(opts);
 }
 
 // === Part 8: Product Modal ===
@@ -1210,14 +1295,14 @@ async function checkAdmin(user) {
 }
 
 // Greeting
-function updateGreet() {
-  const el = document.getElementById("greet");
-  if (!el) return;
-  if (state.user) {
-    const name = state.user.displayName || state.user.email || "there";
-    el.textContent = `Hi, ${String(name).split("@")[0]}`;
-  } else {
-    el.textContent = "";
+function updateGreet(){
+  const el = document.getElementById('greet');
+  if(!el) return;
+  if(state.user){
+    const name = state.user.displayName || state.user.email || 'there';
+    el.textContent = `Hi, ${String(name).split('@')[0]}`;
+  }else{
+    el.textContent = '';
   }
 }
 
@@ -1437,30 +1522,26 @@ function fillCategoriesOnce() {
   });
 }
 
-function init() {
-  buildNavChips();
-  wireSearchInputs();
-  // home & shop
-  renderHomeSections();
-  showShopGrid("All Categories");
-  // products first
-  fillCategoriesOnce();
-//   loadProductsPage();
-  // misc
-  updateCartCount();
-  fetchPromos();
+function init(){
+  buildNavChips?.();
+  wireSearchInputs?.();
+  renderHomeSections?.();
+  // currentCategory = ""; showShopGrid("All");  // (optional) first open grid
+  updateCartCount?.();
+  fetchPromos?.();
 
-  // [data-close] already handled globally above; keep this if you want explicit
-  $$("[data-close]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-close");
-      document.getElementById(id)?.close();
+  // [data-close] buttons
+  document.querySelectorAll('[data-close]')?.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id=btn.getAttribute('data-close'); document.getElementById(id)?.close();
     });
   });
 }
+init();
 
 document.addEventListener("DOMContentLoaded", init);
 
-const adminChip = [...document.getElementById('navScroll').children]
-  .find(b=>b.textContent?.includes('Analytics'));
-if (adminChip) adminChip.style.display = state.isAdmin ? '' : 'none';
+const adminChip = [...document.getElementById("navScroll").children].find((b) =>
+  b.textContent?.includes("Analytics")
+);
+if (adminChip) adminChip.style.display = state.isAdmin ? "" : "none";
