@@ -74,7 +74,7 @@ strong,.strong{font-weight:700}
   border-bottom:1px solid var(--border)
 }
 
-/* Filters (kept for potential anchor) */
+/* Filters */
 .filters{padding:.8rem; border-bottom:1px solid var(--border); background:rgba(10,15,22,.5); backdrop-filter:blur(6px)}
 .row{display:flex; gap:.6rem; align-items:center}
 .wrap{flex-wrap:wrap}
