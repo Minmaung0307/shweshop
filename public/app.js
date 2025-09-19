@@ -842,12 +842,6 @@ function showShopGrid(title, opts = {}) {
   renderGrid(opts);
 }
 
-// sections → See all
-sec.querySelector("[data-see]")?.addEventListener("click", () => {
-  currentCategory = cat;
-  showShopGrid(cat);
-});
-
 // === Part 8: Product Modal ===
 function openProduct(p) {
   // product images (fallback if empty)
