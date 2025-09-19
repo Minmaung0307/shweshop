@@ -732,6 +732,17 @@ function renderGrid(opts = {}) {
   });
 }
 
+function showShopGrid(cat) {
+  currentCategory = cat || "all";
+  // grid UI ပြသ (home page ဖျောက်)
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  const shopView = document.getElementById("view-shop");
+  shopView?.classList.add("active");
+
+  // grid ထဲမှာ products ပြ
+  renderGrid();
+}
+
 // === Part 8: Product Modal ===
 function openProduct(p) {
   // inside openProduct(p)
