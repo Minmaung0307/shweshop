@@ -662,40 +662,33 @@ function renderHomeSections() {
 }
 
 // === Part 7B: Shop grid ===
-function showShopGrid(title, opts = {}) {
-  shopTitle && (shopTitle.textContent = title || "Shop");
-  switchView("shop");
-  renderGrid(opts);
-}
-
 function renderGrid(opts = {}) {
-  const q = getSearchQuery();
-  const cat = currentCategory.trim().toLowerCase();
-  const aud = currentAudience;
+  const q   = getSearchQuery?.() || "";
+  const cat = (currentCategory || "").trim().toLowerCase();
+  const aud = currentAudience || "all";
 
-  const imc = card.querySelector("img.thumb");
-  withImgFallback(imc, p.img, true);
-
-  if (!grid) {
-    return;
-  }
+  if (!grid) return;
   grid.innerHTML = "";
+
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
-    const okCat = !cat || p.cat.toLowerCase() === cat;
-    const hay = (p.title + " " + (p.desc || "")).toLowerCase();
-    const okQ = !q || hay.includes(q);
+    const okCat = !cat || (p.cat || "").toLowerCase() === cat;
+    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ   = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
     const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
     return okCat && okQ && okAud && okTag;
   });
 
+  if (!filtered.length) {
+    grid.innerHTML = `<p class="small">No products found.</p>`;
+    return;
+  }
+
   filtered.forEach((p) => {
     const card = h("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="thumb" src="${p.img}" alt="${
-      p.title
-    }" width="600" height="600" loading="lazy" decoding="async">
+      <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
         <div class="card-title">${p.title}</div>
         <div class="row between">
@@ -708,32 +701,35 @@ function renderGrid(opts = {}) {
         </div>
       </div>
     `;
-    $(".btn", card)?.addEventListener("click", () => openProduct(p));
-    $("img", card)?.addEventListener("click", () => openProduct(p));
+
+    // ✅ image fallback (no 404)
+    const imc = card.querySelector("img.thumb");
+    if (imc) withImgFallback(imc, p.img, true);
+
+    // open product
+    card.querySelector(".btn")?.addEventListener("click", () => openProduct(p));
+    card.querySelector("img.thumb")?.addEventListener("click", () => openProduct(p));
+
+    // item-level promo
     const [promoInput, promoBtn] = card.querySelectorAll(".promo-inline > *");
     promoBtn?.addEventListener("click", () => {
       const code = (promoInput?.value || "").trim().toUpperCase();
       const rule = PROMO_MAP[code] || null;
       if (!code) {
-        delete state.itemPromos[p.id];
+        delete state.itemPromos?.[p.id];
         toast("Promo cleared");
         renderCart?.();
         return;
       }
-      if (!rule) {
-        toast("Invalid code");
-        return;
-      }
+      if (!rule) { toast("Invalid code"); return; }
+      if (!state.itemPromos) state.itemPromos = {};
       state.itemPromos[p.id] = { code, ...rule };
       toast(`Promo ${code} applied to ${p.title}`);
       renderCart?.();
     });
+
     grid.appendChild(card);
   });
-
-  if (!filtered.length) {
-    grid.innerHTML = `<p class="small">No products found.</p>`;
-  }
 }
 
 // === Part 8: Product Modal ===
