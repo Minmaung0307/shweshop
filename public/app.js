@@ -106,49 +106,66 @@ function withImgFallback(imgEl, src, isThumb = false, seed = "default") {
 }
 
 // === Horizontal drag-scroll for carousels ===
-function makeDragScroll(container){
-  if(!container) return;
-  let isDown = false, startX = 0, startY = 0, scrollLeft = 0;
+function makeDragScroll(container) {
+  if (!container) return;
+  let isDown = false,
+    startX = 0,
+    startY = 0,
+    scrollLeft = 0;
   const onDown = (e) => {
     isDown = true;
-    container.classList.add('dragging');
-    startX = ('touches' in e ? e.touches[0].pageX : e.pageX);
-    startY = ('touches' in e ? e.touches[0].pageY : e.pageY);
+    container.classList.add("dragging");
+    startX = "touches" in e ? e.touches[0].pageX : e.pageX;
+    startY = "touches" in e ? e.touches[0].pageY : e.pageY;
     scrollLeft = container.scrollLeft;
   };
   const onMove = (e) => {
-    if(!isDown) return;
-    const x = ('touches' in e ? e.touches[0].pageX : e.pageX);
-    const y = ('touches' in e ? e.touches[0].pageY : e.pageY);
+    if (!isDown) return;
+    const x = "touches" in e ? e.touches[0].pageX : e.pageX;
+    const y = "touches" in e ? e.touches[0].pageY : e.pageY;
     const dx = x - startX;
     const dy = y - startY;
-    if(Math.abs(dx) > Math.abs(dy)) {
+    if (Math.abs(dx) > Math.abs(dy)) {
       e.preventDefault(); // prevent page scroll
       container.scrollLeft = scrollLeft - dx;
     }
   };
-  const onUp = () => { isDown = false; container.classList.remove('dragging'); };
-  container.addEventListener('mousedown', onDown);
-  container.addEventListener('mousemove', onMove);
-  container.addEventListener('mouseup', onUp);
-  container.addEventListener('mouseleave', onUp);
-  container.addEventListener('touchstart', onDown, { passive:false });
-  container.addEventListener('touchmove', onMove, { passive:false });
-  container.addEventListener('touchend', onUp);
+  const onUp = () => {
+    isDown = false;
+    container.classList.remove("dragging");
+  };
+  container.addEventListener("mousedown", onDown);
+  container.addEventListener("mousemove", onMove);
+  container.addEventListener("mouseup", onUp);
+  container.addEventListener("mouseleave", onUp);
+  container.addEventListener("touchstart", onDown, { passive: false });
+  container.addEventListener("touchmove", onMove, { passive: false });
+  container.addEventListener("touchend", onUp);
 }
 
 // === Attach arrows (< >) & drag to a section ===
-function attachCarouselControls(sec){
-  const cont = sec.querySelector('.hlist');
-  if(!cont) return;
+function attachCarouselControls(sec) {
+  const cont = sec.querySelector(".hlist");
+  if (!cont) return;
   // arrows
-  if(!sec.querySelector('.sec-nav.prev')){
-    const prev = h('button'); prev.className = 'sec-nav prev'; prev.setAttribute('aria-label','Previous'); prev.textContent = '‹';
-    const next = h('button'); next.className = 'sec-nav next'; next.setAttribute('aria-label','Next');     next.textContent = '›';
-    sec.appendChild(prev); sec.appendChild(next);
+  if (!sec.querySelector(".sec-nav.prev")) {
+    const prev = h("button");
+    prev.className = "sec-nav prev";
+    prev.setAttribute("aria-label", "Previous");
+    prev.textContent = "‹";
+    const next = h("button");
+    next.className = "sec-nav next";
+    next.setAttribute("aria-label", "Next");
+    next.textContent = "›";
+    sec.appendChild(prev);
+    sec.appendChild(next);
     const step = () => Math.max(160, Math.round(cont.clientWidth * 0.9));
-    prev.addEventListener('click', ()=> cont.scrollBy({ left: -step(), behavior:'smooth' }));
-    next.addEventListener('click', ()=> cont.scrollBy({ left:  step(), behavior:'smooth' }));
+    prev.addEventListener("click", () =>
+      cont.scrollBy({ left: -step(), behavior: "smooth" })
+    );
+    next.addEventListener("click", () =>
+      cont.scrollBy({ left: step(), behavior: "smooth" })
+    );
   }
   // drag
   makeDragScroll(cont);
@@ -597,8 +614,8 @@ function onNavClick(item, btn) {
 }
 
 function switchView(name) {
-  $$(".view").forEach((v) => v.classList.remove("active"));
-  $("#view-" + name)?.classList.add("active");
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document.getElementById("view-" + name)?.classList.add("active");
 }
 
 // === Part 6: Search sync ===
@@ -614,6 +631,17 @@ function wireSearchInputs() {
   searchInputDesktop?.addEventListener("input", handler);
   searchInputMobile?.addEventListener("input", () => {
     if (searchInputDesktop) searchInputDesktop.value = searchInputMobile.value;
+    handler();
+  });
+}
+
+function wireSearchInputs() {
+  const handler = () => {
+    showShopGrid(currentCategory || "All Categories");
+  };
+  searchInputDesktop?.addEventListener("input", handler);
+  searchInputMobile?.addEventListener("input", () => {
+    searchInputDesktop.value = searchInputMobile.value;
     handler();
   });
 }
@@ -819,18 +847,17 @@ function renderGrid(opts = {}) {
   });
 }
 
-function showShopGrid(cat) {
-  currentCategory = cat || "all";
-  // grid UI ပြသ (home page ဖျောက်)
-  document
-    .querySelectorAll(".view")
-    .forEach((v) => v.classList.remove("active"));
-  const shopView = document.getElementById("view-shop");
-  shopView?.classList.add("active");
-
-  // grid ထဲမှာ products ပြ
-  renderGrid();
+function showShopGrid(title, opts = {}) {
+  shopTitle.textContent = title || "Shop";
+  switchView("shop");
+  renderGrid(opts);
 }
+
+// sections → See all
+sec.querySelector("[data-see]")?.addEventListener("click", () => {
+  currentCategory = cat;
+  showShopGrid(cat);
+});
 
 // === Part 8: Product Modal ===
 function openProduct(p) {
@@ -1188,26 +1215,37 @@ async function checkAdmin(user) {
   return state.isAdmin;
 }
 
+// BOOTSTRAP: make this email admin temporarily (remove after you set Firestore role)
+if (user?.email === "minmaung0307@gmail.com") {
+  state.isAdmin = true;
+}
+updateGreet();
+updateAdminUI?.();
+
 // Greeting
-function updateGreet(){
-  const el = document.getElementById('greet');
-  if(!el) return;
-  if(state.user){
-    const name = state.user.displayName || state.user.email || 'there';
-    el.textContent = `Hi, ${String(name).split('@')[0]}`;
-  }else{
-    el.textContent = '';
+function updateGreet() {
+  const el = document.getElementById("greet");
+  if (!el) return;
+  if (state.user) {
+    const name = state.user.displayName || state.user.email || "there";
+    el.textContent = `Hi, ${String(name).split("@")[0]}`;
+  } else {
+    el.textContent = "";
   }
 }
 
 // Logout button toggle + action
-const btnLogout = document.getElementById('btnLogout');
-btnLogout?.addEventListener('click', async ()=>{
-  try{
-    const { signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+const btnLogout = document.getElementById("btnLogout");
+btnLogout?.addEventListener("click", async () => {
+  try {
+    const { signOut } = await import(
+      "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"
+    );
     await signOut(auth);
-    toast('Signed out');
-  }catch(e){ console.warn('signout failed', e); }
+    toast("Signed out");
+  } catch (e) {
+    console.warn("signout failed", e);
+  }
 });
 
 // sign-in button (if any)
@@ -1220,21 +1258,31 @@ $("#btnUser")?.addEventListener("click", async () => {
   await signInWithRedirect(auth, provider); // avoids popup COOP warnings
 });
 
-onAuthStateChanged(auth, async (user)=>{
+// Sign-in (redirect များအောင် popup error မတက်အောင်)
+document.getElementById("btnUser")?.addEventListener("click", async () => {
+  if (state.user) {
+    toast("Already signed in");
+    return;
+  }
+  const provider = new GoogleAuthProvider();
+  await signInWithRedirect(auth, provider);
+});
+
+// Auth state → UI refresh
+onAuthStateChanged(auth, async (user) => {
   state.user = user || null;
-  if(user){
+  if (user) {
     await ensureUser(user);
     await checkAdmin(user);
-  }else{
+  } else {
     state.isAdmin = false;
   }
   updateGreet();
   renderMember?.();
   updateAdminUI?.();
-
-  // show/hide logout button
-  const out = document.getElementById('btnLogout');
-  if(out) out.style.display = state.user ? '' : 'none';
+  // toggle logout visibility
+  const out = document.getElementById("btnLogout");
+  if (out) out.style.display = state.user ? "" : "none";
 });
 
 // Cart open/close
@@ -1420,3 +1468,7 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+const adminChip = [...document.getElementById('navScroll').children]
+  .find(b=>b.textContent?.includes('Analytics'));
+if (adminChip) adminChip.style.display = state.isAdmin ? '' : 'none';
