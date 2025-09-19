@@ -20,19 +20,38 @@ import {
   limit,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// Open auth mini modal
+document.getElementById('btnUser')?.addEventListener('click', ()=>{
+  if(state.user){ return toast('Already signed in'); }
+  document.getElementById('authModal')?.showModal();
+});
+
+// Google sign-in (redirect ကို သုံး—popup warn မတက်)
+import { GoogleAuthProvider, signInWithRedirect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+document.getElementById('btnGoogle')?.addEventListener('click', async ()=>{
+  const provider = new GoogleAuthProvider();
+  try {
+    await signInWithRedirect(auth, provider);
+  } catch (e) {
+    console.warn('sign-in failed', e);
+    toast('Sign-in failed. Check API keys / authorized domains.');
+  }
+});
+
 // TODO: replace with your own config
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "shweshop-mm.web.app",
+export const firebaseConfig = {
+  apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+  authDomain: "shweshop-mm.firebaseapp.com",
   projectId: "shweshop-mm",
-  storageBucket: "shweshop-mm.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID",
+  storageBucket: "shweshop-mm.firebasestorage.app",
+  messagingSenderId: "361216212375",
+  appId: "1:361216212375:web:fed19b7fe4072000c298d2",
+  measurementId: "G-WBJJZZNLX6",
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 // Chart.js is loaded via <script> in HTML
 
@@ -129,6 +148,99 @@ const DEMO_PRODUCTS = [
     images: ["images/products/all/n6/main.jpg"],
     desc: "5m RGB",
   },
+  // Fashion (Men)
+  { id:'m101', title:'Men Running Shorts', price:18, cat:'Fashion', aud:'men',
+    img:'images/products/men/m101/thumb.jpg',
+    images:['images/products/men/m101/main.jpg','images/products/men/m101/1.jpg','images/products/men/m101/2.jpg'],
+    desc:'Lightweight quick-dry shorts', specs:['100% polyester','Drawstring','2 pockets'], new:true },
+  { id:'m102', title:'Men Graphic Tee', price:14.5, cat:'Fashion', aud:'men',
+    img:'images/products/men/m102/thumb.jpg',
+    images:['images/products/men/m102/main.jpg','images/products/men/m102/1.jpg'],
+    desc:'Soft cotton tee', specs:['100% cotton','Regular fit','Machine washable'] },
+
+  // Fashion (Women)
+  { id:'w201', title:'Women Yoga Mat', price:22, cat:'Beauty', aud:'women',
+    img:'images/products/women/w201/thumb.jpg',
+    images:['images/products/women/w201/main.jpg','images/products/women/w201/1.jpg'],
+    desc:'Non-slip TPE yoga mat', specs:['183×61cm','6mm thick'], new:true },
+  { id:'w202', title:'Women Tote Bag', price:19, cat:'Fashion', aud:'women',
+    img:'images/products/women/w202/thumb.jpg',
+    images:['images/products/women/w202/main.jpg'],
+    desc:'Everyday canvas tote', specs:['Canvas','Inner pocket'] },
+
+  // Kids / Baby
+  { id:'k301', title:'Kids Story Book', price:6, cat:'Baby', aud:'kids',
+    img:'images/products/kids/k301/thumb.jpg',
+    images:['images/products/kids/k301/main.jpg'],
+    desc:'Colorful bedtime tales', specs:['Hardcover','Ages 4-8'] },
+  { id:'k302', title:'Kids Water Bottle', price:9, cat:'Baby', aud:'kids',
+    img:'images/products/kids/k302/thumb.jpg',
+    images:['images/products/kids/k302/main.jpg'],
+    desc:'Leak-proof bottle', specs:['BPA-free','350ml'] },
+
+  // Pets
+  { id:'p401', title:'Pet Chew Toy', price:7, cat:'Pets', aud:'pets',
+    img:'images/products/pets/p401/thumb.jpg',
+    images:['images/products/pets/p401/main.jpg'],
+    desc:'Durable rubber toy', specs:['Teething safe','Dishwasher safe'] },
+  { id:'p402', title:'Pet Bed (S)', price:24, cat:'Pets', aud:'pets',
+    img:'images/products/pets/p402/thumb.jpg',
+    images:['images/products/pets/p402/main.jpg'],
+    desc:'Cozy plush bed', specs:['50×40cm','Anti-slip bottom'] },
+
+  // Auto
+  { id:'a501', title:'Car Phone Mount', price:9, cat:'Auto', aud:'all',
+    img:'images/products/auto/a501/thumb.jpg',
+    images:['images/products/auto/a501/main.jpg'],
+    desc:'360° rotation mount', specs:['Vent-clip','One-click lock'] },
+  { id:'a502', title:'Microfiber Wash Mitt', price:5.5, cat:'Auto', aud:'all',
+    img:'images/products/auto/a502/thumb.jpg',
+    images:['images/products/auto/a502/main.jpg'],
+    desc:'Scratch-free wash', specs:['Microfiber','Elastic cuff'] },
+
+  // Home
+  { id:'h601', title:'Home LED Strip 5m', price:12, cat:'Home', aud:'all',
+    img:'images/products/home/h601/thumb.jpg',
+    images:['images/products/home/h601/main.jpg'],
+    desc:'RGB with remote', specs:['5m','USB powered'], new:true },
+  { id:'h602', title:'Aroma Diffuser', price:16, cat:'Home', aud:'all',
+    img:'images/products/home/h602/thumb.jpg',
+    images:['images/products/home/h602/main.jpg'],
+    desc:'Ultrasonic diffuser', specs:['300ml','Auto-off'] },
+
+  // Beauty
+  { id:'b701', title:'Face Sheet Mask (5)', price:8, cat:'Beauty', aud:'women',
+    img:'images/products/beauty/b701/thumb.jpg',
+    images:['images/products/beauty/b701/main.jpg'],
+    desc:'Hydrating masks', specs:['Hyaluronic','5 sheets'] },
+  { id:'b702', title:'Men Face Wash', price:7.5, cat:'Beauty', aud:'men',
+    img:'images/products/beauty/b702/thumb.jpg',
+    images:['images/products/beauty/b702/main.jpg'],
+    desc:'Oil-control cleanser', specs:['150ml','Daily use'] },
+
+  // Electronics (New Arrivals tag demo)
+  { id:'e801', title:'Wireless Earbuds', price:25, cat:'Electronics', aud:'all',
+    img:'images/products/all/e801/thumb.jpg',
+    images:['images/products/all/e801/main.jpg','images/products/all/e801/1.jpg'],
+    desc:'ENC mic + 20h battery', specs:['BT 5.3','USB-C'], new:true },
+  { id:'e802', title:'Power Bank 10,000mAh', price:15, cat:'Electronics', aud:'all',
+    img:'images/products/all/e802/thumb.jpg',
+    images:['images/products/all/e802/main.jpg'],
+    desc:'Slim + fast charge', specs:['10Ah','Type-C in/out'] },
+
+  // Fashion (Kids Men Women extra)
+  { id:'m103', title:'Men Hoodie', price:28, cat:'Fashion', aud:'men',
+    img:'images/products/men/m103/thumb.jpg',
+    images:['images/products/men/m103/main.jpg'],
+    desc:'Fleece lined', specs:['Poly-cotton','Front pocket'] },
+  { id:'w203', title:'Women Leggings', price:17, cat:'Fashion', aud:'women',
+    img:'images/products/women/w203/thumb.jpg',
+    images:['images/products/women/w203/main.jpg'],
+    desc:'High-waist stretch', specs:['Nylon/Spandex'] },
+  { id:'k303', title:'Kids Sneakers', price:21, cat:'Fashion', aud:'kids',
+    img:'images/products/kids/k303/thumb.jpg',
+    images:['images/products/kids/k303/main.jpg'],
+    desc:'Lightweight runners', specs:['Sizes 28–34'] }
   // Add more as needed...
 ];
 
@@ -285,46 +397,65 @@ function wireSearchInputs() {
 }
 
 // === Part 7A: Home sections ===
-function renderHomeSections() {
-  const catsAll = Array.from(
-    new Set((DEMO_PRODUCTS || []).map((p) => p.cat))
-  ).filter(Boolean);
-  if (!homeSections) return;
-  homeSections.innerHTML = "";
+// --- Ad inventory demo ---
+const ADS = [
+  { img:'images/ads/sale-fashion.jpg',  text:'Mid-season Sale • Fashion up to 40%', href:'#' },
+  { img:'images/ads/new-arrivals.jpg',  text:'New Arrivals • Fresh picks today',    href:'#' },
+  { img:'images/ads/home-deals.jpg',    text:'Home Deals • Lights & Decor',        href:'#' },
+  { img:'images/ads/pets-care.jpg',     text:'Pets Care • Toys & Beds',            href:'#' }
+];
 
-  catsAll.forEach((cat, idx) => {
-    const list = (DEMO_PRODUCTS || []).filter((p) => {
-      const okAud =
-        currentAudience === "all" ? true : (p.aud || "all") === currentAudience;
-      return okAud && p.cat === cat;
+function renderHomeSections(){
+  const catsAll = Array.from(new Set((DEMO_PRODUCTS||[]).map(p=>p.cat))).filter(Boolean);
+  if(!homeSections) return;
+  homeSections.innerHTML = '';
+
+  catsAll.forEach((cat, idx)=>{
+    const list = (DEMO_PRODUCTS||[]).filter(p=>{
+      const okAud = currentAudience==='all' ? true : (p.aud||'all')===currentAudience;
+      return okAud && p.cat===cat;
     });
-    if (!list.length) return;
+    if(!list.length) return;
 
-    const sec = h("div");
-    sec.className = "section";
+    const sec = document.createElement('div'); sec.className='section';
     sec.innerHTML = `
       <div class="section-head">
         <div class="strong">${cat}</div>
         <button class="btn btn-soft btn-mini" data-see="${cat}">See all</button>
       </div>
       <div class="hlist"></div>
-      ${idx % 2 ? `<div class="ad-slot">Ad space — your brand here</div>` : ``}
+      <div class="ad-slot">
+        <a class="ad-link" target="_blank" rel="noopener">
+          <img class="ad-img" alt="">
+          <span class="ad-text"></span>
+        </a>
+      </div>
     `;
-    const cont = $(".hlist", sec);
-    list.slice(0, 12).forEach((p) => {
-      const item = h("div");
-      item.className = "hitem";
+    const cont = sec.querySelector('.hlist');
+    list.slice(0,12).forEach(p=>{
+      const item = document.createElement('div'); item.className='hitem';
       item.innerHTML = `
-        <img class="thumb" src="${p.img}" alt="${
-        p.title
-      }" loading="lazy" decoding="async">
+        <img class="thumb" src="${p.img}" alt="${p.title}" loading="lazy" decoding="async">
         <div class="small strong" style="margin-top:.4rem">${p.title}</div>
         <div class="small">${fmt(p.price)}</div>
       `;
-      $("img", item)?.addEventListener("click", () => openProduct(p));
+      item.querySelector('img')?.addEventListener('click', ()=>openProduct(p));
       cont?.appendChild(item);
     });
-    sec.querySelector("[data-see]")?.addEventListener("click", () => {
+
+    // fill ad
+    const ad = ADS[idx % ADS.length];
+    const a  = sec.querySelector('.ad-link');
+    const ai = sec.querySelector('.ad-img');
+    const at = sec.querySelector('.ad-text');
+    if(a && ai && at){
+      a.href = ad.href || '#';
+      ai.src = ad.img; ai.alt = ad.text; ai.style.maxHeight = '68px';
+      at.textContent = ' ' + ad.text;
+      a.style.display = 'inline-flex'; a.style.alignItems = 'center'; a.style.gap = '.6rem';
+    }
+
+    sec.querySelector('[data-see]')?.addEventListener('click', ()=>{
       currentCategory = cat;
       showShopGrid(cat);
     });
@@ -773,6 +904,17 @@ onAuthStateChanged(auth, async (user) => {
   updateGreet();
   renderMember();
   updateAdminUI();
+});
+
+// Cart open/close
+const cartDrawer = document.getElementById('cartDrawer');
+document.getElementById('btnCart')?.addEventListener('click', ()=> cartDrawer?.classList.add('open'));
+document.getElementById('closeCart')?.addEventListener('click', ()=> cartDrawer?.classList.remove('open'));
+
+// Click outside main → close cart (optional)
+document.addEventListener('click', (e)=>{
+  const inside = e.target.closest('#cartDrawer, #btnCart');
+  if(!inside) cartDrawer?.classList.remove('open');
 });
 
 // === Part 13: Init ===
