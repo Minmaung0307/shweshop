@@ -1,29 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>ShweShop — Mobile-first Store</title>
     <link rel="stylesheet" href="./styles.css" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <script
-      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-      defer
-    ></script>
-    <!-- Replace client-id -->
-    <script
-      src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD"
-      defer
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
-      defer
-    ></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <!-- Replace client-id in production -->
+    <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD" defer></script>
+    <!-- Config (exports auth, db) -->
     <script type="module" src="./config.js"></script>
+    <!-- App -->
+    <script type="module" src="./app.js" defer></script>
   </head>
   <body>
     <!-- Topbar -->
@@ -35,15 +25,13 @@
 
       <!-- Desktop center search -->
       <div class="top-search">
-        <input id="searchInput" class="input" placeholder="Search products…" />
+        <input id="searchInput" class="input" placeholder="Search products…" aria-label="Search products" />
       </div>
 
       <div class="top-actions">
         <button id="btnCart" class="icon-btn badge" aria-label="Cart">
-          🛒 <span id="cartCount" class="badge-dot">0</span>
+          🛒 <span id="cartCount" class="badge-dot"></span>
         </button>
-        <!-- topbar right side (where user icons are) -->
-        <span id="greet" class="small"></span>
         <button id="btnAuth" class="icon-btn" title="Sign in">👤</button>
         <button id="btnTheme" class="icon-btn" title="Theme">🌓</button>
         <div class="fs-switch">
@@ -55,63 +43,27 @@
 
     <!-- Mobile second-line search -->
     <div class="top-search-row">
-      <input
-        id="searchInputMobile"
-        class="input"
-        placeholder="Search products…"
-      />
+      <input id="searchInputMobile" class="input" placeholder="Search products…" aria-label="Search products mobile"/>
     </div>
 
-    <!-- Horizontal chips / menu -->
-    <nav id="navScroll" class="nav-scroll hscroll">
-      <div class="nav-header">
-        <div class="nav-title">Menu</div>
-        <button id="closeSidebar" class="icon-btn">✕</button>
-      </div>
-      <div class="nav-body">
-        <div class="member-card">
-          <div class="row between">
-            <div>
-              <div class="member-title">Membership</div>
-              <div class="member-sub">2%/3% cashback all year</div>
-            </div>
-            <button id="btnMembership" class="btn btn-outline btn-soft">
-              Membership
-            </button>
-            ">
-          </div>
-          <!-- renamed to match app.js -->
-          <div
-            id="memberBadge"
-            class="member-status"
-            style="display: none"
-          ></div>
-        </div>
-        <hr />
-        <div class="nav-links">
-          <button data-view="shop" class="link active">🛍️ Shop</button>
-          <button data-view="analytics" class="link">📈 Analytics</button>
-          <button data-view="orders" class="link">🧾 Orders</button>
-          <button data-view="about" class="link">ℹ️ About</button>
-        </div>
-      </div>
-    </nav>
+    <!-- Horizontal nav-chips -->
+    <nav id="navScroll" class="nav-scroll hscroll"></nav>
 
     <main id="main">
       <!-- Hero -->
       <section class="hero">
         <div>
           <h1>Find your favorites</h1>
-          <p>Modern • Clean • Fast — Mobile first shopping</p>
+          <p>Modern • Clean • Fast — Mobile-first shopping</p>
         </div>
       </section>
 
-      <!-- Home sections (per-category carousels + ad slots) -->
+      <!-- Category carousels + ads -->
       <section id="homeSections" class="home-sections"></section>
 
-      <!-- Full Shop Grid -->
+      <!-- Shop (search results show here at top of page) -->
       <section id="view-shop" class="view active">
-        <h2 id="shopTitle" class="pad">All Categories</h2>
+        <h2 id="shopTitle" class="pad">Shop</h2>
         <div id="productGrid" class="grid"></div>
       </section>
 
@@ -121,7 +73,7 @@
           <div class="pad">
             <div class="row between">
               <div class="card-title">Sales Overview</div>
-              <select id="anaRange" class="input" style="max-width: 160px">
+              <select id="anaRange" class="input" style="max-width:160px">
                 <option value="30">Last 30 days</option>
                 <option value="90">Last 90 days</option>
                 <option value="365" selected>Last 12 months</option>
@@ -145,51 +97,64 @@
         <div id="ordersList" class="stack"></div>
       </section>
 
-      <!-- Cart view (show as a full page) -->
-      <!-- CART PAGE -->
+      <!-- Cart page -->
       <section id="view-cart" class="view">
         <div class="card">
           <div class="pad">
             <div class="row between">
               <h3 class="card-title">Your Cart</h3>
-              <button class="btn-soft" onclick="switchView('shop')">
-                ← Continue shopping
-              </button>
+              <button class="btn-soft" onclick="switchView('shop')">← Continue shopping</button>
             </div>
 
             <div id="cartPageList" class="stack"></div>
 
-            <div
-              class="row between"
-              style="margin-top: 1rem; align-items: flex-end"
-            >
+            <div class="row between" style="margin-top:1rem;align-items:flex-end">
               <div>
                 <div class="small">Promo (optional)</div>
-                <div class="row" style="gap: 0.5rem">
-                  <input
-                    id="cartPromo"
-                    class="input"
-                    placeholder="Promo code"
-                  />
+                <div class="row" style="gap:.5rem;">
+                  <input id="cartPromo" class="input" placeholder="Promo code" />
                   <button id="applyCartPromo" class="btn-mini">Apply</button>
                 </div>
               </div>
-              <div style="text-align: right">
+              <div style="text-align:right">
                 <div class="small">Subtotal</div>
                 <div id="cartSubtotal" class="price">$0.00</div>
                 <div class="small">Estimated delivery</div>
                 <div id="cartShip" class="price">$0.00</div>
-                <div class="strong" style="margin-top: 0.4rem">Total</div>
-                <div id="cartTotal" class="price" style="font-size: 1.35rem">
-                  $0.00
-                </div>
-                <div class="row" style="gap: 0.5rem; margin-top: 0.6rem">
+                <div class="strong" style="margin-top:.4rem">Total</div>
+                <div id="cartTotal" class="price" style="font-size:1.35rem">$0.00</div>
+                <div class="row" style="gap:.5rem;margin-top:.6rem">
                   <select id="cartFulfill" class="input">
                     <option value="delivery">Delivery</option>
                     <option value="pickup">Store pickup</option>
                   </select>
                   <button id="btnCheckout" class="btn">Checkout</button>
                 </div>
+              </div>
+            </div>
+
+            <!-- PayPal buttons render here when clicking Checkout -->
+            <div id="paypal-button-container" style="margin-top:1rem"></div>
+
+            <!-- Delivery / Pickup details -->
+            <div class="deliver-box">
+              <div class="strong">Delivery Options</div>
+              <label class="radio"><input type="radio" name="dopt" value="delivery" checked />Delivery</label>
+              <div id="deliveryFields" class="stack">
+                <input id="addrLine" class="input" placeholder="Address line" />
+                <div class="row">
+                  <input id="addrCity" class="input" placeholder="City" />
+                  <input id="addrZip" class="input" placeholder="ZIP" />
+                </div>
+                <input id="addrPhone" class="input" placeholder="Phone" />
+              </div>
+              <label class="radio"><input type="radio" name="dopt" value="pickup" />Store pickup</label>
+              <div id="pickupFields" class="stack" style="display:none">
+                <select id="pickupStore" class="input">
+                  <option>Downtown</option>
+                  <option>Yangon Central</option>
+                </select>
+                <p class="small">We’ll notify when ready.</p>
               </div>
             </div>
           </div>
@@ -199,17 +164,14 @@
       <!-- About -->
       <section id="view-about" class="view">
         <h2 class="pad">About ShweShop</h2>
-        <p class="pad">Demo app built with Firebase + PayPal + EmailJS.</p>
+        <p class="pad">Demo app built with Firebase + PayPal.</p>
       </section>
     </main>
 
-    <!-- Product Detail Modal -->
+    <!-- Product Modal -->
     <dialog id="productModal" class="modal">
       <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="productModal">
-          ✕
-        </button>
-
+        <button class="icon-btn modal-close" data-close="productModal">✕</button>
         <div class="product-detail">
           <div class="pd-media">
             <button id="pdPrev" class="icon-btn pd-nav">⟨</button>
@@ -217,32 +179,25 @@
             <button id="pdNext" class="icon-btn pd-nav">⟩</button>
             <div id="pdThumbs" class="thumbs"></div>
           </div>
-
           <div class="pd-info">
             <h3 id="pdTitle"></h3>
             <p id="pdPrice" class="price"></p>
             <p id="pdDesc" class="desc"></p>
             <ul id="pdSpecs" class="disc small"></ul>
-
             <div class="info-box small">
               <div>🚚 Shipping: 2–5 days (standard)</div>
               <div>↩️ Returns: 30-day return policy</div>
-              <div>💬 Questions? support@shweshop.example</div>
             </div>
-
             <div class="row">
               <label class="lbl">Qty</label>
               <input id="pdQty" class="input" type="number" min="1" value="1" />
             </div>
             <div class="row">
               <button id="pdAdd" class="btn">Add to Cart</button>
-              <button class="btn btn-soft" data-close="productModal">
-                Close
-              </button>
+              <button class="btn btn-soft" data-close="productModal">Close</button>
             </div>
           </div>
         </div>
-
         <div class="related">
           <h4>Customers also viewed</h4>
           <div id="relatedGrid" class="related-grid"></div>
@@ -253,217 +208,50 @@
     <!-- Membership Modal -->
     <dialog id="memberModal" class="modal">
       <div class="modal-body">
-        <button class="close" data-close="memberModal" aria-label="Close">
-          ✕
-        </button>
+        <button class="close" data-close="memberModal" aria-label="Close">✕</button>
         <h3 class="card-title">Membership</h3>
-        <p class="modal-desc">
-          Create an account and choose a plan. Cashback applies to every order
-          for one year.
-        </p>
-
-        <div class="stack" style="margin: 1rem 0">
-          <label class="radio"
-            ><input type="radio" name="mplan" value="basic" checked />
-            <span>Basic — <b>2% cashback</b> — <i>$9/year</i></span></label
-          >
-          <label class="radio"
-            ><input type="radio" name="mplan" value="plus" />
-            <span>Plus — <b>3% cashback</b> — <i>$19/year</i></span></label
-          >
-          <label class="radio"
-            ><input type="radio" name="mplan" value="pro" />
-            <span>Pro — <b>5% cashback</b> — <i>$39/year</i></span></label
-          >
+        <p class="modal-desc">Create an account and choose a plan. Cashback applies to every order for one year.</p>
+        <div class="stack" style="margin:1rem 0">
+          <label class="radio"><input type="radio" name="mplan" value="basic" checked />
+            <span>Basic — <b>2% cashback</b> — <i>$9/year</i></span></label>
+          <label class="radio"><input type="radio" name="mplan" value="plus" />
+            <span>Plus — <b>3% cashback</b> — <i>$19/year</i></span></label>
+          <label class="radio"><input type="radio" name="mplan" value="pro" />
+            <span>Pro — <b>5% cashback</b> — <i>$39/year</i></span></label>
         </div>
-
-        <div class="row between" style="margin: 0.6rem 0">
-          <label class="row" style="gap: 0.4rem; align-items: center">
-            <input type="checkbox" id="autoRenew" />
-            <span>Auto-renew yearly</span>
+        <div class="row between" style="margin:.6rem 0">
+          <label class="row" style="gap:.4rem;align-items:center">
+            <input type="checkbox" id="autoRenew" /> <span>Auto-renew yearly</span>
           </label>
-          <select id="payMethod" class="input" style="max-width: 180px">
+          <select id="payMethod" class="input" style="max-width:180px">
             <option value="paypal">PayPal</option>
             <option value="kbz">KBZ Pay</option>
             <option value="cbpay">CB Pay</option>
             <option value="ayar">Ayar Pay</option>
           </select>
         </div>
-
-        <button id="buyMembership" class="btn" style="width: 100%">
-          Continue
-        </button>
+        <button id="buyMembership" class="btn" style="width:100%">Continue</button>
       </div>
     </dialog>
 
-    <!-- Cart Drawer -->
-    <aside id="cartDrawer" class="drawer" aria-label="Cart drawer">
-      <div class="drawer-head">
-        <div class="title">Your Cart</div>
-        <button id="closeCart" class="icon-btn" aria-label="Close cart">
-          ✕
-        </button>
-      </div>
-      <div id="cartItems" class="drawer-body"></div>
-      <div class="drawer-foot">
-        <div class="row between strong">
-          <div>Subtotal</div>
-          <div id="subtotal">$0.00</div>
-        </div>
-        <div class="row between small">
-          <div>Promo</div>
-          <div id="promoAmount">-$0.00</div>
-        </div>
-        <div class="row between small">
-          <div>Member Discount</div>
-          <div id="memberDisc">-$0.00</div>
-        </div>
-        <hr />
-        <div class="row between total">
-          <div>Total</div>
-          <div id="grandTotal">$0.00</div>
-        </div>
-
-        <div class="stack pay-stack">
-          <div class="pay-tabs">
-            <button data-paytab="paypal" class="chip active">PayPal</button>
-            <button data-paytab="kbz" class="chip">KBZPay</button>
-            <button data-paytab="cb" class="chip">CBPay</button>
-            <button data-paytab="aya" class="chip">AyaPay</button>
-          </div>
-
-          <div id="payPanel-paypal" class="pay-panel active">
-            <div id="paypal-button-container"></div>
-          </div>
-
-          <div id="payPanel-kbz" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="kbzQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with KBZPay app</p>
-              <button id="kbzPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-
-          <div id="payPanel-cb" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="cbQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with CBPay app</p>
-              <button id="cbPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-
-          <div id="payPanel-aya" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="ayaQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with AyaPay app</p>
-              <button id="ayaPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Delivery / Pickup -->
-      <div class="deliver-box">
-        <div class="strong">Delivery Options</div>
-        <label class="radio"
-          ><input type="radio" name="dopt" value="delivery" checked />
-          Delivery</label
-        >
-        <div id="deliveryFields" class="stack">
-          <input id="addrLine" class="input" placeholder="Address line" />
-          <input id="addrCity" class="input" placeholder="City" />
-          <input id="addrPhone" class="input" placeholder="Phone" />
-          <input id="addrNote" class="input" placeholder="Note (optional)" />
-        </div>
-        <label class="radio"
-          ><input type="radio" name="dopt" value="pickup" /> Pickup</label
-        >
-        <div id="pickupFields" class="stack" style="display: none">
-          <select id="pickupStore" class="input">
-            <option value="downtown">Downtown Store</option>
-            <option value="north">North Store</option>
-          </select>
-          <input id="pickupTime" class="input" type="datetime-local" />
-        </div>
-      </div>
-    </aside>
-
-    <!-- Cart modal -->
-    <dialog id="cartModal" class="modal">
-      <div class="modal-body">
-        <button class="close" data-close="cartModal" aria-label="Close">
-          ✕
-        </button>
-        <h3 class="card-title">Your Cart</h3>
-        <div id="cartList" class="stack"></div>
-        <div class="row between" style="margin-top: 0.8rem">
-          <div class="strong">Total</div>
-          <div id="cartTotal" class="price">$0.00</div>
-        </div>
-        <div class="row gap" style="margin-top: 0.8rem">
-          <button id="btnCheckout" class="btn">Checkout</button>
-          <button class="btn btn-soft" data-close="cartModal">Close</button>
-        </div>
-      </div>
-    </dialog>
-
-    <!-- Auth mini modal -->
+    <!-- Auth Modal -->
     <dialog id="authModal" class="modal">
-      <button class="close" data-close="authModal" aria-label="Close">✕</button>
-      <div class="modal-body">
-        <h3 class="card-title">Sign in</h3>
-
-        <div class="input-group">
-          <label>Email</label>
-          <input
-            id="authEmail"
-            type="email"
-            placeholder="you@example.com"
-            class="input"
-          />
-        </div>
-        <div class="input-group">
-          <label>Password</label>
-          <input
-            id="authPass"
-            type="password"
-            placeholder="••••••••"
-            class="input"
-          />
-        </div>
-
-        <button
-          id="btnEmailLogin"
-          class="btn"
-          style="width: 100%; margin: 0.6rem 0"
-        >
-          Login
-        </button>
-
-        <div class="row between" style="margin-top: 0.4rem">
-          <button id="btnShowSignup" class="btn-soft">Create account</button>
-          <button id="btnShowReset" class="btn-outline">Forgot?</button>
-        </div>
-
-        <div id="signupRow" style="display: none; margin-top: 1rem">
-          <div class="row gap">
-            <button id="btnDoSignup" class="btn">Sign up</button>
-            <button data-close="authModal" class="btn-soft">Close</button>
+      <div class="modal-body" style="max-width:480px">
+        <button class="icon-btn modal-close" data-close="authModal">✕</button>
+        <h3 class="card-title">Welcome back</h3>
+        <p class="modal-desc">Sign in with email or continue with Google.</p>
+        <div class="stack" style="margin:.75rem 0">
+          <input id="email" class="input" type="email" placeholder="Email" />
+          <input id="password" class="input" type="password" placeholder="Password" />
+          <button id="btnEmailSignIn" class="btn">Sign in</button>
+          <div class="row between small">
+            <button id="btnCreate" class="btn-soft">Create account</button>
+            <button id="btnForgot" class="btn-soft">Forgot password</button>
           </div>
-        </div>
-
-        <div id="resetRow" style="display: none; margin-top: 1rem">
-          <p class="small">We will email a reset link.</p>
-          <div class="row gap">
-            <button id="btnDoReset" class="btn">Send reset email</button>
-            <button data-close="authModal" class="btn-soft">Close</button>
-          </div>
+          <hr />
+          <button id="btnGoogle" class="btn btn-outline">Continue with Google</button>
         </div>
       </div>
     </dialog>
-
-    <!-- App -->
-    <script type="module" src="./config.js"></script>
-    <script type="module" src="./app.js" defer></script>
   </body>
 </html>
