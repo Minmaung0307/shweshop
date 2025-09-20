@@ -2038,3 +2038,47 @@ onAuthStateChanged(auth, async (user) => {
   applyTheme();
   applyFs();
 })();
+
+
+// === Auth UI Toggle (robust) ===
+(function ensureAuthUIToggle(){
+  const btnAuth = document.getElementById("btnAuth");
+  const btnLogout = document.getElementById("btnLogout");
+
+  async function doLogout(){
+    try {
+      await signOut(auth);
+      console.log("Signed out");
+    } catch (e) {
+      console.warn("signOut failed", e);
+    }
+  }
+  btnLogout?.addEventListener("click", doLogout);
+  btnAuth?.addEventListener("click", ()=>{
+    if (window.state?.user) return;
+    document.getElementById("authModal")?.showModal();
+  });
+
+  function updateAuthUI(user){
+    const authed = !!user;
+    if (btnAuth) btnAuth.style.display = authed ? "none" : "inline-block";
+    if (btnLogout) btnLogout.style.display = authed ? "inline-block" : "none";
+    // Update all #greet spans (there are 2 in DOM)
+    document.querySelectorAll("#greet").forEach(el=>{
+      el.textContent = authed ? ("Hello, " + (user.email || "User")) : "";
+    });
+  }
+
+  // A dedicated listener just for UI (safe even if another listener exists)
+  try {
+    onAuthStateChanged(auth, (user)=>{
+      window.state = window.state || {};
+      window.state.user = user || null;
+      updateAuthUI(user);
+    });
+  } catch {}
+
+  // Also run once on boot in case auth already resolved
+  setTimeout(()=>updateAuthUI(window.state?.user||null), 0);
+})();
+
