@@ -12,16 +12,27 @@ import {
   sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Buttons (support both ids just in case)
-const btnLogin  = document.getElementById("btnLogin") || document.getElementById("btnUser");
+const btnLogin =
+  document.getElementById("btnLogin") || document.getElementById("btnUser");
 const btnGoogle = document.getElementById("btnGoogle");
 
 // Open auth modal
 btnLogin?.addEventListener("click", () => {
-  if (state.user) { return toast("Already signed in"); }
+  if (state.user) {
+    return toast("Already signed in");
+  }
   document.getElementById("authModal")?.showModal();
 });
 
@@ -37,10 +48,12 @@ btnGoogle?.addEventListener("click", async () => {
 });
 
 // simple state & utils
-const state = window.state || (window.state = { cart: [], itemPromos: {}, user: null, isAdmin: false });
-const $  = (sel, root = document) => root.querySelector(sel);
+const state =
+  window.state ||
+  (window.state = { cart: [], itemPromos: {}, user: null, isAdmin: false });
+const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-const h  = (tag) => document.createElement(tag);
+const h = (tag) => document.createElement(tag);
 const fmt = (n) => "$" + Number(n || 0).toFixed(2);
 const toast = (msg) => console.log("TOAST:", msg);
 
@@ -55,8 +68,71 @@ const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
 const THUMB_PLACE = "https://picsum.photos/seed/shweshopthumb/160/160";
 // === Distinct image placeholders (seeded by product id) ===
 function ph(size, seed) {
-  const s = encodeURIComponent(seed || Math.random().toString(36).slice(2));
-  return `https://picsum.photos/seed/${s}/${size}/${size}`;
+  return `https://picsum.photos/seed/${encodeURIComponent(
+    seed
+  )}/${size}/${size}`;
+}
+function ensureCategorySeed(cat) {
+  if (cat === "new") return; // 'new' uses p.new === true
+  if (!(DEMO_PRODUCTS || []).some((p) => p.cat === cat)) {
+    const add = (t, price) => ({
+      id: `${cat}-${t}`.toLowerCase(),
+      title: t,
+      cat,
+      price,
+      img: ph(600, `${cat}-${t}`),
+      new: true,
+    });
+    const samples = {
+      baby: [
+        add("Stroller", 129),
+        add("Baby Monitor", 89),
+        add("Bottle Warmer", 39),
+      ],
+      home: [
+        add("LED Lamp", 25),
+        add("Air Purifier", 149),
+        add("Cushion Set", 19),
+      ],
+      auto: [
+        add("Dash Cam", 79),
+        add("Tire Inflator", 39),
+        add("Car Vacuum", 29),
+      ],
+      beauty: [
+        add("Face Serum", 29),
+        add("Lipstick Set", 19),
+        add("Hair Dryer", 49),
+      ],
+    };
+    DEMO_PRODUCTS.push(...(samples[cat] || []));
+  }
+}
+
+function renderOrders() {
+  const wrap = document.getElementById("ordersList");
+  if (!wrap) return;
+  if (!state.user) {
+    wrap.innerHTML = `
+      <div class="card"><div class="pad">
+        <div class="card-title">Sign in to see orders</div>
+        <div class="small">No orders yet. Add to cart and checkout to create an order.</div>
+      </div></div>`;
+    return;
+  }
+  // TODO: real Firestore; simple placeholder
+  wrap.innerHTML = `
+    <div class="card"><div class="pad">
+      <div class="row between"><div class="card-title">Order #DEMO01</div><div class="small">2025-09-01</div></div>
+      <div class="small">Channel: Web — Status: Paid</div>
+      <ul class="disc small"><li>LED Lamp × 1 — ${fmt(
+        25
+      )}</li><li>Face Serum × 2 — ${fmt(58)}</li></ul>
+      <div class="row between"><div>Total</div><div class="price">${fmt(
+        83
+      )}</div></div>
+    </div></div>
+  `;
 }
 
 function withImgFallback(imgEl, src, isThumb = false, seed = "default") {
@@ -529,54 +605,27 @@ function updateAdminUI() {
 
 // === Part 5: Nav actions ===
 function onNavClick(item, btn) {
-  // active visual
-  $$(".nav-chip").forEach((x) => x.classList.remove("active"));
-  btn.classList.add("active");
-
-  if (item.type === "nav" && item.key === "allCategories") {
-    currentCategory = "";
-    showShopGrid("All Categories");
+  const k = item.key; // e.g., 'new', 'baby', 'home', 'auto', 'beauty', 'orders', 'analytics'
+  // active chip UI …
+  if (["new", "baby", "home", "auto", "beauty"].includes(k)) {
+    currentCategory = k === "new" ? "" : k;
+    const opts = k === "new" ? { tag: "new" } : {};
+    ensureCategorySeed(k); // demo items if empty
+    showShopGrid(item.label || k, opts);
     return;
   }
-  if (item.type === "aud") {
-    currentAudience = item.value;
-    renderHomeSections();
-    // if already in shop view, refresh grid
-    if ($("#view-shop")?.classList.contains("active")) {
-      showShopGrid(currentCategory || "All Categories");
-    }
+  if (k === "orders") {
+    switchView?.("orders");
+    renderOrders?.(); // implement sample below
     return;
   }
-  if (item.type === "cat") {
-    currentCategory = item.value;
-    showShopGrid(currentCategory);
+  if (k === "analytics") {
+    switchView?.("analytics");
+    renderAnalytics?.(); // shows demo charts if not signed-in
     return;
   }
-  if (item.type === "tag" && item.key === "new") {
-    currentCategory = "";
-    showShopGrid("New Arrivals", { tag: "new" });
-    return;
-  }
-  if (item.type === "view") {
-    if (item.value === "orders") {
-      switchView("orders");
-      loadOrders();
-      return;
-    }
-    if (item.value === "member") {
-      $("#memberModal")?.showModal();
-      return;
-    }
-    if (item.value === "analytics") {
-      if (!state.isAdmin) {
-        toast("Admins only");
-        return;
-      }
-      switchView("analytics");
-      renderAnalytics();
-      return;
-    }
-  }
+  // default
+  showShopGrid(item.label || "Shop");
 }
 
 function switchView(name) {
@@ -588,25 +637,25 @@ function switchView(name) {
 
 // === Part 6: Search sync ===
 function getSearchQuery() {
-  return (document.getElementById('searchInputDesktop')?.value
-       || document.getElementById('searchInputMobile')?.value
-       || '').trim().toLowerCase();
+  const d = document.getElementById("searchInputDesktop");
+  const m = document.getElementById("searchInputMobile");
+  return (d?.value || m?.value || "").trim().toLowerCase();
 }
-
 function wireSearchInputs() {
-  const desk = document.getElementById('searchInputDesktop');
-  const mob  = document.getElementById('searchInputMobile');
+  const d = document.getElementById("searchInputDesktop");
+  const m = document.getElementById("searchInputMobile");
   const run = () => {
-    // Search တင်သော်လည်း Category filter ကိုဖျက် → အားလုံးထဲကနေရှာ
-    window.currentCategory = "";
-    showShopGrid(getSearchQuery() ? "Results" : "All");
+    currentCategory = ""; // search = all cats
+    showShopGrid(getSearchQuery() ? "Results" : "Shop");
   };
-  [desk, mob].forEach((inp, ix) => {
-    inp?.addEventListener('input', () => {
-      if(ix===1 && desk) desk.value = inp.value; // mobile → desktop sync
+  [d, m].forEach((inp, ix) => {
+    inp?.addEventListener("input", () => {
+      if (ix === 1 && d) d.value = inp.value; // mobile → desktop sync
       run();
     });
-    inp?.addEventListener('keydown', e => { if(e.key==='Enter') run(); });
+    inp?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") run();
+    });
   });
 }
 
@@ -735,7 +784,7 @@ function renderHomeSections() {
 
 // === Part 7B: Shop grid ===
 function renderGrid(opts = {}) {
-  const q   = getSearchQuery?.() || "";
+  const q = getSearchQuery?.() || "";
   const cat = (currentCategory || "").trim().toLowerCase();
   const aud = currentAudience || "all";
 
@@ -744,8 +793,8 @@ function renderGrid(opts = {}) {
 
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
     const okCat = !cat || (p.cat || "").toLowerCase() === cat;
-    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
-    const okQ   = !q || hay.includes(q);
+    const hay = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
     const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
     return okCat && okQ && okAud && okTag;
@@ -759,23 +808,29 @@ function renderGrid(opts = {}) {
   filtered.forEach((p) => {
     // ✅ ensure product has an id (needed for data-id)
     if (!p.id) {
-      p.id = 'p_' + String(p.title || 'item')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
+      p.id =
+        "p_" +
+        String(p.title || "item")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
     }
 
     const card = h("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
+      <img class="thumb" alt="${
+        p.title
+      }" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
         <div class="card-title">${p.title}</div>
         <div class="row between" style="gap:.5rem; align-items:center;">
           <div class="price">${fmt(p.price)}</div>
           <div class="row" style="gap:.4rem;">
             <button class="btn btn-soft btn-view">View</button>
-            <button class="btn btn-mini btn-add" data-id="${p.id}" aria-label="Add ${p.title} to cart">Add to Cart</button>
+            <button class="btn btn-mini btn-add" data-id="${
+              p.id
+            }" aria-label="Add ${p.title} to cart">Add to Cart</button>
           </div>
         </div>
         <div class="promo-inline" style="margin-top:.5rem">
@@ -790,8 +845,12 @@ function renderGrid(opts = {}) {
     if (imc) withImgFallback(imc, p.img, true, p.id);
 
     // View → open product
-    card.querySelector(".btn-view")?.addEventListener("click", () => openProduct(p));
-    card.querySelector("img.thumb")?.addEventListener("click",  () => openProduct(p));
+    card
+      .querySelector(".btn-view")
+      ?.addEventListener("click", () => openProduct(p));
+    card
+      .querySelector("img.thumb")
+      ?.addEventListener("click", () => openProduct(p));
 
     // Add to Cart
     card.querySelector(".btn-add")?.addEventListener("click", (e) => {
@@ -810,7 +869,10 @@ function renderGrid(opts = {}) {
         renderCart?.();
         return;
       }
-      if (!rule) { toast?.("Invalid code"); return; }
+      if (!rule) {
+        toast?.("Invalid code");
+        return;
+      }
       if (!state.itemPromos) state.itemPromos = {};
       state.itemPromos[p.id] = { code, ...rule };
       toast?.(`Promo ${code} applied to ${p.title}`);
@@ -821,86 +883,123 @@ function renderGrid(opts = {}) {
   });
 }
 
-function addToCart(p, qty = 1){
+function addToCart(p, qty = 1) {
   if (!state.cart) state.cart = [];
-  const i = state.cart.findIndex(x => x.id === p.id);
+  const i = state.cart.findIndex((x) => x.id === p.id);
   if (i >= 0) state.cart[i].qty += qty;
-  else state.cart.push({ id:p.id, title:p.title, price:p.price, img:p.img, qty });
+  else
+    state.cart.push({
+      id: p.id,
+      title: p.title,
+      price: p.price,
+      img: p.img,
+      qty,
+    });
   updateCartCount?.();
   renderCart?.();
-  toast?.('Added to cart');
+  toast?.("Added to cart");
 }
 
-document.addEventListener('click', (e)=>{
-  const addBtn = e.target.closest('.btn-add');
-  if(addBtn){
-    const pid = addBtn.getAttribute('data-id');
-    const p = (DEMO_PRODUCTS||[]).find(x=>x.id===pid);
-    if(p){ addToCart(p); }
+document.addEventListener("click", (e) => {
+  const addBtn = e.target.closest(".btn-add");
+  if (addBtn) {
+    const pid = addBtn.getAttribute("data-id");
+    const p = (DEMO_PRODUCTS || []).find((x) => x.id === pid);
+    if (p) {
+      addToCart(p);
+    }
   }
 });
 
 // Open login modal
-document.getElementById('btnLogin')?.addEventListener('click', ()=>{
-  document.getElementById('signupRow').style.display = 'none';
-  document.getElementById('resetRow').style.display  = 'none';
-  document.getElementById('authModal')?.showModal();
+document.getElementById("btnLogin")?.addEventListener("click", () => {
+  document.getElementById("signupRow").style.display = "none";
+  document.getElementById("resetRow").style.display = "none";
+  document.getElementById("authModal")?.showModal();
 });
 
 // Toggle sections
-document.getElementById('btnShowSignup')?.addEventListener('click', ()=>{
-  document.getElementById('signupRow').style.display = '';
-  document.getElementById('resetRow').style.display  = 'none';
+document.getElementById("btnShowSignup")?.addEventListener("click", () => {
+  document.getElementById("signupRow").style.display = "";
+  document.getElementById("resetRow").style.display = "none";
 });
-document.getElementById('btnShowReset')?.addEventListener('click', ()=>{
-  document.getElementById('signupRow').style.display = 'none';
-  document.getElementById('resetRow').style.display  = '';
+document.getElementById("btnShowReset")?.addEventListener("click", () => {
+  document.getElementById("signupRow").style.display = "none";
+  document.getElementById("resetRow").style.display = "";
 });
 
 // Email login
-document.getElementById('btnEmailLogin')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('authEmail')?.value.trim();
-  const pass  = document.getElementById('authPass')?.value;
-  if(!email || !pass){ toast?.('Enter email & password'); return; }
-  try{
-    await signInWithEmailAndPassword(auth, email, pass);
-    document.getElementById('authModal')?.close();
-  }catch(e){ console.warn(e); toast?.('Login failed'); }
-});
+document
+  .getElementById("btnEmailLogin")
+  ?.addEventListener("click", async () => {
+    const email = document.getElementById("authEmail")?.value.trim();
+    const pass = document.getElementById("authPass")?.value;
+    if (!email || !pass) {
+      toast?.("Enter email & password");
+      return;
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      document.getElementById("authModal")?.close();
+    } catch (e) {
+      console.warn(e);
+      toast?.("Login failed");
+    }
+  });
 
 // Signup
-document.getElementById('btnDoSignup')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('authEmail')?.value.trim();
-  const pass  = document.getElementById('authPass')?.value;
-  if(!email || !pass){ toast?.('Enter email & password'); return; }
-  try{
+document.getElementById("btnDoSignup")?.addEventListener("click", async () => {
+  const email = document.getElementById("authEmail")?.value.trim();
+  const pass = document.getElementById("authPass")?.value;
+  if (!email || !pass) {
+    toast?.("Enter email & password");
+    return;
+  }
+  try {
     await createUserWithEmailAndPassword(auth, email, pass);
-    toast?.('Account created, signed in');
-    document.getElementById('authModal')?.close();
-  }catch(e){ console.warn(e); toast?.('Sign up failed'); }
+    toast?.("Account created, signed in");
+    document.getElementById("authModal")?.close();
+  } catch (e) {
+    console.warn(e);
+    toast?.("Sign up failed");
+  }
 });
 
 // Forgot
-document.getElementById('btnDoReset')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('authEmail')?.value.trim();
-  if(!email){ toast?.('Enter your email first'); return; }
-  try{
+document.getElementById("btnDoReset")?.addEventListener("click", async () => {
+  const email = document.getElementById("authEmail")?.value.trim();
+  if (!email) {
+    toast?.("Enter your email first");
+    return;
+  }
+  try {
     await sendPasswordResetEmail(auth, email);
-    toast?.('Reset email sent');
-    document.getElementById('authModal')?.close();
-  }catch(e){ console.warn(e); toast?.('Reset failed'); }
+    toast?.("Reset email sent");
+    document.getElementById("authModal")?.close();
+  } catch (e) {
+    console.warn(e);
+    toast?.("Reset failed");
+  }
 });
 
 // Logout
-document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
-  try{ await signOut(auth); toast?.('Signed out'); } catch(e){ console.warn(e); }
+document.getElementById("btnLogout")?.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    toast?.("Signed out");
+  } catch (e) {
+    console.warn(e);
+  }
 });
 
-function showShopGrid(title, opts={}) {
+function showShopGrid(title, opts = {}) {
   const shopTitle = document.getElementById("shopTitle");
   if (shopTitle) shopTitle.textContent = title || "Shop";
   switchView?.("shop");
   renderGrid?.(opts);
+  document
+    .getElementById("view-shop")
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // === Part 8: Product Modal ===
@@ -1260,16 +1359,100 @@ async function checkAdmin(user) {
 }
 
 // Greeting
-function updateGreet(){
-  const el = document.getElementById('greet');
-  if(!el) return;
-  if(state.user){
-    const name = state.user.displayName || state.user.email || 'there';
-    el.textContent = `Hi, ${String(name).split('@')[0]}`;
-  }else{
-    el.textContent = '';
+// ===== Auth icon toggle (single button) =====
+const btnAuth = document.getElementById("btnAuth");
+
+function updateGreet() {
+  const el = document.getElementById("greet");
+  if (!el) return;
+  if (state.user) {
+    const name = state.user.displayName || state.user.email || "there";
+    el.textContent = `Hi, ${String(name).split("@")[0]}`;
+  } else {
+    el.textContent = "";
   }
 }
+
+function updateAuthIcon() {
+  if (!btnAuth) return;
+  if (state.user) {
+    btnAuth.textContent = "⎋";
+    btnAuth.title = "Log out";
+    btnAuth.dataset.mode = "logout";
+  } else {
+    btnAuth.textContent = "👤";
+    btnAuth.title = "Sign in";
+    btnAuth.dataset.mode = "login";
+  }
+}
+
+btnAuth?.addEventListener("click", async () => {
+  if (btnAuth.dataset.mode === "logout") {
+    try {
+      await signOut(auth);
+      toast?.("Signed out");
+    } catch (e) {
+      console.warn(e);
+    }
+  } else {
+    document.getElementById("authModal")?.showModal();
+  }
+});
+
+// ===== Auth modal small handlers =====
+document.getElementById("btnShowSignup")?.addEventListener("click", () => {
+  document.getElementById("signupRow").style.display = "";
+  document.getElementById("resetRow").style.display = "none";
+});
+document.getElementById("btnShowReset")?.addEventListener("click", () => {
+  document.getElementById("signupRow").style.display = "none";
+  document.getElementById("resetRow").style.display = "";
+});
+document
+  .getElementById("btnEmailLogin")
+  ?.addEventListener("click", async () => {
+    const email = document.getElementById("authEmail")?.value.trim();
+    const pass = document.getElementById("authPass")?.value;
+    if (!email || !pass) {
+      return toast?.("Enter email & password");
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      document.getElementById("authModal")?.close();
+    } catch (e) {
+      console.warn(e);
+      toast?.("Login failed");
+    }
+  });
+document.getElementById("btnDoSignup")?.addEventListener("click", async () => {
+  const email = document.getElementById("authEmail")?.value.trim();
+  const pass = document.getElementById("authPass")?.value;
+  if (!email || !pass) {
+    return toast?.("Enter email & password");
+  }
+  try {
+    await createUserWithEmailAndPassword(auth, email, pass);
+    toast?.("Account created");
+    document.getElementById("authModal")?.close();
+  } catch (e) {
+    console.warn(e);
+    toast?.("Sign up failed");
+  }
+});
+document.getElementById("btnDoReset")?.addEventListener("click", async () => {
+  const email = document.getElementById("authEmail")?.value.trim();
+  if (!email) {
+    return toast?.("Enter your email");
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    toast?.("Reset email sent");
+    document.getElementById("authModal")?.close();
+  } catch (e) {
+    console.warn(e);
+    toast?.("Reset failed");
+  }
+});
 
 // Logout button toggle + action
 const btnLogout = document.getElementById("btnLogout");
@@ -1319,6 +1502,7 @@ onAuthStateChanged(auth, async (user) => {
     state.isAdmin = false;
   }
   updateGreet();
+  updateAuthIcon();
   renderMember?.();
   updateAdminUI?.();
   // toggle logout visibility
@@ -1487,7 +1671,7 @@ function fillCategoriesOnce() {
   });
 }
 
-function init(){
+function init() {
   buildNavChips?.();
   wireSearchInputs?.();
   renderHomeSections?.();
@@ -1496,9 +1680,10 @@ function init(){
   fetchPromos?.();
 
   // [data-close] buttons
-  document.querySelectorAll('[data-close]')?.forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id=btn.getAttribute('data-close'); document.getElementById(id)?.close();
+  document.querySelectorAll("[data-close]")?.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-close");
+      document.getElementById(id)?.close();
     });
   });
 }

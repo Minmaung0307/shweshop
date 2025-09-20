@@ -44,15 +44,7 @@
         </button>
         <!-- topbar right side (where user icons are) -->
         <span id="greet" class="small"></span>
-        <button
-          id="btnLogout"
-          class="icon-btn"
-          title="Log out"
-          style="display: none"
-        >
-          ⎋
-        </button>
-        <button id="btnLogin" class="icon-btn" title="Login">👤</button>
+        <button id="btnAuth" class="icon-btn" title="Sign in">👤</button>
         <button id="btnTheme" class="icon-btn" title="Theme">🌓</button>
         <div class="fs-switch">
           <button id="fsMinus" class="icon-btn" title="Smaller">A−</button>
@@ -314,6 +306,7 @@
 
     <!-- Auth mini modal -->
     <dialog id="authModal" class="modal">
+      <button class="close" data-close="authModal" aria-label="Close">✕</button>
       <div class="modal-body">
         <h3 class="card-title">Sign in</h3>
 
@@ -335,8 +328,16 @@
             class="input"
           />
         </div>
-        <div class="row gap">
-          <button id="btnEmailLogin" class="btn">Login</button>
+
+        <button
+          id="btnEmailLogin"
+          class="btn"
+          style="width: 100%; margin: 0.6rem 0"
+        >
+          Login
+        </button>
+
+        <div class="row between" style="margin-top: 0.4rem">
           <button id="btnShowSignup" class="btn-soft">Create account</button>
           <button id="btnShowReset" class="btn-outline">Forgot?</button>
         </div>

@@ -749,7 +749,7 @@ strong,
   color: #eef6ff;
 }
 #authModal .input {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   background: #0e1626;
   color: #f8fbff;
   border-color: #4a6287;
@@ -759,6 +759,29 @@ strong,
 #authModal .btn-outline {
   font-size: 1.05rem;
   padding: 0.8rem 1.1rem;
+}
+/* Modal close (X) always visible */
+.modal .close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  font-size: 1.25rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  z-index: 5;
+}
+
+/* Product modal copy readability */
+#productModal .modal-body,
+#productModal {
+  color: #eef6ff;
+}
+#productModal .card-title,
+#productModal .price {
+  color: #fff;
 }
 
 /* Ad slot */
