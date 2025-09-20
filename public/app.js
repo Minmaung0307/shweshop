@@ -118,6 +118,9 @@ function renderCartPage() {
   tot.textContent = fmt(subtotal + shipping);
 }
 
+// Legacy alias for older calls that use renderCart?.()
+const renderCart = renderCartPage;
+
 // qty +/- / remove (delegation)
 document.getElementById("cartPageList")?.addEventListener("click", (e) => {
   const inc = e.target.closest("[data-inc]");
