@@ -75,6 +75,7 @@ function ensureCart() {
   if (!Array.isArray(state.cart)) state.cart = getCart();
   return state.cart;
 }
+function saveCart() { setCart(ensureCart()); }
 
 // -- utils --
 function fmt(n) {
@@ -173,8 +174,8 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
 
 // -- open cart as PAGE & render (single listener) --
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  if (typeof switchView === "function") switchView("cart");
-  renderCartPage();
+  if (typeof switchView === "function") switchView("cart"); // page view
+  renderCartPage?.();                                       // draw rows
   window.scrollTo?.({ top: 0, behavior: "smooth" });
 });
 
@@ -1057,21 +1058,19 @@ function renderGrid(opts = {}) {
   });
 }
 
-// core addToCart
+// core addToCart (replace this whole function)
 function addToCart(p, qty = 1) {
-  if (!state.cart) state.cart = [];
-  const i = state.cart.findIndex((x) => x.id === p.id);
-  if (i >= 0) state.cart[i].qty += qty;
-  else
-    state.cart.push({
-      id: p.id,
-      title: p.title,
-      price: p.price,
-      img: p.img,
-      qty,
-    });
-  saveCart();
-  updateCartCount();
+  const cart = ensureCart();
+  const i = cart.findIndex((x) => x.id === p.id);
+  if (i >= 0) cart[i].qty += qty;
+  else cart.push({ id: p.id, title: p.title, price: p.price, img: p.img, qty });
+
+  setCart(cart);        // <- persist
+  updateCartCount();    // <- badge
+  // optional: if cart view is open, re-render rows immediately
+  if (document.getElementById("view-cart")?.classList.contains("active")) {
+    renderCartPage?.();
+  }
 }
 
 document.addEventListener("click", (e) => {
