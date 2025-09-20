@@ -1728,15 +1728,20 @@ document.getElementById("btnDoReset")?.addEventListener("click", async () => {
 
 // Logout button toggle + action
 const btnLogout = document.getElementById("btnLogout");
+// Login button → open modal
+btnAuth?.addEventListener("click", () => {
+  if (state.user) return;
+  document.getElementById("authModal")?.showModal();
+});
+
+// Logout button → sign out
 btnLogout?.addEventListener("click", async () => {
   try {
-    const { signOut } = await import(
-      "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"
-    );
     await signOut(auth);
     toast("Signed out");
   } catch (e) {
-    console.warn("signout failed", e);
+    console.error(e);
+    toast("Logout failed");
   }
 });
 
@@ -2012,8 +2017,15 @@ function updateAdminChip() {
 }
 
 // auth state → check admin → toggle chip
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   state.user = user || null;
-  await checkAdmin(user);
-  updateAdminChip();
+  if (user) {
+    btnAuth.style.display = "none";
+    btnLogout.style.display = "inline-block";
+    document.getElementById("greet").textContent = "Hello, " + (user.email || "User");
+  } else {
+    btnAuth.style.display = "inline-block";
+    btnLogout.style.display = "none";
+    document.getElementById("greet").textContent = "";
+  }
 });
