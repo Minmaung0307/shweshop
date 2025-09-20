@@ -54,7 +54,7 @@ const state =
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const h = (tag) => document.createElement(tag);
-const fmt = (n) => "$" + Number(n || 0).toFixed(2);
+// const fmt = (n) => "$" + Number(n || 0).toFixed(2);
 const toast = (msg) => console.log("TOAST:", msg);
 
 // ========= CART (minimal & de-duplicated) =========
