@@ -2017,3 +2017,24 @@ onAuthStateChanged(auth, async (user) => {
   await checkAdmin(user);
   updateAdminChip();
 });
+
+// === Quick Prefs: Theme & Font Size ===
+(function setupQuickPrefs(){
+  const root = document.documentElement;
+  function applyTheme(name){
+    const t = (name || localStorage.getItem("theme") || "dark").trim();
+    root.setAttribute("data-theme", t);
+    const sel = document.getElementById("themeSelect"); if (sel) sel.value = t;
+    try { localStorage.setItem("theme", t); } catch {}
+  }
+  function applyFs(scale){
+    const fs = String(scale || localStorage.getItem("fs") || "1.00");
+    root.style.setProperty("--fs", fs);
+    const sel = document.getElementById("fsSelect"); if (sel) sel.value = fs;
+    try { localStorage.setItem("fs", fs); } catch {}
+  }
+  document.getElementById("themeSelect")?.addEventListener("change",(e)=>applyTheme(e.target.value));
+  document.getElementById("fsSelect")?.addEventListener("change",(e)=>applyFs(e.target.value));
+  applyTheme();
+  applyFs();
+})();

@@ -913,3 +913,30 @@ dialog::backdrop {
   min-width: 90px;
   text-align: right;
 }
+
+
+/* Quick Prefs & themes (ensure helpers exist) */
+.quick-prefs{ display:inline-flex; gap:.4rem; align-items:center; }
+.input.compact{ padding:.45rem .55rem; height:2.2rem; font-size:.95rem; width:auto; }
+.sr-only{ position:absolute!important; height:1px;width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); }
+/* Extra ensure font-size variable is applied */
+html { --fs: var(--fs, 1.00); }
+body { font-size: calc(16px * var(--fs)); }
+/* Extra theme palettes (if not already present) */
+:root[data-theme="midnight"]{ --bg:#090d14; --card:#0c1420; --fg:#e6f0ff; --muted:#89a0ba;
+  --accent:#38bdf8; --accent2:#a78bfa; --ok:#34d399; --warn:#f59e0b; --err:#f87171; --soft:#0d1624; --chip:#1a2a41; --border:#334a6b; }
+:root[data-theme="ocean"]{ --bg:#07161c; --card:#0a2028; --fg:#e6fbff; --muted:#95c2d1;
+  --accent:#22d3ee; --accent2:#14b8a6; --ok:#06b6d4; --warn:#f59e0b; --err:#ef4444; --soft:#0a1f28; --chip:#133544; --border:#22546b; }
+:root[data-theme="forest"]{ --bg:#0d1410; --card:#0f1d14; --fg:#e6ffef; --muted:#a5c8b0;
+  --accent:#22c55e; --accent2:#16a34a; --ok:#16a34a; --warn:#d97706; --err:#dc2626; --soft:#0e1a12; --chip:#1b3a26; --border:#2f5941; }
+:root[data-theme="purple"]{ --bg:#120f1a; --card:#1a1426; --fg:#efe6ff; --muted:#c5b8e6;
+  --accent:#8b5cf6; --accent2:#a78bfa; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --soft:#151028; --chip:#2a1b4a; --border:#3d2b6b; }
+:root[data-theme="rose"]{ --bg:#1b0e12; --card:#2a141a; --fg:#ffe6ee; --muted:#f3b7c8;
+  --accent:#fb7185; --accent2:#f472b6; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --soft:#2a141a; --chip:#47202a; --border:#6b2b3d; }
+:root[data-theme="solar-light"]{ --bg:#fdf6e3; --card:#fffdf3; --fg:#073642; --muted:#586e75;
+  --accent:#268bd2; --accent2:#2aa198; --ok:#2aa198; --warn:#b58900; --err:#dc322f; --soft:#f3ecd3; --chip:#e6dfc7; --border:#d9cfb5; }
+:root[data-theme="solar-dark"]{ --bg:#002b36; --card:#073642; --fg:#eee8d5; --muted:#93a1a1;
+  --accent:#268bd2; --accent2:#2aa198; --ok:#2aa198; --warn:#b58900; --err:#dc322f; --soft:#03303d; --chip:#0b4250; --border:#1e535f; }
+:root[data-theme="contrast"]{ --bg:#000; --card:#000; --fg:#fff; --muted:#ddd;
+  --accent:#0ff; --accent2:#ff0; --ok:#0f0; --warn:#ff0; --err:#f00; --soft:#000; --chip:#333; --border:#666; }
+
