@@ -1939,11 +1939,15 @@ function init() {
   updateCartCount();
 
   // Open membership as modal
-  document.getElementById("btnMembership")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    const dlg = document.getElementById("memberModal");
-    if (dlg?.showModal) dlg.showModal();
-  });
+  // === Membership modal open ===
+document.getElementById("btnMembership")?.addEventListener("click", () => {
+  document.getElementById("memberModal")?.showModal();
+});
+  // document.getElementById("btnMembership")?.addEventListener("click", (e) => {
+  //   e.preventDefault();
+  //   const dlg = document.getElementById("memberModal");
+  //   if (dlg?.showModal) dlg.showModal();
+  // });
 
   // Close buttons (generic)
   document.querySelectorAll("[data-close]").forEach((btn) => {
@@ -2080,7 +2084,7 @@ onAuthStateChanged(auth, async (user) => {
       uname = "User";
     }
   }
-  if (greetEl) greetEl.textContent = authed ? ("Welcome, " + uname) : "";
+  if (greetEl) greetEl.textContent = authed ? ("Hi, " + uname) : "";
 };
 
   // A dedicated listener just for UI (safe even if another listener exists)
