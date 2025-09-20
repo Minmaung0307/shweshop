@@ -306,28 +306,36 @@ function renderHomeSections(){
 }
 
 // === Part 8: Shop grid (search results top) ===
-function renderGrid(opts={}){
-  const q = getSearchQuery();
-  const cat = (currentCategory||"").trim().toLowerCase();
+function renderGrid(opts = {}) {
+  const q   = getSearchQuery();
+  const cat = (currentCategory || "").trim().toLowerCase();
   const aud = currentAudience || "all";
-  if(!grid) return; grid.innerHTML = "";
+  if (!grid) return;
+  grid.innerHTML = "";
 
-  const filtered = (DEMO_PRODUCTS||[]).filter(p=>{
-    const okCat = !cat || (p.cat||"").toLowerCase()===cat;
-    const hay = ((p.title||"")+" "+(p.desc||"")).toLowerCase();
-    const okQ = !q || hay.includes(q);
-    const okAud = aud==="all" || (p.aud||"all")===aud;
-    const okTag = !opts.tag || opts.tag!=="new" || p.new===true;
+  const filtered = (DEMO_PRODUCTS || []).filter((p) => {
+    const okCat = !cat || (p.cat || "").toLowerCase() === cat;
+    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ   = !q || hay.includes(q);
+    const okAud = aud === "all" || (p.aud || "all") === aud;
+    const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
     return okCat && okQ && okAud && okTag;
   });
 
-  if(!filtered.length){
-    grid.innerHTML = `<div class="card"><div class="pad"><div class="card-title">No results</div><p class="small">We couldn't find items for "<b>${q}</b>".</p></div></div>`;
+  if (!filtered.length) {
+    grid.innerHTML = `
+      <div class="card">
+        <div class="pad">
+          <div class="card-title">No results</div>
+          <p class="small">We couldn't find items for "<b>${q}</b>".</p>
+        </div>
+      </div>`;
     return;
   }
 
-  filtered.forEach(p=>{
-    const card = h("div"); card.className="card";
+  filtered.forEach((p) => {
+    const card = h("div");
+    card.className = "card";
     card.innerHTML = `
       <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
@@ -343,22 +351,52 @@ function renderGrid(opts={}){
           <input placeholder="Promo code" aria-label="promo for ${p.title}">
           <button class="btn-mini">Apply</button>
         </div>
-      </div>`;
+      </div>
+    `;
+
+    // image fallback
     const imc = card.querySelector("img.thumb");
     withImgFallback(imc, p.img, true, p.id);
-    card.querySelector(".btn-view")?.addEventListener("click", ()=>openProduct(p));
-    imc?.addEventListener("click", ()=>openProduct(p));
-    card.querySelector(".btn-add")?.addEventListener("click", ()=>{ addToCart(p,1); toast(`${p.title} added to cart`); updateCartCount(); renderCartPage(); });
-    const [promoInput,promoBtn] = card.querySelectorAll(".promo-inline > *");
-    promoBtn?.addEventListener("click", ()=>{
-      const code = (promoInput?.value||"").trim().toUpperCase();
-      const rule = PROMO_MAP[code] || null;
-      if(!code){ delete state.itemPromos?.[p.id]; toast("Promo cleared"); renderCartPage(); return; }
-      if(!rule){ toast("Invalid code"); return; }
-      if (!state.itemPromos) state.itemPromos = {};
-state.itemPromos[p.id] = { code, ...rule };
-      toast(`Promo ${code} applied to ${p.title}`); renderCartPage();
+
+    // open product
+    card.querySelector(".btn-view")?.addEventListener("click", () => openProduct(p));
+    imc?.addEventListener("click", () => openProduct(p));
+
+    // add to cart
+    card.querySelector(".btn-add")?.addEventListener("click", () => {
+      addToCart(p, 1);
+      toast(`${p.title} added to cart`);
+      updateCartCount();
+      renderCartPage();
     });
+
+    // item-level promo (legacy-safe; no delete ?.[])
+    const promoInput = card.querySelector(".promo-inline input");
+    const promoBtn   = card.querySelector(".promo-inline button");
+    if (promoBtn) {
+      promoBtn.addEventListener("click", () => {
+        const code = (promoInput && promoInput.value ? promoInput.value : "").trim().toUpperCase();
+        const rule = PROMO_MAP[code] || null;
+
+        if (!code) {
+          if (state.itemPromos && Object.prototype.hasOwnProperty.call(state.itemPromos, p.id)) {
+            delete state.itemPromos[p.id];
+          }
+          toast("Promo cleared");
+          renderCartPage();
+          return;
+        }
+        if (!rule) {
+          toast("Invalid code");
+          return;
+        }
+        if (!state.itemPromos) state.itemPromos = {};
+        state.itemPromos[p.id] = { code: code, ...rule };
+        toast(`Promo ${code} applied to ${p.title}`);
+        renderCartPage();
+      });
+    }
+
     grid.appendChild(card);
   });
 }
