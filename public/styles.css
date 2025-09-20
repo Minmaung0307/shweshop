@@ -404,6 +404,28 @@ strong,
 .view.active {
   display: block;
 }
+/* Cart page tidy */
+#view-cart .stack > .row {
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+#view-cart .item-line img.thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 0.6rem;
+  object-fit: cover;
+}
+#view-cart .qty-box button {
+  min-width: 28px;
+}
+#view-cart .price {
+  min-width: 90px;
+  text-align: right;
+}
+/* Dialog backdrop (for membership etc.) */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
 
 .modal {
   border: 0;

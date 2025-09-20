@@ -64,27 +64,30 @@ function updateCartCount() {
 }
 
 // cart PAGE renderer
-function renderCart(){
-  const wrap = document.getElementById('cartPageList');
-  const sub  = document.getElementById('cartSubtotal');
-  const ship = document.getElementById('cartShip');
-  const tot  = document.getElementById('cartTotal');
-  if(!wrap) return;
+function renderCartPage() {
+  const wrap = document.getElementById("cartPageList");
+  const sub = document.getElementById("cartSubtotal");
+  const ship = document.getElementById("cartShip");
+  const tot = document.getElementById("cartTotal");
+  if (!wrap) return;
 
   const items = state.cart || [];
-  wrap.innerHTML = '';
+  wrap.innerHTML = "";
 
-  if(!items.length){
+  if (!items.length) {
     wrap.innerHTML = `<p class="small">Your cart is empty.</p>`;
-    sub.textContent = '$0.00'; ship.textContent='$0.00'; tot.textContent='$0.00';
+    sub.textContent = "$0.00";
+    ship.textContent = "$0.00";
+    tot.textContent = "$0.00";
     return;
   }
 
   let subtotal = 0;
-  items.forEach(it=>{
-    const line = it.price * it.qty; subtotal += line;
-    const row = document.createElement('div');
-    row.className = 'row between item-line';
+  items.forEach((it) => {
+    const line = it.price * it.qty;
+    subtotal += line;
+    const row = document.createElement("div");
+    row.className = "row between item-line";
     row.innerHTML = `
       <div class="row" style="gap:.7rem; align-items:center">
         <img class="thumb" alt="${it.title}">
@@ -100,41 +103,50 @@ function renderCart(){
           <button class="btn-mini" data-inc="${it.id}">＋</button>
         </div>
         <div class="price">${fmt(line)}</div>
-        <button class="btn-mini btn-outline" data-remove="${it.id}">Remove</button>
+        <button class="btn-mini btn-outline" data-remove="${
+          it.id
+        }">Remove</button>
       </div>
     `;
-    withImgFallback(row.querySelector('img.thumb'), it.img, true, it.id);
+    withImgFallback(row.querySelector("img.thumb"), it.img, true, it.id);
     wrap.appendChild(row);
   });
 
-  const shipping = subtotal>0 ? 3.99 : 0; // simple flat
+  const shipping = subtotal > 0 ? 3.99 : 0;
   sub.textContent = fmt(subtotal);
-  ship.textContent= fmt(shipping);
+  ship.textContent = fmt(shipping);
   tot.textContent = fmt(subtotal + shipping);
 }
 
 // qty +/- / remove (delegation)
-document.getElementById('cartPageList')?.addEventListener('click', (e)=>{
-  const inc = e.target.closest('[data-inc]');
-  const dec = e.target.closest('[data-dec]');
-  const rem = e.target.closest('[data-remove]');
-  const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
-  if(!id) return;
-  const i = (state.cart||[]).findIndex(x=>x.id===id);
-  if(i<0) return;
-  if(inc) state.cart[i].qty += 1;
-  if(dec) state.cart[i].qty = Math.max(0, state.cart[i].qty-1);
-  if(rem || state.cart[i].qty===0) state.cart.splice(i,1);
-  try{ localStorage.setItem('cart', JSON.stringify(state.cart)); }catch{}
+document.getElementById("cartPageList")?.addEventListener("click", (e) => {
+  const inc = e.target.closest("[data-inc]");
+  const dec = e.target.closest("[data-dec]");
+  const rem = e.target.closest("[data-remove]");
+  const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+  if (!id) return;
+  const i = (state.cart || []).findIndex((x) => x.id === id);
+  if (i < 0) return;
+  if (inc) state.cart[i].qty += 1;
+  if (dec) state.cart[i].qty = Math.max(0, state.cart[i].qty - 1);
+  if (rem || state.cart[i].qty === 0) state.cart.splice(i, 1);
+  saveCart();
   updateCartCount();
-  renderCart();
+  renderCartPage();
 });
 
-// cart button → open modal (and render)
+// Cart button → go to cart page (not modal)
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  renderCart();
-  document.getElementById("cartModal")?.showModal();
+  restoreCart();
+  updateCartCount();
+  switchView("cart");
+  renderCartPage();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 });
+
+// boot restore
+restoreCart();
+updateCartCount();
 
 // delegation for +/-/remove
 document.getElementById("cartList")?.addEventListener("click", (e) => {
@@ -155,23 +167,27 @@ document.getElementById("cartList")?.addEventListener("click", (e) => {
     localStorage.setItem("cart", JSON.stringify(state.cart));
   } catch {}
   updateCartCount();
-  renderCart();
+  renderCartPage();
 });
 
 // open cart as PAGE (not modal)
 document.getElementById("btnCart")?.addEventListener("click", () => {
   switchView("cart");
-  renderCart();
+  renderCartPage();
 });
 
-// restore cart on boot
-(function restoreCart() {
+// --- CART CORE ---
+function restoreCart() {
   try {
     const raw = localStorage.getItem("cart");
     if (raw) state.cart = JSON.parse(raw);
   } catch {}
-  updateCartCount();
-})();
+}
+function saveCart() {
+  try {
+    localStorage.setItem("cart", JSON.stringify(state.cart || []));
+  } catch {}
+}
 
 // === Image placeholders ===
 const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
@@ -760,6 +776,7 @@ function onNavClick(item, btn) {
   showShopGrid(item.label || "Shop");
 }
 
+// --- SWITCH VIEW (class-based) ---
 function switchView(name) {
   document
     .querySelectorAll(".view")
@@ -770,15 +787,15 @@ function switchView(name) {
 // === Part 6: Search sync ===
 // === Search (desktop + mobile) ===
 function getSearchQuery(){
-  const d = document.getElementById('searchInput');        // desktop
-  const m = document.getElementById('searchInputMobile');  // mobile
+  const d = document.getElementById('searchInput');
+  const m = document.getElementById('searchInputMobile');
   return ((d?.value||'')+' '+(m?.value||'')).trim().toLowerCase();
 }
 function wireSearchInputs(){
   const run = ()=>{
-    currentCategory = "";                 // search = all cats
-    showShopGrid(getSearchQuery()? 'Results' : 'Shop');    // go to shop view
-    document.getElementById('view-shop')?.scrollIntoView({behavior:'smooth', block:'start'});
+    currentCategory = "";                   // no category lock for search
+    showShopGrid(getSearchQuery()? 'Results' : 'Shop'); // render grid
+    window.scrollTo({ top: 0, behavior: 'smooth' });    // ⬅ go to top
   };
   ['searchInput','searchInputMobile'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1043,12 +1060,19 @@ function renderGrid(opts = {}) {
 }
 
 // core addToCart
-function addToCart(p, qty=1){
-  if(!state.cart) state.cart=[];
-  const i = state.cart.findIndex(x=>x.id===p.id);
-  if(i>=0) state.cart[i].qty += qty;
-  else state.cart.push({ id:p.id, title:p.title, price:p.price, img:p.img, qty });
-  try{ localStorage.setItem('cart', JSON.stringify(state.cart)); }catch{}
+function addToCart(p, qty = 1) {
+  if (!state.cart) state.cart = [];
+  const i = state.cart.findIndex((x) => x.id === p.id);
+  if (i >= 0) state.cart[i].qty += qty;
+  else
+    state.cart.push({
+      id: p.id,
+      title: p.title,
+      price: p.price,
+      img: p.img,
+      qty,
+    });
+  saveCart();
   updateCartCount();
 }
 
@@ -1492,33 +1516,52 @@ function makeDemoOrders(daysBack = 365) {
 
 // === Part 11: Membership (demo activate) ===
 // open membership
-document.getElementById("btnMembership")
-  ?.addEventListener("click", ()=> document.getElementById("memberModal")?.showModal());
+document
+  .getElementById("btnMembership")
+  ?.addEventListener("click", () =>
+    document.getElementById("memberModal")?.showModal()
+  );
 
 // buy flow
-document.getElementById("buyMembership")?.addEventListener("click", async ()=>{
-  if(!state.user){
-    document.getElementById("authModal")?.showModal();
-    toast('Please sign in to continue');
-    return;
-  }
-  const plan  = (document.querySelector('input[name="mplan"]:checked')?.value)||'basic';
-  const fees  = { basic: 9, plus: 19, pro: 39 };
-  const rates = { basic: .02, plus: .03, pro: .05 };
-  const method= document.getElementById('payMethod')?.value || 'paypal';
-  const auto  = document.getElementById('autoRenew')?.checked ? true : false;
+document
+  .getElementById("buyMembership")
+  ?.addEventListener("click", async () => {
+    if (!state.user) {
+      document.getElementById("authModal")?.showModal();
+      toast("Please sign in to continue");
+      return;
+    }
+    const plan =
+      document.querySelector('input[name="mplan"]:checked')?.value || "basic";
+    const fees = { basic: 9, plus: 19, pro: 39 };
+    const rates = { basic: 0.02, plus: 0.03, pro: 0.05 };
+    const method = document.getElementById("payMethod")?.value || "paypal";
+    const auto = document.getElementById("autoRenew")?.checked ? true : false;
 
-  const now = Date.now(), yearMs = 365*86400000;
-  state.membership = { plan, rate:rates[plan], fee:fees[plan], method, autoRenew:auto, startTs:now, expiresTs:now+yearMs };
+    const now = Date.now(),
+      yearMs = 365 * 86400000;
+    state.membership = {
+      plan,
+      rate: rates[plan],
+      fee: fees[plan],
+      method,
+      autoRenew: auto,
+      startTs: now,
+      expiresTs: now + yearMs,
+    };
 
-  try{
-    await setDoc(doc(db,'users',state.user.uid), { member: state.membership }, { merge:true });
-    toast(`Membership ${plan.toUpperCase()} - $${fees[plan]}/yr activated`);
-  }catch(e){
-    console.warn('membership save failed', e);
-  }
-  document.getElementById("memberModal")?.close();
-});
+    try {
+      await setDoc(
+        doc(db, "users", state.user.uid),
+        { member: state.membership },
+        { merge: true }
+      );
+      toast(`Membership ${plan.toUpperCase()} - $${fees[plan]}/yr activated`);
+    } catch (e) {
+      console.warn("membership save failed", e);
+    }
+    document.getElementById("memberModal")?.close();
+  });
 
 function renderMember() {
   const el = $("#memberBadge");
@@ -1715,28 +1758,6 @@ document.getElementById("btnUser")?.addEventListener("click", async () => {
   await signInWithRedirect(auth, provider);
 });
 
-// Auth state → UI refresh
-onAuthStateChanged(auth, async (user) => {
-  state.user = user || null;
-  if (user) {
-    await ensureUser(user);
-    await checkAdmin(user);
-    // ✅ ဒီနေရာမှာပဲ user.email သုံးလို့ရ
-    if (user.email === "minmaung0307@gmail.com") {
-      state.isAdmin = true;
-    }
-  } else {
-    state.isAdmin = false;
-  }
-  updateGreet();
-  updateAuthIcon();
-  renderMember?.();
-  updateAdminUI?.();
-  // toggle logout visibility
-  const out = document.getElementById("btnLogout");
-  if (out) out.style.display = state.user ? "" : "none";
-});
-
 // Cart open/close
 const cartDrawer = document.getElementById("cartDrawer");
 document
@@ -1902,7 +1923,7 @@ function init() {
   buildNavChips();
   wireSearchInputs();
 
-  // products paging function ရှိသော် call, မရှိသေးရင် အနည်းဆုံး grid တန်း render
+  // products paging function ရှိသော် call, မရှိသေးရင် grid တန်း render
   if (typeof loadProductsPage === "function") {
     loadProductsPage();
   } else {
@@ -1913,106 +1934,79 @@ function init() {
   renderHomeSections();
   fetchPromos?.();
 
-  // open membership
-  document
-    .getElementById("btnMembership")
-    ?.addEventListener("click", () =>
-      document.getElementById("memberModal")?.showModal()
-    );
-
-  // buy flow
-  document
-    .getElementById("buyMembership")
-    ?.addEventListener("click", async () => {
-      if (!state.user) {
-        document.getElementById("authModal")?.showModal();
-        toast("Please sign in to continue");
-        return;
-      }
-      const plan =
-        document.querySelector('input[name="mplan"]:checked')?.value || "basic";
-      const fees = { basic: 9, plus: 19, pro: 39 };
-      const rates = { basic: 0.02, plus: 0.03, pro: 0.05 };
-
-      const method = document.getElementById("payMethod")?.value || "paypal";
-      const auto = document.getElementById("autoRenew")?.checked ? true : false;
-
-      const now = Date.now(),
-        yearMs = 365 * 86400000;
-      state.membership = {
-        plan,
-        rate: rates[plan],
-        fee: fees[plan],
-        autoRenew: auto,
-        method,
-        startTs: now,
-        expiresTs: now + yearMs,
-      };
-
-      // persist to Firestore (merge)
-      try {
-        await setDoc(
-          doc(db, "users", state.user.uid),
-          { member: state.membership },
-          { merge: true }
-        );
-        toast(
-          `Membership ${plan.toUpperCase()} activated ($${fees[plan]}/year)`
-        );
-      } catch (e) {
-        console.warn("membership save failed", e);
-        toast("Membership saved locally");
-      }
-      document.getElementById("memberModal")?.close();
-    });
-
-  // See-all → showShopGrid() မှာ section heading ကို ပြောင်းပေးထားတယ်
   updateCartCount();
 
-  // close buttons (for all dialogs)
+  // Open membership as modal
+  document.getElementById("btnMembership")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const dlg = document.getElementById("memberModal");
+    if (dlg?.showModal) dlg.showModal();
+  });
+
+  // Close buttons (generic)
   document.querySelectorAll("[data-close]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-close");
       document.getElementById(id)?.close();
     });
   });
-}
-init();
 
-// Membership modal open
-document
-  .getElementById("btnMembership")
-  ?.addEventListener("click", () =>
-    document.getElementById("memberModal")?.showModal()
-  );
-
-// Membership buy
-document
-  .getElementById("buyMembership")
-  ?.addEventListener("click", async () => {
+  // Membership save (once)
+  const buyBtn = document.getElementById("buyMembership");
+  buyBtn?.addEventListener("click", async () => {
     if (!state.user) {
       document.getElementById("authModal")?.showModal();
+      toast("Please sign in to continue");
       return;
     }
     const plan =
       document.querySelector('input[name="mplan"]:checked')?.value || "basic";
-    const rate = plan === "plus" ? 0.03 : 0.02;
-    const now = Date.now(),
-      year = 365 * 86400000;
-    state.membership = { plan, rate, startTs: now, expiresTs: now + year };
+    const fees = { basic: 9, plus: 19, pro: 39 };
+    const rates = { basic: 0.02, plus: 0.03, pro: 0.05 };
+    const method = document.getElementById("payMethod")?.value || "paypal";
+    const auto = document.getElementById("autoRenew")?.checked || false;
 
-    await setDoc(
-      doc(db, "users", state.user.uid),
-      { member: state.membership },
-      { merge: true }
-    );
+    const now = Date.now();
+    const yearMs = 365 * 86400000;
+    state.membership = {
+      plan,
+      rate: rates[plan],
+      fee: fees[plan],
+      method,
+      autoRenew: auto,
+      startTs: now,
+      expiresTs: now + yearMs,
+    };
+
+    try {
+      await setDoc(
+        doc(db, "users", state.user.uid),
+        { member: state.membership },
+        { merge: true }
+      );
+      toast(`Membership ${plan.toUpperCase()} - $${fees[plan]}/yr activated`);
+    } catch (e) {
+      console.warn("membership save failed", e);
+    }
     document.getElementById("memberModal")?.close();
-    toast(`Membership (${plan}) activated`);
-  });
+  }, { once: true }); // ✅ prevent multiple bindings if init ever re-runs
+}
 
+// ✅ Only run init after DOM is ready
 document.addEventListener("DOMContentLoaded", init);
 
-const adminChip = [...document.getElementById("navScroll").children].find((b) =>
-  b.textContent?.includes("Analytics")
-);
-if (adminChip) adminChip.style.display = state.isAdmin ? "" : "none";
+// === Admin chip show/hide AFTER auth & nav built ===
+function updateAdminChip(){
+  const nav = document.getElementById("navScroll");
+  if(!nav) return;
+  const adminChip = [...nav.querySelectorAll(".nav-chip, button, a")]
+    .find((b) => b.textContent?.includes("Analytics"));
+  if (adminChip) adminChip.style.display = state.isAdmin ? "" : "none";
+}
+
+// auth state → check admin → toggle chip
+onAuthStateChanged(auth, async (user)=>{
+  state.user = user || null;
+  await checkAdmin(user);
+  updateAdminChip();
+});
