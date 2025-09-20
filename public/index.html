@@ -116,15 +116,24 @@
 
       <!-- Analytics -->
       <section id="view-analytics" class="view">
-        <h2 class="pad">Store Analytics</h2>
-        <div class="cards">
-          <div class="card">
-            <div class="card-title pad">Revenue (last 30 days)</div>
-            <canvas id="revChart" height="180"></canvas>
+        <div class="card">
+          <div class="pad">
+            <div class="row between">
+              <div class="card-title">Sales Overview</div>
+              <select id="anaRange" class="input" style="max-width: 160px">
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365" selected>Last 12 months</option>
+              </select>
+            </div>
+            <canvas id="revChart" height="120"></canvas>
           </div>
-          <div class="card">
-            <div class="card-title pad">Top Sellers</div>
-            <canvas id="topChart" height="180"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="pad">
+            <div class="card-title">Top Products</div>
+            <canvas id="topChart" height="120"></canvas>
           </div>
         </div>
       </section>
@@ -191,33 +200,51 @@
 
     <!-- Membership Modal -->
     <dialog id="memberModal" class="modal">
-  <div class="modal-body">
-    <!-- Close X -->
-    <button class="close" data-close="memberModal" aria-label="Close">✕</button>
+      <div class="modal-body">
+        <button class="close" data-close="memberModal" aria-label="Close">
+          ✕
+        </button>
+        <h3 class="card-title">Membership</h3>
+        <p class="modal-desc">
+          Create an account and choose a plan. Cashback applies to every order
+          for one year.
+        </p>
 
-    <!-- Title & desc -->
-    <h3 class="card-title">Membership</h3>
-    <p class="modal-desc">Enjoy cashback on every order for one year.</p>
+        <div class="stack" style="margin: 1rem 0">
+          <label class="radio">
+            <input type="radio" name="mplan" value="basic" checked />
+            <span>Basic — <b>2% cashback</b> — <i>$9/year</i></span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mplan" value="plus" />
+            <span>Plus — <b>3% cashback</b> — <i>$19/year</i></span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mplan" value="pro" />
+            <span>Pro — <b>5% cashback</b> — <i>$39/year</i></span>
+          </label>
+        </div>
 
-    <!-- Radio plans -->
-    <div class="stack" style="margin:1rem 0">
-      <label class="radio">
-        <input type="radio" name="mplan" value="basic" checked>
-        <span>Basic — <b>2% cashback</b></span>
-      </label>
-      <label class="radio">
-        <input type="radio" name="mplan" value="plus">
-        <span>Plus — <b>3% cashback</b></span>
-      </label>
-    </div>
+        <div class="row between" style="margin: 0.6rem 0">
+          <label class="row" style="gap: 0.4rem; align-items: center">
+            <input type="checkbox" id="autoRenew" />
+            <span>Auto-renew yearly</span>
+          </label>
+          <select id="payMethod" class="input" style="max-width: 180px">
+            <option value="paypal">PayPal</option>
+            <option value="kbz">KBZ Pay</option>
+            <option value="cbpay">CB Pay</option>
+            <option value="ayar">Ayar Pay</option>
+          </select>
+        </div>
 
-    <!-- Action row -->
-    <div class="row between" style="margin-top:1rem">
-      <button id="buyMembership" class="btn">Buy (PayPal)</button>
-      <button class="btn btn-soft" data-close="memberModal">Close</button>
-    </div>
-  </div>
-</dialog>
+        <div class="row gap" style="margin-top: 0.6rem">
+          <button id="buyMembership" class="btn" style="width: 100%">
+            Continue
+          </button>
+        </div>
+      </div>
+    </dialog>
 
     <!-- Cart Drawer -->
     <aside id="cartDrawer" class="drawer" aria-label="Cart drawer">
@@ -310,6 +337,25 @@
         </div>
       </div>
     </aside>
+
+    <!-- Cart modal -->
+    <dialog id="cartModal" class="modal">
+      <div class="modal-body">
+        <button class="close" data-close="cartModal" aria-label="Close">
+          ✕
+        </button>
+        <h3 class="card-title">Your Cart</h3>
+        <div id="cartList" class="stack"></div>
+        <div class="row between" style="margin-top: 0.8rem">
+          <div class="strong">Total</div>
+          <div id="cartTotal" class="price">$0.00</div>
+        </div>
+        <div class="row gap" style="margin-top: 0.8rem">
+          <button id="btnCheckout" class="btn">Checkout</button>
+          <button class="btn btn-soft" data-close="cartModal">Close</button>
+        </div>
+      </div>
+    </dialog>
 
     <!-- Auth mini modal -->
     <dialog id="authModal" class="modal">

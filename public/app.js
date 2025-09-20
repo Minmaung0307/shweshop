@@ -58,10 +58,99 @@ const fmt = (n) => "$" + Number(n || 0).toFixed(2);
 const toast = (msg) => console.log("TOAST:", msg);
 
 function updateCartCount() {
-  const el = $("#cartCount");
-  if (el)
-    el.textContent = String(state.cart.reduce((a, c) => a + c.qty, 0) || 0);
+  const n = (state.cart || []).reduce((s, x) => s + x.qty, 0);
+  const el = document.getElementById("cartCount");
+  if (el) el.textContent = n ? String(n) : "";
 }
+
+function renderCart() {
+  const wrap = document.getElementById("cartList");
+  const tot = document.getElementById("cartTotal");
+  if (!wrap || !tot) return;
+
+  const items = state.cart || [];
+  if (!items.length) {
+    wrap.innerHTML = `<p class="small">Your cart is empty.</p>`;
+    tot.textContent = "$0.00";
+    return;
+  }
+
+  wrap.innerHTML = "";
+  let sum = 0;
+  items.forEach((it) => {
+    const li = document.createElement("div");
+    li.className = "row between";
+    const line = it.price * it.qty;
+    sum += line;
+    li.innerHTML = `
+      <div class="row" style="gap:.6rem;align-items:center">
+        <img src="" alt="${
+          it.title
+        }" width="52" height="52" class="thumb" style="border-radius:.5rem">
+        <div>
+          <div class="strong">${it.title}</div>
+          <div class="small">${fmt(it.price)} each</div>
+        </div>
+      </div>
+      <div class="row" style="gap:.4rem;align-items:center">
+        <button class="btn-mini" data-dec="${
+          it.id
+        }" aria-label="decrease">−</button>
+        <span class="strong">${it.qty}</span>
+        <button class="btn-mini" data-inc="${
+          it.id
+        }" aria-label="increase">＋</button>
+        <div class="price" style="min-width:80px;text-align:right">${fmt(
+          line
+        )}</div>
+        <button class="btn-mini btn-outline" data-remove="${
+          it.id
+        }">Remove</button>
+      </div>
+    `;
+    const img = li.querySelector("img.thumb");
+    if (img) withImgFallback(img, it.img, true, it.id);
+    wrap.appendChild(li);
+  });
+  tot.textContent = fmt(sum);
+}
+
+// cart button → open modal (and render)
+document.getElementById("btnCart")?.addEventListener("click", () => {
+  renderCart();
+  document.getElementById("cartModal")?.showModal();
+});
+
+// delegation for +/-/remove
+document.getElementById("cartList")?.addEventListener("click", (e) => {
+  const inc = e.target.closest("[data-inc]");
+  const dec = e.target.closest("[data-dec]");
+  const rem = e.target.closest("[data-remove]");
+  const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+  if (!id) return;
+
+  const i = (state.cart || []).findIndex((x) => x.id === id);
+  if (i < 0) return;
+
+  if (inc) state.cart[i].qty += 1;
+  if (dec) state.cart[i].qty = Math.max(0, state.cart[i].qty - 1);
+  if (rem || state.cart[i].qty === 0) state.cart.splice(i, 1);
+
+  try {
+    localStorage.setItem("cart", JSON.stringify(state.cart));
+  } catch {}
+  updateCartCount();
+  renderCart();
+});
+
+// on boot, restore cart
+(function restoreCart() {
+  try {
+    const raw = localStorage.getItem("cart");
+    if (raw) state.cart = JSON.parse(raw);
+  } catch {}
+  updateCartCount();
+})();
 
 // === Image placeholders ===
 const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
@@ -606,34 +695,43 @@ function updateAdminUI() {
 // === Part 5: Nav actions ===
 function onNavClick(item, btn) {
   // active UI
-  navScroll.querySelectorAll(".nav-chip").forEach(x => x.classList.remove("active"));
-  btn.classList.add("active");
+  document
+    .querySelectorAll(".nav-chip")
+    .forEach((c) => c.classList.remove("active"));
+  btn?.classList.add("active");
 
-  if (item.type === "nav" && item.key === "allCategories") {
-    currentCategory = "";
-    showShopGrid("All Categories");
-    return;
-  }
+  // audience keys: forAll/men/women/kids/pets
   if (item.type === "aud") {
-    // audience filter (for all / men / women / kids / pets)
-    currentAudience = item.value; // 'all' | 'men' | 'women' | 'kids' | 'pets'
-    renderHomeSections();
-    // shop view ရှိနေတယ့်အခါ grid ကိုသာ refresh
-    if (!viewShop.classList.contains("view") || viewShop.classList.contains("active")) {
-      showShopGrid(currentCategory || "All Categories");
-    }
+    currentAudience = item.value; // 'all'|'men'|'women'|'kids'|'pets'
+    currentCategory = ""; // clear cat filter
+    showShopGrid(item.label || "Shop");
     return;
   }
+
+  // categories: electronics/fashion/beauty/home/auto/baby
   if (item.type === "cat") {
-    // category filter (electronics, fashion, beauty, …)
-    currentCategory = item.value;
-    showShopGrid(currentCategory);
+    currentAudience = "all";
+    currentCategory = item.value; // cat slug
+    showShopGrid(item.label || item.value);
     return;
   }
+
+  // new arrivals
   if (item.type === "tag" && item.key === "new") {
-    // New arrivals
+    currentAudience = "all";
     currentCategory = "";
     showShopGrid("New Arrivals", { tag: "new" });
+    return;
+  }
+
+  if (item.key === "orders") {
+    switchView("orders");
+    renderOrders?.();
+    return;
+  }
+  if (item.key === "analytics") {
+    switchView("analytics");
+    renderAnalytics?.();
     return;
   }
 
@@ -651,9 +749,9 @@ function switchView(name) {
 // === Part 6: Search sync ===
 // === Search (desktop + mobile) ===
 function getSearchQuery() {
-  const d = document.getElementById('searchInput');        // desktop
-  const m = document.getElementById('searchInputMobile');  // mobile
-  return ((d?.value || '') + ' ' + (m?.value || '')).trim().toLowerCase();
+  const d = document.getElementById("searchInput"); // desktop
+  const m = document.getElementById("searchInputMobile"); // mobile
+  return ((d?.value || "") + " " + (m?.value || "")).trim().toLowerCase();
 }
 
 function wireSearchInputs() {
@@ -661,8 +759,8 @@ function wireSearchInputs() {
     // grid view only re-render; home sections မပြောင်းချင်ရင် ဒီတောင့်ပဲ
     renderGrid();
   };
-  document.getElementById('searchInput')?.addEventListener('input', hook);
-  document.getElementById('searchInputMobile')?.addEventListener('input', hook);
+  document.getElementById("searchInput")?.addEventListener("input", hook);
+  document.getElementById("searchInputMobile")?.addEventListener("input", hook);
 }
 
 // === Part 7A: Home sections ===
@@ -790,7 +888,7 @@ function renderHomeSections() {
 
 // === Part 7B: Shop grid ===
 function renderGrid(opts = {}) {
-  const q   = getSearchQuery();
+  const q = getSearchQuery();
   const cat = (currentCategory || "").trim().toLowerCase();
   const aud = currentAudience || "all";
   if (!grid) return;
@@ -798,15 +896,57 @@ function renderGrid(opts = {}) {
 
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
     const okCat = !cat || (p.cat || "").toLowerCase() === cat;
-    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
-    const okQ   = !q || hay.includes(q);
+    const hay = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
     const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
     return okCat && okQ && okAud && okTag;
   });
 
   if (!filtered.length) {
-    grid.innerHTML = `<p class="small">No products found.</p>`;
+    // try similar by token overlap
+    const tokens = (q || "").split(/\s+/).filter(Boolean);
+    let similar = [];
+    if (tokens.length) {
+      const score = (p) =>
+        tokens.reduce(
+          (s, t) =>
+            s +
+            ((p.title || "").toLowerCase().includes(t) ? 1 : 0) +
+            ((p.desc || "").toLowerCase().includes(t) ? 1 : 0),
+          0
+        );
+      similar = (DEMO_PRODUCTS || [])
+        .map((p) => ({ p, s: score(p) }))
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .slice(0, 8)
+        .map((x) => x.p);
+    }
+    grid.innerHTML = `
+    <div class="card"><div class="pad">
+      <div class="card-title">No results</div>
+      <p class="small">We couldn't find items for "<b>${q}</b>".</p>
+    </div></div>`;
+    if (similar.length) {
+      const sec = document.createElement("div");
+      sec.className = "section";
+      sec.innerHTML = `<div class="section-head"><div class="strong">Similar items</div></div><div class="hlist"></div>`;
+      const cont = sec.querySelector(".hlist");
+      similar.forEach((p) => {
+        const item = document.createElement("div");
+        item.className = "hitem";
+        item.innerHTML = `
+        <img class="thumb" alt="${p.title}" loading="lazy" decoding="async">
+        <div class="small strong">${p.title}</div>
+        <div class="small">${fmt(p.price)}</div>`;
+        const im = item.querySelector("img.thumb");
+        if (im) withImgFallback(im, p.img, true, p.id);
+        item.addEventListener("click", () => openProduct(p));
+        cont.appendChild(item);
+      });
+      grid.appendChild(sec);
+    }
     return;
   }
 
@@ -814,14 +954,18 @@ function renderGrid(opts = {}) {
     const card = h("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
+      <img class="thumb" alt="${
+        p.title
+      }" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
         <div class="card-title">${p.title}</div>
         <div class="row between">
           <div class="price">${fmt(p.price)}</div>
           <div class="row gap">
             <button class="btn btn-soft btn-view">View</button>
-            <button class="btn btn-mini btn-add" data-id="${p.id}">Add to Cart</button>
+            <button class="btn btn-mini btn-add" data-id="${
+              p.id
+            }">Add to Cart</button>
           </div>
         </div>
         <div class="promo-inline">
@@ -836,7 +980,9 @@ function renderGrid(opts = {}) {
     if (imc) withImgFallback(imc, p.img, true, p.id);
 
     // open product
-    card.querySelector(".btn-view")?.addEventListener("click", () => openProduct(p));
+    card
+      .querySelector(".btn-view")
+      ?.addEventListener("click", () => openProduct(p));
     imc?.addEventListener("click", () => openProduct(p));
 
     // add-to-cart (from grid)
@@ -862,7 +1008,7 @@ function renderGrid(opts = {}) {
         toast("Invalid code");
         return;
       }
-      (state.itemPromos ||= {});
+      state.itemPromos ||= {};
       state.itemPromos[p.id] = { code, ...rule };
       toast(`Promo ${code} applied to ${p.title}`);
       renderCart?.();
@@ -873,11 +1019,22 @@ function renderGrid(opts = {}) {
 }
 
 // core addToCart
-function addToCart(p, qty=1){
-  const found = state.cart.find(x => x.id === p.id);
-  if(found){ found.qty += qty; }
-  else { state.cart.push({ id:p.id, title:p.title, price:p.price, img:p.img, qty }); }
-  try { localStorage.setItem('cart', JSON.stringify(state.cart)); } catch {}
+function addToCart(p, qty = 1) {
+  if (!state.cart) state.cart = [];
+  const i = state.cart.findIndex((x) => x.id === p.id);
+  if (i >= 0) state.cart[i].qty += qty;
+  else
+    state.cart.push({
+      id: p.id,
+      title: p.title,
+      price: p.price,
+      img: p.img,
+      qty,
+    });
+  try {
+    localStorage.setItem("cart", JSON.stringify(state.cart));
+  } catch {}
+  updateCartCount();
 }
 
 document.addEventListener("click", (e) => {
@@ -989,22 +1146,27 @@ function openProduct(p) {
   const imgs = p.images?.length ? p.images : [p.img];
 
   // wire gallery
-  const pdImg    = document.getElementById("pdImg");
+  const pdImg = document.getElementById("pdImg");
   const pdThumbs = document.getElementById("pdThumbs");
-  const pdTitle  = document.getElementById("pdTitle");
-  const pdPrice  = document.getElementById("pdPrice");
-  const pdDesc   = document.getElementById("pdDesc");
-  const pdSpecs  = document.getElementById("pdSpecs");
+  const pdTitle = document.getElementById("pdTitle");
+  const pdPrice = document.getElementById("pdPrice");
+  const pdDesc = document.getElementById("pdDesc");
+  const pdSpecs = document.getElementById("pdSpecs");
 
   pdThumbs.innerHTML = "";
-  if (pdImg) { withImgFallback(pdImg, imgs[0], false); pdImg.alt = p.title; }
+  if (pdImg) {
+    withImgFallback(pdImg, imgs[0], false);
+    pdImg.alt = p.title;
+  }
   imgs.forEach((src, i) => {
     const im = h("img");
     withImgFallback(im, src, true);
     im.alt = `${p.title} ${i + 1}`;
     if (i === 0) im.classList.add("active");
     im.addEventListener("click", () => {
-      pdThumbs.querySelectorAll("img").forEach(x => x.classList.remove("active"));
+      pdThumbs
+        .querySelectorAll("img")
+        .forEach((x) => x.classList.remove("active"));
       im.classList.add("active");
       withImgFallback(pdImg, src, false);
     });
@@ -1013,18 +1175,26 @@ function openProduct(p) {
 
   if (pdTitle) pdTitle.textContent = p.title;
   if (pdPrice) pdPrice.textContent = fmt(p.price);
-  if (pdDesc)  pdDesc.textContent  = p.desc || "";
-  if (pdSpecs) pdSpecs.innerHTML   = (p.specs || []).map(s=>`<li>${s}</li>`).join("");
+  if (pdDesc) pdDesc.textContent = p.desc || "";
+  if (pdSpecs)
+    pdSpecs.innerHTML = (p.specs || []).map((s) => `<li>${s}</li>`).join("");
 
   // modal-level add to cart
-  document.getElementById("pdAdd")?.addEventListener("click", () => {
-    const qty = Math.max(1, Number(document.getElementById("pdQty")?.value || 1));
-    addToCart(currentProduct, qty);
-    updateCartCount();
-    renderCart?.();
-    toast(`${currentProduct.title} × ${qty} added`);
-    document.getElementById("productModal")?.close();
-  }, { once:true });
+  document.getElementById("pdAdd")?.addEventListener(
+    "click",
+    () => {
+      const qty = Math.max(
+        1,
+        Number(document.getElementById("pdQty")?.value || 1)
+      );
+      addToCart(currentProduct, qty);
+      updateCartCount();
+      renderCart?.();
+      toast(`${currentProduct.title} × ${qty} added`);
+      document.getElementById("productModal")?.close();
+    },
+    { once: true }
+  );
 
   document.getElementById("productModal")?.showModal();
 }
@@ -1183,71 +1353,114 @@ async function loadOrders() {
 }
 
 async function renderAnalytics() {
-  // if not signed in → show empty charts
-  if (!state.user) {
-    new Chart($("#revChart"), {
-      type: "line",
-      data: { labels: [], datasets: [{ data: [] }] },
-      options: { plugins: { legend: { display: false } } },
-    });
-    new Chart($("#topChart"), {
-      type: "bar",
-      data: { labels: [], datasets: [{ data: [] }] },
-      options: { plugins: { legend: { display: false } } },
-    });
-    return;
+  // guard: demo-safe
+  const daysBack = Number(document.getElementById("anaRange")?.value || 365);
+  const sinceIso = new Date(Date.now() - daysBack * 86400000)
+    .toISOString()
+    .slice(0, 10);
+
+  let orders = [];
+  if (state.user) {
+    try {
+      const qref = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", sinceIso),
+        limit(1000)
+      );
+      const snap = await getDocs(qref);
+      snap.forEach((docu) => orders.push(docu.data()));
+    } catch (e) {
+      console.warn("analytics blocked", e);
+    }
   }
-  try {
-    const since = new Date(Date.now() - 30 * 86400000)
-      .toISOString()
-      .slice(0, 10);
-    const qref = query(
-      collection(db, "orders"),
-      where("orderDate", ">=", since),
-      limit(500)
-    );
-    const snap = await getDocs(qref);
-    const days = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(Date.now() - (29 - i) * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      return { d, v: 0 };
+  // demo fallback when no data or blocked
+  if (!orders.length) {
+    orders = makeDemoOrders(daysBack); // fake dataset
+  }
+
+  // group by day
+  const byDay = {};
+  const tally = {};
+  orders.forEach((o) => {
+    const d = o.orderDate || o.createdAt?.slice?.(0, 10);
+    const amt = Number(o.pricing?.total || o.total || 0);
+    byDay[d] = (byDay[d] || 0) + amt;
+    (o.items || []).forEach((it) => {
+      tally[it.title] = (tally[it.title] || 0) + Number(it.qty || 1);
     });
-    const tally = {};
-    snap.forEach((docu) => {
-      const o = docu.data();
-      const day = days.find((x) => x.d === o.orderDate);
-      if (day) day.v += Number(o.pricing?.total || 0);
-      (o.items || []).forEach((it) => {
-        tally[it.title] = (tally[it.title] || 0) + (it.qty || 0);
+  });
+
+  // x-axis labels
+  const days = [];
+  for (let i = daysBack - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    days.push(d);
+  }
+  const revSeries = days.map((d) => byDay[d] || 0);
+
+  // render charts
+  new Chart(document.getElementById("revChart"), {
+    type: "line",
+    data: {
+      labels: days.map((d) => d.slice(5)),
+      datasets: [{ label: "Revenue", data: revSeries }],
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } },
+  });
+  const top = Object.entries(tally)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 7);
+  new Chart(document.getElementById("topChart"), {
+    type: "bar",
+    data: {
+      labels: top.map(([k]) => k),
+      datasets: [{ label: "Qty", data: top.map(([, v]) => v) }],
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } },
+  });
+}
+document
+  .getElementById("anaRange")
+  ?.addEventListener("change", renderAnalytics);
+
+// simple demo generator
+function makeDemoOrders(daysBack = 365) {
+  const cats = ["fashion", "beauty", "home", "auto", "electronics", "baby"];
+  const names = [
+    "Bag",
+    "T-Shirt",
+    "Serum",
+    "LED Lamp",
+    "Dash Cam",
+    "Stroller",
+    "Hair Dryer",
+    "Sneakers",
+  ];
+  const arr = [];
+  for (let i = daysBack - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    const n = Math.floor(Math.random() * 3); // 0-2 orders/day
+    for (let j = 0; j < n; j++) {
+      const items = [];
+      const k = 1 + Math.floor(Math.random() * 3);
+      for (let t = 0; t < k; t++) {
+        const title = names[Math.floor(Math.random() * names.length)];
+        items.push({
+          title,
+          qty: 1 + Math.floor(Math.random() * 3),
+          price: 10 + Math.floor(Math.random() * 90),
+        });
+      }
+      const total = items.reduce((s, x) => s + x.price * x.qty, 0);
+      arr.push({
+        orderDate: d,
+        pricing: { total },
+        items,
+        cat: cats[Math.floor(Math.random() * cats.length)],
       });
-    });
-    new Chart($("#revChart"), {
-      type: "line",
-      data: {
-        labels: days.map((x) => x.d.slice(5)),
-        datasets: [{ label: "Revenue", data: days.map((x) => x.v) }],
-      },
-      options: { responsive: true, plugins: { legend: { display: false } } },
-    });
-    const top = Object.entries(tally)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 7);
-    new Chart($("#topChart"), {
-      type: "bar",
-      data: {
-        labels: top.map(([k]) => k),
-        datasets: [{ label: "Qty", data: top.map(([, v]) => v) }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { x: { ticks: { maxRotation: 45 } } },
-      },
-    });
-  } catch (e) {
-    console.warn("analytics blocked", e);
+    }
   }
+  return arr;
 }
 
 // === Part 11: Membership (demo activate) ===
@@ -1644,12 +1857,12 @@ function fillCategoriesOnce() {
   });
 }
 
-function init(){
+function init() {
   buildNavChips();
   wireSearchInputs();
 
   // products paging function ရှိသော် call, မရှိသေးရင် အနည်းဆုံး grid တန်း render
-  if (typeof loadProductsPage === 'function') {
+  if (typeof loadProductsPage === "function") {
     loadProductsPage();
   } else {
     renderGrid();
@@ -1659,17 +1872,66 @@ function init(){
   renderHomeSections();
   fetchPromos?.();
 
-  // membership open
-  document.getElementById("btnMembership")
-    ?.addEventListener("click", ()=> document.getElementById("memberModal")?.showModal());
+  // open membership
+  document
+    .getElementById("btnMembership")
+    ?.addEventListener("click", () =>
+      document.getElementById("memberModal")?.showModal()
+    );
+
+  // buy flow
+  document
+    .getElementById("buyMembership")
+    ?.addEventListener("click", async () => {
+      if (!state.user) {
+        document.getElementById("authModal")?.showModal();
+        toast("Please sign in to continue");
+        return;
+      }
+      const plan =
+        document.querySelector('input[name="mplan"]:checked')?.value || "basic";
+      const fees = { basic: 9, plus: 19, pro: 39 };
+      const rates = { basic: 0.02, plus: 0.03, pro: 0.05 };
+
+      const method = document.getElementById("payMethod")?.value || "paypal";
+      const auto = document.getElementById("autoRenew")?.checked ? true : false;
+
+      const now = Date.now(),
+        yearMs = 365 * 86400000;
+      state.membership = {
+        plan,
+        rate: rates[plan],
+        fee: fees[plan],
+        autoRenew: auto,
+        method,
+        startTs: now,
+        expiresTs: now + yearMs,
+      };
+
+      // persist to Firestore (merge)
+      try {
+        await setDoc(
+          doc(db, "users", state.user.uid),
+          { member: state.membership },
+          { merge: true }
+        );
+        toast(
+          `Membership ${plan.toUpperCase()} activated ($${fees[plan]}/year)`
+        );
+      } catch (e) {
+        console.warn("membership save failed", e);
+        toast("Membership saved locally");
+      }
+      document.getElementById("memberModal")?.close();
+    });
 
   // See-all → showShopGrid() မှာ section heading ကို ပြောင်းပေးထားတယ်
   updateCartCount();
 
   // close buttons (for all dialogs)
-  document.querySelectorAll('[data-close]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id = btn.getAttribute('data-close');
+  document.querySelectorAll("[data-close]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-close");
       document.getElementById(id)?.close();
     });
   });
