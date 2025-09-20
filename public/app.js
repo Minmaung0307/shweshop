@@ -173,11 +173,11 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
 });
 
 // -- open cart as PAGE & render (single listener) --
+// Open cart drawer and render inside drawer-body
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  if (typeof switchView === "function") switchView("cart");
-  ensureCartViewShell();   // ⬅ make sure the cart section lives in #view-cart
-  renderCartPage?.();      // ⬅ then paint rows/totals
-  window.scrollTo?.({ top: 0, behavior: "smooth" });
+  ensureCartDrawerShell();                 // ⬅ drawer-body ထဲ shell တည်ဆောက်
+  document.getElementById("cartDrawer")?.classList.add("open");
+  renderCartPage?.();                      // ⬅ IDs ကို drawer-body ထဲမှာ သုံးထားလိမ့်မယ်
 });
 
 // -- boot & cross-tab sync (single) --
@@ -186,6 +186,31 @@ updateCartCount();
 window.addEventListener("storage", (e) => {
   if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
+
+// Ensure the cart markup exists inside the drawer body
+function ensureCartDrawerShell() {
+  const drawer = document.getElementById("cartDrawer");
+  const body = drawer?.querySelector(".drawer-body");
+  if (!body) return null;
+
+  // Only create once
+  if (!body.querySelector("#cartPageList")) {
+    body.innerHTML = `
+      <div class="pad">
+        <div class="card-title">Your Cart</div>
+      </div>
+
+      <div id="cartPageList" class="vlist"></div>
+
+      <div class="card"><div class="pad">
+        <div class="row between"><div>Subtotal</div><div id="cartSubtotal" class="price">$0.00</div></div>
+        <div class="row between"><div>Shipping</div><div id="cartShip" class="price">$0.00</div></div>
+        <div class="row between strong"><div>Total</div><div id="cartTotal" class="price">$0.00</div></div>
+      </div></div>
+    `;
+  }
+  return body;
+}
 
 // Mount a clean Cart shell into #view-cart (once)
 function ensureCartViewShell() {
