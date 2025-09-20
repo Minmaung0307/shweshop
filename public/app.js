@@ -57,24 +57,48 @@ const h = (tag) => document.createElement(tag);
 const fmt = (n) => "$" + Number(n || 0).toFixed(2);
 const toast = (msg) => console.log("TOAST:", msg);
 
-function updateCartCount() {
-  const n = (state.cart || []).reduce((s, x) => s + x.qty, 0);
-  const el = document.getElementById("cartCount");
-  if (el) el.textContent = n ? String(n) : "";
+// ========= CART (minimal & de-duplicated) =========
+const CART_KEY = "cart";
+
+// -- storage helpers --
+function getCart() {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function setCart(arr) {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(arr)); } catch {}
+  state.cart = Array.isArray(arr) ? arr : [];
+}
+function ensureCart() {
+  if (!Array.isArray(state.cart)) state.cart = getCart();
+  return state.cart;
 }
 
-// cart PAGE renderer
+// -- utils --
+function fmt(n) {
+  try { return n.toLocaleString(undefined, { style: "currency", currency: "USD" }); }
+  catch { return `$${(+n || 0).toFixed(2)}`; }
+}
+function updateCartCount() {
+  const n = ensureCart().reduce((s, x) => s + (x.qty || 0), 0);
+  const badge = document.getElementById("cartCount");
+  if (badge) badge.textContent = n ? String(n) : "";
+}
+
+// -- main renderer (IDs are fixed & simple) --
 function renderCartPage() {
-  // always sync from storage so page reflects latest
-  restoreCart();
+  // hydrate from storage to reflect latest
+  setCart(getCart());
 
   const wrap = document.getElementById("cartPageList");
   const sub  = document.getElementById("cartSubtotal");
   const ship = document.getElementById("cartShip");
   const tot  = document.getElementById("cartTotal");
-  if (!wrap) return; // if view not in DOM, bail safely
+  if (!wrap) return;
 
-  const items = state.cart || [];
+  const items = ensureCart();
   wrap.innerHTML = "";
 
   if (!items.length) {
@@ -82,126 +106,84 @@ function renderCartPage() {
     if (sub)  sub.textContent  = "$0.00";
     if (ship) ship.textContent = "$0.00";
     if (tot)  tot.textContent  = "$0.00";
+    updateCartCount();
     return;
   }
 
   let subtotal = 0;
-  items.forEach((it) => {
-    const line = it.price * it.qty;
+  for (const it of items) {
+    const line = (it.price || 0) * (it.qty || 0);
     subtotal += line;
+
     const row = document.createElement("div");
     row.className = "row between item-line";
     row.innerHTML = `
       <div class="row" style="gap:.7rem; align-items:center">
-        <img class="thumb" alt="${it.title}">
+        <img class="thumb" alt="${it.title || ""}">
         <div>
-          <div class="strong">${it.title}</div>
-          <div class="small">${fmt(it.price)} each</div>
+          <div class="strong">${it.title || ""}</div>
+          <div class="small">${fmt(it.price || 0)} each</div>
         </div>
       </div>
       <div class="row" style="gap:.6rem; align-items:center">
         <div class="row qty-box" style="gap:.25rem;">
           <button class="btn-mini" data-dec="${it.id}">−</button>
-          <span class="strong">${it.qty}</span>
+          <span class="strong">${it.qty || 0}</span>
           <button class="btn-mini" data-inc="${it.id}">＋</button>
         </div>
         <div class="price">${fmt(line)}</div>
         <button class="btn-mini btn-outline" data-remove="${it.id}">Remove</button>
       </div>
     `;
-    // if withImgFallback exists in your file, keep using it; otherwise plain src
-    if (typeof withImgFallback === "function") {
-      withImgFallback(row.querySelector("img.thumb"), it.img, true, it.id);
-    } else {
-      const im = row.querySelector("img.thumb");
-      if (im) im.src = it.img;
-    }
+    const im = row.querySelector("img.thumb");
+    if (im) im.src = it.img || "";
     wrap.appendChild(row);
-  });
+  }
 
   const shipping = subtotal > 0 ? 3.99 : 0;
   if (sub)  sub.textContent  = fmt(subtotal);
   if (ship) ship.textContent = fmt(shipping);
   if (tot)  tot.textContent  = fmt(subtotal + shipping);
+
+  updateCartCount();
 }
 
-// Legacy alias for any old calls: renderCart?.()
+// Legacy alias (if old code calls renderCart?.())
 const renderCart = renderCartPage;
 
-// qty +/- / remove on the Cart PAGE (event delegation)
+// -- single delegation for qty +/- / remove (cart PAGE only) --
 document.getElementById("cartPageList")?.addEventListener("click", (e) => {
   const inc = e.target.closest("[data-inc]");
   const dec = e.target.closest("[data-dec]");
   const rem = e.target.closest("[data-remove]");
-  const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+  const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
   if (!id) return;
 
-  const i = (state.cart || []).findIndex((x) => x.id === id);
+  const cart = ensureCart();
+  const i = cart.findIndex(x => x.id === id);
   if (i < 0) return;
 
-  if (inc) state.cart[i].qty += 1;
-  if (dec) state.cart[i].qty = Math.max(0, state.cart[i].qty - 1);
-  if (rem || state.cart[i].qty === 0) state.cart.splice(i, 1);
+  if (inc) cart[i].qty += 1;
+  if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
+  if (rem || cart[i].qty === 0) cart.splice(i, 1);
 
-  saveCart();
-  updateCartCount();
+  setCart(cart);
   renderCartPage();
 });
 
-// Cart button → open full Cart page and render
+// -- open cart as PAGE & render (single listener) --
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  restoreCart();
-  updateCartCount();
-  switchView?.("cart");          // uses your existing view switcher
+  if (typeof switchView === "function") switchView("cart");
   renderCartPage();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo?.({ top: 0, behavior: "smooth" });
 });
 
-// boot: make sure badge is correct when page loads
-restoreCart();
+// -- boot & cross-tab sync (single) --
+setCart(getCart());
 updateCartCount();
-// ==== /CART PAGE RENDERER & HANDLERS ====
-
-// delegation for +/-/remove
-document.getElementById("cartPageList")?.addEventListener("click", (e) => {
-  const inc = e.target.closest("[data-inc]");
-  const dec = e.target.closest("[data-dec]");
-  const rem = e.target.closest("[data-remove]");
-  const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
-  if (!id) return;
-
-  const i = (state.cart || []).findIndex((x) => x.id === id);
-  if (i < 0) return;
-
-  if (inc) state.cart[i].qty += 1;
-  if (dec) state.cart[i].qty = Math.max(0, state.cart[i].qty - 1);
-  if (rem || state.cart[i].qty === 0) state.cart.splice(i, 1);
-
-  try {
-    localStorage.setItem("cart", JSON.stringify(state.cart));
-  } catch {}
-  updateCartCount();
-  renderCartPage();
+window.addEventListener("storage", (e) => {
+  if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
-
-// open cart as PAGE (not modal)
-document.getElementById("btnCart")?.addEventListener("click", () => {
-  switchView("cart");
-  renderCartPage();
-});
-
-// --- CART CORE ---
-function restoreCart() {
-  try {
-    const raw = localStorage.getItem("cart");
-    if (raw) state.cart = JSON.parse(raw);
-  } catch {}
-}
-function saveCart() {
-  try {
-    localStorage.setItem("cart", JSON.stringify(state.cart || []));
-  } catch {}
-}
 
 // === Image placeholders ===
 const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
