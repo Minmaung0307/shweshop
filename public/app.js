@@ -97,17 +97,17 @@ function renderCartPage() {
     document.getElementById("cartDrawer")?.querySelector(".drawer-body") ||
     document;
 
-  const wrap = scope.querySelector("#cartPageList");
+  const listEl = scope.querySelector("#cartPageList");
   const elSub  = scope.querySelector("#cartSubtotal");
   const elShip = scope.querySelector("#cartShip");
   const elTot  = scope.querySelector("#cartTotal");
-  if (!wrap) return;
+  if (!listEl) return;
 
   const items = ensureCart();
-  wrap.innerHTML = "";
+  listEl.innerHTML = "";
 
   if (!items.length) {
-    wrap.innerHTML = `<p class="small">Your cart is empty.</p>`;
+    listEl.innerHTML = `<p class="small">Your cart is empty.</p>`;
     if (elSub)  elSub.textContent  = "$0.00";
     if (elShip) elShip.textContent = "$0.00";
     if (elTot)  elTot.textContent  = "$0.00";
@@ -115,29 +115,48 @@ function renderCartPage() {
     return;
   }
 
-  items.forEach((it) => {
+  // Item rows
+  items.forEach((it, idx) => {
     const line = (it.price || 0) * (it.qty || 0);
+
     const row = document.createElement("div");
-    row.className = "row between item-line";
+    row.className = "card";
+    row.style.cssText = `
+      background:${idx % 2 ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.06)"};
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px; margin:.4rem 0;
+    `;
     row.innerHTML = `
-      <div class="col" style="gap:.25rem">
-        <div class="strong">${it.title || ""}</div>
-        <div class="small">${fmt(it.price || 0)} each</div>
-      </div>
-      <div class="row" style="gap:.6rem; align-items:center">
-        <div class="row qty-box" style="gap:.25rem;">
-          <button class="btn-mini" data-dec="${it.id}">−</button>
-          <span class="strong">${it.qty || 0}</span>
-          <button class="btn-mini" data-inc="${it.id}">＋</button>
+      <div class="pad" style="padding:.6rem .75rem;">
+        <div class="row between" style="gap:.75rem; align-items:center;">
+          <div class="strong" style="text-align:left">${it.title || ""}</div>
+          <div class="row" style="gap:.35rem; align-items:center;">
+            <button class="btn-mini" data-dec="${it.id}" title="Decrease">−</button>
+            <span class="strong" aria-live="polite">${it.qty || 0}</span>
+            <button class="btn-mini" data-inc="${it.id}" title="Increase">＋</button>
+            <button class="btn-mini btn-outline" data-remove="${it.id}" title="Remove">🗑️</button>
+          </div>
         </div>
-        <div class="price">${fmt(line)}</div>
-        <button class="btn-mini btn-outline" data-remove="${it.id}">Remove</button>
+        <div class="row between" style="margin-top:.4rem; color:rgba(255,255,255,.9);">
+          <div class="small" style="opacity:.8;">&nbsp;</div>
+          <div class="price">${fmt(line)}</div>
+        </div>
       </div>
     `;
-    wrap.appendChild(row);
+    listEl.appendChild(row);
   });
 
-  const t = computeTotals();
+  // Totals (single panel only)
+  const t = (typeof computeTotals === "function")
+    ? computeTotals()
+    : (() => {
+        let subtotal = 0;
+        items.forEach(it => subtotal += (it.price || 0) * (it.qty || 0));
+        const shipping = subtotal > 0 ? 3.99 : 0;
+        const total = subtotal + shipping;
+        return { subtotal, shipping, total, promo: 0, member: 0 };
+      })();
+
   if (elSub)  elSub.textContent  = fmt(t.subtotal);
   if (elShip) elShip.textContent = fmt(t.shipping);
   if (elTot)  elTot.textContent  = fmt(t.total);
@@ -182,29 +201,38 @@ window.addEventListener("storage", (e) => {
   if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
 
-// Ensure the cart markup exists inside the drawer-body
+// Ensure the cart markup exists inside the drawer-body (single shell)
 function ensureCartDrawerShell() {
   const drawer = document.getElementById("cartDrawer");
   const body = drawer?.querySelector(".drawer-body");
   if (!body) return null;
 
-  // ❌ remove any duplicate/old summaries that show zeros
-  body.querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]")
-    .forEach(n => n.remove());
+  // ❌ Remove any old/duplicate summaries or panels that showed zeros
+  body.querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]").forEach(n => n.remove());
 
   // Create our single cart shell if missing
   if (!body.querySelector("#cartPageList")) {
     body.innerHTML = `
       <div class="pad"><div class="card-title">Your Cart</div></div>
+
       <div id="cartPageList" class="vlist"></div>
-      <div class="card"><div class="pad">
-        <div class="row between"><div>Subtotal</div><div id="cartSubtotal" class="price">$0.00</div></div>
-        <div class="row between"><div>Shipping</div><div id="cartShip" class="price">$0.00</div></div>
-        <div class="row between strong"><div>Total</div><div id="cartTotal" class="price">$0.00</div></div>
-      </div></div>
+
+      <div id="cartTotals" class="card" style="background:var(--bg2,#0b0f14); border:1px solid rgba(255,255,255,.08); border-radius:12px; margin-top:.75rem;">
+        <div class="pad">
+          <div class="row between" style="padding:.25rem 0;">
+            <div>Subtotal</div><div id="cartSubtotal" class="price">$0.00</div>
+          </div>
+          <div class="row between" style="padding:.25rem 0; border-top:1px dashed rgba(255,255,255,.15)">
+            <div>Shipping</div><div id="cartShip" class="price">$0.00</div>
+          </div>
+          <div class="row between strong" style="padding:.5rem 0; border-top:1px solid rgba(255,255,255,.25)">
+            <div>Total</div><div id="cartTotal" class="price">$0.00</div>
+          </div>
+        </div>
+      </div>
     `;
 
-    // qty +/- / remove delegation (attach ONCE)
+    // ONE-TIME delegation for qty -/+/delete (drawer won't close)
     if (!body.dataset.cartWired) {
       body.addEventListener("click", (e) => {
         const inc = e.target.closest?.("[data-inc]");
@@ -219,10 +247,11 @@ function ensureCartDrawerShell() {
 
         if (inc) cart[i].qty += 1;
         if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
+        // qty == 0 → auto remove (no separate remove needed)
         if (rem || cart[i].qty === 0) cart.splice(i, 1);
 
         setCart(cart);
-        renderCartPage();
+        renderCartPage(); // re-render; drawer stays open
       });
       body.dataset.cartWired = "1";
     }
