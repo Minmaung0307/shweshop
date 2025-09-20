@@ -65,21 +65,23 @@ function updateCartCount() {
 
 // cart PAGE renderer
 function renderCartPage() {
-  restoreCart(); // ✅ always load latest cart from localStorage
+  // always sync from storage so page reflects latest
+  restoreCart();
+
   const wrap = document.getElementById("cartPageList");
-  const sub = document.getElementById("cartSubtotal");
+  const sub  = document.getElementById("cartSubtotal");
   const ship = document.getElementById("cartShip");
-  const tot = document.getElementById("cartTotal");
-  if (!wrap) return;
+  const tot  = document.getElementById("cartTotal");
+  if (!wrap) return; // if view not in DOM, bail safely
 
   const items = state.cart || [];
   wrap.innerHTML = "";
 
   if (!items.length) {
     wrap.innerHTML = `<p class="small">Your cart is empty.</p>`;
-    sub.textContent = "$0.00";
-    ship.textContent = "$0.00";
-    tot.textContent = "$0.00";
+    if (sub)  sub.textContent  = "$0.00";
+    if (ship) ship.textContent = "$0.00";
+    if (tot)  tot.textContent  = "$0.00";
     return;
   }
 
@@ -104,53 +106,61 @@ function renderCartPage() {
           <button class="btn-mini" data-inc="${it.id}">＋</button>
         </div>
         <div class="price">${fmt(line)}</div>
-        <button class="btn-mini btn-outline" data-remove="${
-          it.id
-        }">Remove</button>
+        <button class="btn-mini btn-outline" data-remove="${it.id}">Remove</button>
       </div>
     `;
-    withImgFallback(row.querySelector("img.thumb"), it.img, true, it.id);
+    // if withImgFallback exists in your file, keep using it; otherwise plain src
+    if (typeof withImgFallback === "function") {
+      withImgFallback(row.querySelector("img.thumb"), it.img, true, it.id);
+    } else {
+      const im = row.querySelector("img.thumb");
+      if (im) im.src = it.img;
+    }
     wrap.appendChild(row);
   });
 
   const shipping = subtotal > 0 ? 3.99 : 0;
-  sub.textContent = fmt(subtotal);
-  ship.textContent = fmt(shipping);
-  tot.textContent = fmt(subtotal + shipping);
+  if (sub)  sub.textContent  = fmt(subtotal);
+  if (ship) ship.textContent = fmt(shipping);
+  if (tot)  tot.textContent  = fmt(subtotal + shipping);
 }
 
-// Legacy alias for older calls that use renderCart?.()
+// Legacy alias for any old calls: renderCart?.()
 const renderCart = renderCartPage;
 
-// qty +/- / remove (delegation)
+// qty +/- / remove on the Cart PAGE (event delegation)
 document.getElementById("cartPageList")?.addEventListener("click", (e) => {
   const inc = e.target.closest("[data-inc]");
   const dec = e.target.closest("[data-dec]");
   const rem = e.target.closest("[data-remove]");
   const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
   if (!id) return;
+
   const i = (state.cart || []).findIndex((x) => x.id === id);
   if (i < 0) return;
+
   if (inc) state.cart[i].qty += 1;
   if (dec) state.cart[i].qty = Math.max(0, state.cart[i].qty - 1);
   if (rem || state.cart[i].qty === 0) state.cart.splice(i, 1);
+
   saveCart();
   updateCartCount();
   renderCartPage();
 });
 
-// Cart button → go to cart page (not modal)
+// Cart button → open full Cart page and render
 document.getElementById("btnCart")?.addEventListener("click", () => {
   restoreCart();
   updateCartCount();
-  switchView("cart");
+  switchView?.("cart");          // uses your existing view switcher
   renderCartPage();
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-// boot restore
+// boot: make sure badge is correct when page loads
 restoreCart();
 updateCartCount();
+// ==== /CART PAGE RENDERER & HANDLERS ====
 
 // delegation for +/-/remove
 document.getElementById("cartPageList")?.addEventListener("click", (e) => {
