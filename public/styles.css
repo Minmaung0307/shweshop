@@ -784,6 +784,51 @@ strong,
   color: #fff;
 }
 
+/* Membership modal styles */
+#memberModal .modal-body {
+  min-width: 320px;
+  max-width: 420px;
+  padding: 1.5rem;
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+#memberModal h3.card-title {
+  margin-bottom: .5rem;
+  font-size: 1.4rem;
+  color: #f9fafb;
+}
+
+#memberModal .modal-desc {
+  margin-bottom: 1rem;
+  font-size: .95rem;
+  color: #cfd8e3;
+}
+
+#memberModal .radio {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: .4rem 0;
+  cursor: pointer;
+}
+
+#memberModal input[type="radio"] {
+  transform: scale(1.2);
+}
+
+#memberModal .close {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  background: rgba(0,0,0,.4);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: .5rem;
+  padding: .2rem .5rem;
+  font-size: 1.2rem;
+}
+
 /* Ad slot */
 .ad-slot {
   display: flex;

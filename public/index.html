@@ -191,26 +191,33 @@
 
     <!-- Membership Modal -->
     <dialog id="memberModal" class="modal">
-      <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="memberModal">✕</button>
-        <h3>Membership</h3>
-        <p class="modal-desc">Enjoy cashback on every order for one year.</p>
-        <div class="stack">
-          <label class="radio"
-            ><input type="radio" name="mplan" value="basic" checked /> Basic —
-            2% cashback</label
-          >
-          <label class="radio"
-            ><input type="radio" name="mplan" value="plus" /> Plus — 3%
-            cashback</label
-          >
-        </div>
-        <div class="row">
-          <button id="buyMembership" class="btn">Buy (PayPal)</button>
-          <button class="btn btn-soft" data-close="memberModal">Close</button>
-        </div>
-      </div>
-    </dialog>
+  <div class="modal-body">
+    <!-- Close X -->
+    <button class="close" data-close="memberModal" aria-label="Close">✕</button>
+
+    <!-- Title & desc -->
+    <h3 class="card-title">Membership</h3>
+    <p class="modal-desc">Enjoy cashback on every order for one year.</p>
+
+    <!-- Radio plans -->
+    <div class="stack" style="margin:1rem 0">
+      <label class="radio">
+        <input type="radio" name="mplan" value="basic" checked>
+        <span>Basic — <b>2% cashback</b></span>
+      </label>
+      <label class="radio">
+        <input type="radio" name="mplan" value="plus">
+        <span>Plus — <b>3% cashback</b></span>
+      </label>
+    </div>
+
+    <!-- Action row -->
+    <div class="row between" style="margin-top:1rem">
+      <button id="buyMembership" class="btn">Buy (PayPal)</button>
+      <button class="btn btn-soft" data-close="memberModal">Close</button>
+    </div>
+  </div>
+</dialog>
 
     <!-- Cart Drawer -->
     <aside id="cartDrawer" class="drawer" aria-label="Cart drawer">

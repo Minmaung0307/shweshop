@@ -605,26 +605,49 @@ function updateAdminUI() {
 
 // === Part 5: Nav actions ===
 function onNavClick(item, btn) {
-  const k = item.key; // e.g., 'new', 'baby', 'home', 'auto', 'beauty', 'orders', 'analytics'
-  // active chip UI …
+  const k = item.key; // e.g., 'forAll','men','women','kids','pets','new','baby','home','auto','beauty','orders','analytics'
+
+  // 👉 Active chip UI update
+  document
+    .querySelectorAll(".nav-chip")
+    .forEach((c) => c.classList.remove("active"));
+  btn?.classList.add("active");
+
+  // 👉 Audience-based (for all / men / women / kids / pets)
+  if (["forAll", "men", "women", "kids", "pets"].includes(k)) {
+    currentAudience = k === "forAll" ? "all" : k; // audience = all, men, women...
+    currentCategory = ""; // clear category filter
+    showShopGrid(item.label || k);
+    return;
+  }
+
+  // 👉 Category-based (new arrivals, baby, home, auto, beauty)
   if (["new", "baby", "home", "auto", "beauty"].includes(k)) {
+    currentAudience = "all"; // category filter only
     currentCategory = k === "new" ? "" : k;
     const opts = k === "new" ? { tag: "new" } : {};
-    ensureCategorySeed(k); // demo items if empty
+    ensureCategorySeed(k); // add demo items if empty
     showShopGrid(item.label || k, opts);
     return;
   }
+
+  // 👉 Orders view
   if (k === "orders") {
-    switchView?.("orders");
-    renderOrders?.(); // implement sample below
+    switchView("orders");
+    renderOrders?.();
     return;
   }
+
+  // 👉 Analytics view
   if (k === "analytics") {
-    switchView?.("analytics");
-    renderAnalytics?.(); // shows demo charts if not signed-in
+    switchView("analytics");
+    renderAnalytics?.();
     return;
   }
-  // default
+
+  // 👉 Default fallback (other categories)
+  currentAudience = "all";
+  currentCategory = k;
   showShopGrid(item.label || "Shop");
 }
 
@@ -645,14 +668,13 @@ function wireSearchInputs() {
   const d = document.getElementById("searchInputDesktop");
   const m = document.getElementById("searchInputMobile");
   const run = () => {
-    currentCategory = ""; // search = all cats
-    showShopGrid(getSearchQuery() ? "Results" : "Shop");
+    const q = getSearchQuery();
+    currentCategory = ""; // search သည် category filter မသုံး
+    showShopGrid(q ? `Results for "${q}"` : "Shop");
   };
-  [d, m].forEach((inp, ix) => {
-    inp?.addEventListener("input", () => {
-      if (ix === 1 && d) d.value = inp.value; // mobile → desktop sync
-      run();
-    });
+  ["searchInput", "searchInputDesktop", "searchInputMobile"].forEach((id) => {
+    const inp = document.getElementById(id);
+    inp?.addEventListener("input", run);
     inp?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") run();
     });
@@ -793,11 +815,11 @@ function renderGrid(opts = {}) {
 
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
     const okCat = !cat || (p.cat || "").toLowerCase() === cat;
-    const hay = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const hay = ((p.title || "") + (p.desc || "")).toLowerCase();
     const okQ = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
-    const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
-    return okCat && okQ && okAud && okTag;
+    const okTag = !opts.tag || (opts.tag === "new" && p.new === true);
+    return okCat && okQ && okAud && (!opts.tag || okTag);
   });
 
   if (!filtered.length) {
@@ -855,7 +877,7 @@ function renderGrid(opts = {}) {
     // Add to Cart
     card.querySelector(".btn-add")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      addToCart?.(p);
+      addToCart(p, 1);
     });
 
     // Item-level promo
@@ -885,9 +907,10 @@ function renderGrid(opts = {}) {
 
 function addToCart(p, qty = 1) {
   if (!state.cart) state.cart = [];
-  const i = state.cart.findIndex((x) => x.id === p.id);
-  if (i >= 0) state.cart[i].qty += qty;
-  else
+  const found = state.cart.find((x) => x.id === p.id);
+  if (found) {
+    found.qty += qty;
+  } else {
     state.cart.push({
       id: p.id,
       title: p.title,
@@ -895,9 +918,10 @@ function addToCart(p, qty = 1) {
       img: p.img,
       qty,
     });
+  }
+  toast(`${p.title} added to cart`);
   updateCartCount?.();
   renderCart?.();
-  toast?.("Added to cart");
 }
 
 document.addEventListener("click", (e) => {
@@ -1676,6 +1700,8 @@ function init() {
   wireSearchInputs?.();
   renderHomeSections?.();
   // currentCategory = ""; showShopGrid("All");  // (optional) first open grid
+  fillCategoriesOnce();
+  loadProductsPage();
   updateCartCount?.();
   fetchPromos?.();
 
@@ -1686,8 +1712,45 @@ function init() {
       document.getElementById(id)?.close();
     });
   });
+  // ✅ Membership button → open modal
+  document
+    .getElementById("btnMembership")
+    ?.addEventListener("click", () =>
+      document.getElementById("memberModal")?.showModal()
+    );
 }
 init();
+
+// Membership modal open
+document
+  .getElementById("btnMembership")
+  ?.addEventListener("click", () =>
+    document.getElementById("memberModal")?.showModal()
+  );
+
+// Membership buy
+document
+  .getElementById("buyMembership")
+  ?.addEventListener("click", async () => {
+    if (!state.user) {
+      document.getElementById("authModal")?.showModal();
+      return;
+    }
+    const plan =
+      document.querySelector('input[name="mplan"]:checked')?.value || "basic";
+    const rate = plan === "plus" ? 0.03 : 0.02;
+    const now = Date.now(),
+      year = 365 * 86400000;
+    state.membership = { plan, rate, startTs: now, expiresTs: now + year };
+
+    await setDoc(
+      doc(db, "users", state.user.uid),
+      { member: state.membership },
+      { merge: true }
+    );
+    document.getElementById("memberModal")?.close();
+    toast(`Membership (${plan}) activated`);
+  });
 
 document.addEventListener("DOMContentLoaded", init);
 
