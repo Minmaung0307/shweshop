@@ -355,7 +355,8 @@ function renderGrid(opts={}){
       const rule = PROMO_MAP[code] || null;
       if(!code){ delete state.itemPromos?.[p.id]; toast("Promo cleared"); renderCartPage(); return; }
       if(!rule){ toast("Invalid code"); return; }
-      state.itemPromos ||= {}; state.itemPromos[p.id] = { code, ...rule };
+      if (!state.itemPromos) state.itemPromos = {};
+state.itemPromos[p.id] = { code, ...rule };
       toast(`Promo ${code} applied to ${p.title}`); renderCartPage();
     });
     grid.appendChild(card);
