@@ -605,49 +605,39 @@ function updateAdminUI() {
 
 // === Part 5: Nav actions ===
 function onNavClick(item, btn) {
-  const k = item.key; // e.g., 'forAll','men','women','kids','pets','new','baby','home','auto','beauty','orders','analytics'
+  // active UI
+  navScroll.querySelectorAll(".nav-chip").forEach(x => x.classList.remove("active"));
+  btn.classList.add("active");
 
-  // 👉 Active chip UI update
-  document
-    .querySelectorAll(".nav-chip")
-    .forEach((c) => c.classList.remove("active"));
-  btn?.classList.add("active");
-
-  // 👉 Audience-based (for all / men / women / kids / pets)
-  if (["forAll", "men", "women", "kids", "pets"].includes(k)) {
-    currentAudience = k === "forAll" ? "all" : k; // audience = all, men, women...
-    currentCategory = ""; // clear category filter
-    showShopGrid(item.label || k);
+  if (item.type === "nav" && item.key === "allCategories") {
+    currentCategory = "";
+    showShopGrid("All Categories");
+    return;
+  }
+  if (item.type === "aud") {
+    // audience filter (for all / men / women / kids / pets)
+    currentAudience = item.value; // 'all' | 'men' | 'women' | 'kids' | 'pets'
+    renderHomeSections();
+    // shop view ရှိနေတယ့်အခါ grid ကိုသာ refresh
+    if (!viewShop.classList.contains("view") || viewShop.classList.contains("active")) {
+      showShopGrid(currentCategory || "All Categories");
+    }
+    return;
+  }
+  if (item.type === "cat") {
+    // category filter (electronics, fashion, beauty, …)
+    currentCategory = item.value;
+    showShopGrid(currentCategory);
+    return;
+  }
+  if (item.type === "tag" && item.key === "new") {
+    // New arrivals
+    currentCategory = "";
+    showShopGrid("New Arrivals", { tag: "new" });
     return;
   }
 
-  // 👉 Category-based (new arrivals, baby, home, auto, beauty)
-  if (["new", "baby", "home", "auto", "beauty"].includes(k)) {
-    currentAudience = "all"; // category filter only
-    currentCategory = k === "new" ? "" : k;
-    const opts = k === "new" ? { tag: "new" } : {};
-    ensureCategorySeed(k); // add demo items if empty
-    showShopGrid(item.label || k, opts);
-    return;
-  }
-
-  // 👉 Orders view
-  if (k === "orders") {
-    switchView("orders");
-    renderOrders?.();
-    return;
-  }
-
-  // 👉 Analytics view
-  if (k === "analytics") {
-    switchView("analytics");
-    renderAnalytics?.();
-    return;
-  }
-
-  // 👉 Default fallback (other categories)
-  currentAudience = "all";
-  currentCategory = k;
+  // default
   showShopGrid(item.label || "Shop");
 }
 
@@ -659,26 +649,20 @@ function switchView(name) {
 }
 
 // === Part 6: Search sync ===
+// === Search (desktop + mobile) ===
 function getSearchQuery() {
-  const d = document.getElementById("searchInputDesktop");
-  const m = document.getElementById("searchInputMobile");
-  return (d?.value || m?.value || "").trim().toLowerCase();
+  const d = document.getElementById('searchInput');        // desktop
+  const m = document.getElementById('searchInputMobile');  // mobile
+  return ((d?.value || '') + ' ' + (m?.value || '')).trim().toLowerCase();
 }
+
 function wireSearchInputs() {
-  const d = document.getElementById("searchInputDesktop");
-  const m = document.getElementById("searchInputMobile");
-  const run = () => {
-    const q = getSearchQuery();
-    currentCategory = ""; // search သည် category filter မသုံး
-    showShopGrid(q ? `Results for "${q}"` : "Shop");
+  const hook = () => {
+    // grid view only re-render; home sections မပြောင်းချင်ရင် ဒီတောင့်ပဲ
+    renderGrid();
   };
-  ["searchInput", "searchInputDesktop", "searchInputMobile"].forEach((id) => {
-    const inp = document.getElementById(id);
-    inp?.addEventListener("input", run);
-    inp?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") run();
-    });
-  });
+  document.getElementById('searchInput')?.addEventListener('input', hook);
+  document.getElementById('searchInputMobile')?.addEventListener('input', hook);
 }
 
 // === Part 7A: Home sections ===
@@ -806,20 +790,19 @@ function renderHomeSections() {
 
 // === Part 7B: Shop grid ===
 function renderGrid(opts = {}) {
-  const q = getSearchQuery?.() || "";
+  const q   = getSearchQuery();
   const cat = (currentCategory || "").trim().toLowerCase();
   const aud = currentAudience || "all";
-
   if (!grid) return;
   grid.innerHTML = "";
 
   const filtered = (DEMO_PRODUCTS || []).filter((p) => {
     const okCat = !cat || (p.cat || "").toLowerCase() === cat;
-    const hay = ((p.title || "") + (p.desc || "")).toLowerCase();
-    const okQ = !q || hay.includes(q);
+    const hay   = ((p.title || "") + " " + (p.desc || "")).toLowerCase();
+    const okQ   = !q || hay.includes(q);
     const okAud = aud === "all" || (p.aud || "all") === aud;
-    const okTag = !opts.tag || (opts.tag === "new" && p.new === true);
-    return okCat && okQ && okAud && (!opts.tag || okTag);
+    const okTag = !opts.tag || opts.tag !== "new" || p.new === true;
+    return okCat && okQ && okAud && okTag;
   });
 
   if (!filtered.length) {
@@ -828,76 +811,60 @@ function renderGrid(opts = {}) {
   }
 
   filtered.forEach((p) => {
-    // ✅ ensure product has an id (needed for data-id)
-    if (!p.id) {
-      p.id =
-        "p_" +
-        String(p.title || "item")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "");
-    }
-
     const card = h("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="thumb" alt="${
-        p.title
-      }" width="600" height="600" loading="lazy" decoding="async">
+      <img class="thumb" alt="${p.title}" width="600" height="600" loading="lazy" decoding="async">
       <div class="pad">
         <div class="card-title">${p.title}</div>
-        <div class="row between" style="gap:.5rem; align-items:center;">
+        <div class="row between">
           <div class="price">${fmt(p.price)}</div>
-          <div class="row" style="gap:.4rem;">
+          <div class="row gap">
             <button class="btn btn-soft btn-view">View</button>
-            <button class="btn btn-mini btn-add" data-id="${
-              p.id
-            }" aria-label="Add ${p.title} to cart">Add to Cart</button>
+            <button class="btn btn-mini btn-add" data-id="${p.id}">Add to Cart</button>
           </div>
         </div>
-        <div class="promo-inline" style="margin-top:.5rem">
+        <div class="promo-inline">
           <input placeholder="Promo code" aria-label="promo for ${p.title}">
           <button class="btn-mini">Apply</button>
         </div>
       </div>
     `;
 
-    // ✅ image fallback (no 404)
+    // image fallback
     const imc = card.querySelector("img.thumb");
     if (imc) withImgFallback(imc, p.img, true, p.id);
 
-    // View → open product
-    card
-      .querySelector(".btn-view")
-      ?.addEventListener("click", () => openProduct(p));
-    card
-      .querySelector("img.thumb")
-      ?.addEventListener("click", () => openProduct(p));
+    // open product
+    card.querySelector(".btn-view")?.addEventListener("click", () => openProduct(p));
+    imc?.addEventListener("click", () => openProduct(p));
 
-    // Add to Cart
-    card.querySelector(".btn-add")?.addEventListener("click", (e) => {
-      e.stopPropagation();
+    // add-to-cart (from grid)
+    card.querySelector(".btn-add")?.addEventListener("click", () => {
       addToCart(p, 1);
+      toast(`${p.title} added to cart`);
+      updateCartCount();
+      renderCart?.();
     });
 
-    // Item-level promo
+    // per-item promo
     const [promoInput, promoBtn] = card.querySelectorAll(".promo-inline > *");
     promoBtn?.addEventListener("click", () => {
       const code = (promoInput?.value || "").trim().toUpperCase();
-      const rule = PROMO_MAP?.[code] || null;
+      const rule = PROMO_MAP[code] || null;
       if (!code) {
-        if (state.itemPromos) delete state.itemPromos[p.id];
-        toast?.("Promo cleared");
+        delete state.itemPromos?.[p.id];
+        toast("Promo cleared");
         renderCart?.();
         return;
       }
       if (!rule) {
-        toast?.("Invalid code");
+        toast("Invalid code");
         return;
       }
-      if (!state.itemPromos) state.itemPromos = {};
+      (state.itemPromos ||= {});
       state.itemPromos[p.id] = { code, ...rule };
-      toast?.(`Promo ${code} applied to ${p.title}`);
+      toast(`Promo ${code} applied to ${p.title}`);
       renderCart?.();
     });
 
@@ -905,23 +872,12 @@ function renderGrid(opts = {}) {
   });
 }
 
-function addToCart(p, qty = 1) {
-  if (!state.cart) state.cart = [];
-  const found = state.cart.find((x) => x.id === p.id);
-  if (found) {
-    found.qty += qty;
-  } else {
-    state.cart.push({
-      id: p.id,
-      title: p.title,
-      price: p.price,
-      img: p.img,
-      qty,
-    });
-  }
-  toast(`${p.title} added to cart`);
-  updateCartCount?.();
-  renderCart?.();
+// core addToCart
+function addToCart(p, qty=1){
+  const found = state.cart.find(x => x.id === p.id);
+  if(found){ found.qty += qty; }
+  else { state.cart.push({ id:p.id, title:p.title, price:p.price, img:p.img, qty }); }
+  try { localStorage.setItem('cart', JSON.stringify(state.cart)); } catch {}
 }
 
 document.addEventListener("click", (e) => {
@@ -1027,57 +983,50 @@ function showShopGrid(title, opts = {}) {
 }
 
 // === Part 8: Product Modal ===
+let currentProduct = null;
 function openProduct(p) {
-  // product images (fallback if empty)
-  const imgs = p.images && p.images.length ? p.images : [p.img];
+  currentProduct = p;
+  const imgs = p.images?.length ? p.images : [p.img];
 
-  // reset thumbs
-  if (pdThumbs) pdThumbs.innerHTML = "";
+  // wire gallery
+  const pdImg    = document.getElementById("pdImg");
+  const pdThumbs = document.getElementById("pdThumbs");
+  const pdTitle  = document.getElementById("pdTitle");
+  const pdPrice  = document.getElementById("pdPrice");
+  const pdDesc   = document.getElementById("pdDesc");
+  const pdSpecs  = document.getElementById("pdSpecs");
 
-  // main image
-  if (pdImg) {
-    withImgFallback(pdImg, imgs[0], false, p.id + "-main");
-    pdImg.alt = p.title;
-  }
-
-  // thumbnails
+  pdThumbs.innerHTML = "";
+  if (pdImg) { withImgFallback(pdImg, imgs[0], false); pdImg.alt = p.title; }
   imgs.forEach((src, i) => {
     const im = h("img");
-    withImgFallback(im, src, true, p.id + "-t" + i);
+    withImgFallback(im, src, true);
     im.alt = `${p.title} ${i + 1}`;
-    im.width = 120;
-    im.height = 120;
-    im.loading = "lazy";
     if (i === 0) im.classList.add("active");
     im.addEventListener("click", () => {
-      $$("#pdThumbs img").forEach((x) => x.classList.remove("active"));
+      pdThumbs.querySelectorAll("img").forEach(x => x.classList.remove("active"));
       im.classList.add("active");
-      withImgFallback(pdImg, src, false, p.id + "-main-" + i);
+      withImgFallback(pdImg, src, false);
     });
-    pdThumbs?.appendChild(im);
+    pdThumbs.appendChild(im);
   });
 
-  // slider next/prev
-  let cur = 0;
-  function show(i) {
-    cur = (i + imgs.length) % imgs.length;
-    withImgFallback(pdImg, imgs[cur], false, p.id + "-slide-" + cur);
-    $$("#pdThumbs img").forEach((x, idx) =>
-      x.classList.toggle("active", idx === cur)
-    );
-  }
-  $("#pdPrev")?.addEventListener("click", () => show(cur - 1));
-  $("#pdNext")?.addEventListener("click", () => show(cur + 1));
-  show(0);
-
-  // meta info
   if (pdTitle) pdTitle.textContent = p.title;
   if (pdPrice) pdPrice.textContent = fmt(p.price);
-  if (pdDesc) pdDesc.textContent = p.desc || "";
-  if (pdSpecs)
-    pdSpecs.innerHTML = (p.specs || []).map((s) => `<li>${s}</li>`).join("");
+  if (pdDesc)  pdDesc.textContent  = p.desc || "";
+  if (pdSpecs) pdSpecs.innerHTML   = (p.specs || []).map(s=>`<li>${s}</li>`).join("");
 
-  productModal?.showModal();
+  // modal-level add to cart
+  document.getElementById("pdAdd")?.addEventListener("click", () => {
+    const qty = Math.max(1, Number(document.getElementById("pdQty")?.value || 1));
+    addToCart(currentProduct, qty);
+    updateCartCount();
+    renderCart?.();
+    toast(`${currentProduct.title} × ${qty} added`);
+    document.getElementById("productModal")?.close();
+  }, { once:true });
+
+  document.getElementById("productModal")?.showModal();
 }
 
 // universal close buttons
@@ -1695,29 +1644,35 @@ function fillCategoriesOnce() {
   });
 }
 
-function init() {
-  buildNavChips?.();
-  wireSearchInputs?.();
-  renderHomeSections?.();
-  // currentCategory = ""; showShopGrid("All");  // (optional) first open grid
-  fillCategoriesOnce();
-  loadProductsPage();
-  updateCartCount?.();
+function init(){
+  buildNavChips();
+  wireSearchInputs();
+
+  // products paging function ရှိသော် call, မရှိသေးရင် အနည်းဆုံး grid တန်း render
+  if (typeof loadProductsPage === 'function') {
+    loadProductsPage();
+  } else {
+    renderGrid();
+  }
+
+  // home sections + promo
+  renderHomeSections();
   fetchPromos?.();
 
-  // [data-close] buttons
-  document.querySelectorAll("[data-close]")?.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-close");
+  // membership open
+  document.getElementById("btnMembership")
+    ?.addEventListener("click", ()=> document.getElementById("memberModal")?.showModal());
+
+  // See-all → showShopGrid() မှာ section heading ကို ပြောင်းပေးထားတယ်
+  updateCartCount();
+
+  // close buttons (for all dialogs)
+  document.querySelectorAll('[data-close]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-close');
       document.getElementById(id)?.close();
     });
   });
-  // ✅ Membership button → open modal
-  document
-    .getElementById("btnMembership")
-    ?.addEventListener("click", () =>
-      document.getElementById("memberModal")?.showModal()
-    );
 }
 init();
 
