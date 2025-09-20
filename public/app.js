@@ -63,57 +63,72 @@ function updateCartCount() {
   if (el) el.textContent = n ? String(n) : "";
 }
 
-function renderCart() {
-  const wrap = document.getElementById("cartList");
-  const tot = document.getElementById("cartTotal");
-  if (!wrap || !tot) return;
+// cart PAGE renderer
+function renderCart(){
+  const wrap = document.getElementById('cartPageList');
+  const sub  = document.getElementById('cartSubtotal');
+  const ship = document.getElementById('cartShip');
+  const tot  = document.getElementById('cartTotal');
+  if(!wrap) return;
 
   const items = state.cart || [];
-  if (!items.length) {
+  wrap.innerHTML = '';
+
+  if(!items.length){
     wrap.innerHTML = `<p class="small">Your cart is empty.</p>`;
-    tot.textContent = "$0.00";
+    sub.textContent = '$0.00'; ship.textContent='$0.00'; tot.textContent='$0.00';
     return;
   }
 
-  wrap.innerHTML = "";
-  let sum = 0;
-  items.forEach((it) => {
-    const li = document.createElement("div");
-    li.className = "row between";
-    const line = it.price * it.qty;
-    sum += line;
-    li.innerHTML = `
-      <div class="row" style="gap:.6rem;align-items:center">
-        <img src="" alt="${
-          it.title
-        }" width="52" height="52" class="thumb" style="border-radius:.5rem">
+  let subtotal = 0;
+  items.forEach(it=>{
+    const line = it.price * it.qty; subtotal += line;
+    const row = document.createElement('div');
+    row.className = 'row between item-line';
+    row.innerHTML = `
+      <div class="row" style="gap:.7rem; align-items:center">
+        <img class="thumb" alt="${it.title}">
         <div>
           <div class="strong">${it.title}</div>
           <div class="small">${fmt(it.price)} each</div>
         </div>
       </div>
-      <div class="row" style="gap:.4rem;align-items:center">
-        <button class="btn-mini" data-dec="${
-          it.id
-        }" aria-label="decrease">−</button>
-        <span class="strong">${it.qty}</span>
-        <button class="btn-mini" data-inc="${
-          it.id
-        }" aria-label="increase">＋</button>
-        <div class="price" style="min-width:80px;text-align:right">${fmt(
-          line
-        )}</div>
-        <button class="btn-mini btn-outline" data-remove="${
-          it.id
-        }">Remove</button>
+      <div class="row" style="gap:.6rem; align-items:center">
+        <div class="row qty-box" style="gap:.25rem;">
+          <button class="btn-mini" data-dec="${it.id}">−</button>
+          <span class="strong">${it.qty}</span>
+          <button class="btn-mini" data-inc="${it.id}">＋</button>
+        </div>
+        <div class="price">${fmt(line)}</div>
+        <button class="btn-mini btn-outline" data-remove="${it.id}">Remove</button>
       </div>
     `;
-    const img = li.querySelector("img.thumb");
-    if (img) withImgFallback(img, it.img, true, it.id);
-    wrap.appendChild(li);
+    withImgFallback(row.querySelector('img.thumb'), it.img, true, it.id);
+    wrap.appendChild(row);
   });
-  tot.textContent = fmt(sum);
+
+  const shipping = subtotal>0 ? 3.99 : 0; // simple flat
+  sub.textContent = fmt(subtotal);
+  ship.textContent= fmt(shipping);
+  tot.textContent = fmt(subtotal + shipping);
 }
+
+// qty +/- / remove (delegation)
+document.getElementById('cartPageList')?.addEventListener('click', (e)=>{
+  const inc = e.target.closest('[data-inc]');
+  const dec = e.target.closest('[data-dec]');
+  const rem = e.target.closest('[data-remove]');
+  const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+  if(!id) return;
+  const i = (state.cart||[]).findIndex(x=>x.id===id);
+  if(i<0) return;
+  if(inc) state.cart[i].qty += 1;
+  if(dec) state.cart[i].qty = Math.max(0, state.cart[i].qty-1);
+  if(rem || state.cart[i].qty===0) state.cart.splice(i,1);
+  try{ localStorage.setItem('cart', JSON.stringify(state.cart)); }catch{}
+  updateCartCount();
+  renderCart();
+});
 
 // cart button → open modal (and render)
 document.getElementById("btnCart")?.addEventListener("click", () => {
@@ -143,7 +158,13 @@ document.getElementById("cartList")?.addEventListener("click", (e) => {
   renderCart();
 });
 
-// on boot, restore cart
+// open cart as PAGE (not modal)
+document.getElementById("btnCart")?.addEventListener("click", () => {
+  switchView("cart");
+  renderCart();
+});
+
+// restore cart on boot
 (function restoreCart() {
   try {
     const raw = localStorage.getItem("cart");
@@ -748,19 +769,22 @@ function switchView(name) {
 
 // === Part 6: Search sync ===
 // === Search (desktop + mobile) ===
-function getSearchQuery() {
-  const d = document.getElementById("searchInput"); // desktop
-  const m = document.getElementById("searchInputMobile"); // mobile
-  return ((d?.value || "") + " " + (m?.value || "")).trim().toLowerCase();
+function getSearchQuery(){
+  const d = document.getElementById('searchInput');        // desktop
+  const m = document.getElementById('searchInputMobile');  // mobile
+  return ((d?.value||'')+' '+(m?.value||'')).trim().toLowerCase();
 }
-
-function wireSearchInputs() {
-  const hook = () => {
-    // grid view only re-render; home sections မပြောင်းချင်ရင် ဒီတောင့်ပဲ
-    renderGrid();
+function wireSearchInputs(){
+  const run = ()=>{
+    currentCategory = "";                 // search = all cats
+    showShopGrid(getSearchQuery()? 'Results' : 'Shop');    // go to shop view
+    document.getElementById('view-shop')?.scrollIntoView({behavior:'smooth', block:'start'});
   };
-  document.getElementById("searchInput")?.addEventListener("input", hook);
-  document.getElementById("searchInputMobile")?.addEventListener("input", hook);
+  ['searchInput','searchInputMobile'].forEach(id=>{
+    const el = document.getElementById(id);
+    el?.addEventListener('input', run);
+    el?.addEventListener('keydown', e=>{ if(e.key==='Enter') run(); });
+  });
 }
 
 // === Part 7A: Home sections ===
@@ -1019,21 +1043,12 @@ function renderGrid(opts = {}) {
 }
 
 // core addToCart
-function addToCart(p, qty = 1) {
-  if (!state.cart) state.cart = [];
-  const i = state.cart.findIndex((x) => x.id === p.id);
-  if (i >= 0) state.cart[i].qty += qty;
-  else
-    state.cart.push({
-      id: p.id,
-      title: p.title,
-      price: p.price,
-      img: p.img,
-      qty,
-    });
-  try {
-    localStorage.setItem("cart", JSON.stringify(state.cart));
-  } catch {}
+function addToCart(p, qty=1){
+  if(!state.cart) state.cart=[];
+  const i = state.cart.findIndex(x=>x.id===p.id);
+  if(i>=0) state.cart[i].qty += qty;
+  else state.cart.push({ id:p.id, title:p.title, price:p.price, img:p.img, qty });
+  try{ localStorage.setItem('cart', JSON.stringify(state.cart)); }catch{}
   updateCartCount();
 }
 
@@ -1353,60 +1368,72 @@ async function loadOrders() {
 }
 
 async function renderAnalytics() {
-  // guard: demo-safe
   const daysBack = Number(document.getElementById("anaRange")?.value || 365);
   const sinceIso = new Date(Date.now() - daysBack * 86400000)
     .toISOString()
     .slice(0, 10);
 
   let orders = [];
+
   if (state.user) {
     try {
-      const qref = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", sinceIso),
-        limit(1000)
-      );
+      let qref;
+      if (state.isAdmin) {
+        // ✅ admin: shop-wide
+        qref = query(
+          collection(db, "orders"),
+          where("orderDate", ">=", sinceIso),
+          limit(1000)
+        );
+      } else {
+        // ✅ non-admin: my orders only
+        qref = query(
+          collection(db, "orders"),
+          where("orderDate", ">=", sinceIso),
+          where("userId", "==", state.user.uid),
+          limit(1000)
+        );
+      }
       const snap = await getDocs(qref);
-      snap.forEach((docu) => orders.push(docu.data()));
+      snap.forEach((d) => orders.push(d.data()));
     } catch (e) {
       console.warn("analytics blocked", e);
     }
   }
-  // demo fallback when no data or blocked
+
+  // Fallback to demo if empty/blocked
   if (!orders.length) {
-    orders = makeDemoOrders(daysBack); // fake dataset
+    orders = makeDemoOrders(daysBack);
   }
 
-  // group by day
+  // === aggregate ===
   const byDay = {};
   const tally = {};
   orders.forEach((o) => {
     const d = o.orderDate || o.createdAt?.slice?.(0, 10);
     const amt = Number(o.pricing?.total || o.total || 0);
-    byDay[d] = (byDay[d] || 0) + amt;
+    if (d) byDay[d] = (byDay[d] || 0) + amt;
     (o.items || []).forEach((it) => {
       tally[it.title] = (tally[it.title] || 0) + Number(it.qty || 1);
     });
   });
 
-  // x-axis labels
   const days = [];
   for (let i = daysBack - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
     days.push(d);
   }
-  const revSeries = days.map((d) => byDay[d] || 0);
+  const rev = days.map((d) => byDay[d] || 0);
 
-  // render charts
   new Chart(document.getElementById("revChart"), {
     type: "line",
     data: {
       labels: days.map((d) => d.slice(5)),
-      datasets: [{ label: "Revenue", data: revSeries }],
+      datasets: [{ data: rev, label: "Revenue" }],
     },
     options: { responsive: true, plugins: { legend: { display: false } } },
   });
+
   const top = Object.entries(tally)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 7);
@@ -1414,7 +1441,7 @@ async function renderAnalytics() {
     type: "bar",
     data: {
       labels: top.map(([k]) => k),
-      datasets: [{ label: "Qty", data: top.map(([, v]) => v) }],
+      datasets: [{ data: top.map(([, v]) => v), label: "Qty" }],
     },
     options: { responsive: true, plugins: { legend: { display: false } } },
   });
@@ -1464,32 +1491,33 @@ function makeDemoOrders(daysBack = 365) {
 }
 
 // === Part 11: Membership (demo activate) ===
-$("#btnMembership")?.addEventListener("click", () =>
-  $("#memberModal")?.showModal()
-);
-$("#buyMembership")?.addEventListener("click", async () => {
-  if (!state.user) {
-    $("#authModal")?.showModal();
+// open membership
+document.getElementById("btnMembership")
+  ?.addEventListener("click", ()=> document.getElementById("memberModal")?.showModal());
+
+// buy flow
+document.getElementById("buyMembership")?.addEventListener("click", async ()=>{
+  if(!state.user){
+    document.getElementById("authModal")?.showModal();
+    toast('Please sign in to continue');
     return;
   }
-  const plan =
-    document.querySelector('input[name="mplan"]:checked')?.value || "basic";
-  const rate = plan === "plus" ? 0.03 : 0.02;
-  const now = Date.now(),
-    year = 365 * 86400000;
-  state.membership = { plan, rate, startTs: now, expiresTs: now + year };
-  try {
-    await setDoc(
-      doc(db, "users", state.user.uid),
-      { member: state.membership },
-      { merge: true }
-    );
-  } catch (e) {
-    console.warn("member update fail", e);
+  const plan  = (document.querySelector('input[name="mplan"]:checked')?.value)||'basic';
+  const fees  = { basic: 9, plus: 19, pro: 39 };
+  const rates = { basic: .02, plus: .03, pro: .05 };
+  const method= document.getElementById('payMethod')?.value || 'paypal';
+  const auto  = document.getElementById('autoRenew')?.checked ? true : false;
+
+  const now = Date.now(), yearMs = 365*86400000;
+  state.membership = { plan, rate:rates[plan], fee:fees[plan], method, autoRenew:auto, startTs:now, expiresTs:now+yearMs };
+
+  try{
+    await setDoc(doc(db,'users',state.user.uid), { member: state.membership }, { merge:true });
+    toast(`Membership ${plan.toUpperCase()} - $${fees[plan]}/yr activated`);
+  }catch(e){
+    console.warn('membership save failed', e);
   }
-  $("#memberModal")?.close();
-  renderMember();
-  toast("Membership activated");
+  document.getElementById("memberModal")?.close();
 });
 
 function renderMember() {
@@ -1524,24 +1552,37 @@ async function ensureUser(user) {
   }
 }
 
+// === Admin check ===
+// 1) Try custom claims (Cloud Functions ထဲမှာသတ်မှတ်ထားလို့ရမယ်)
+// 2) Fallback: users/{uid}.role === 'admin' or 'owner'
 async function checkAdmin(user) {
   if (!user) {
     state.isAdmin = false;
     return false;
   }
-  const tok = await getIdTokenResult(user, true);
-  if (tok.claims && tok.claims.admin === true) {
-    state.isAdmin = true;
-    return true;
-  }
-  // fallback by users doc (not secure alone)
+
   try {
-    const snap = await getDoc(doc(db, "users", user.uid));
-    state.isAdmin = snap.exists() && snap.data().role === "admin";
-  } catch {
-    state.isAdmin = false;
+    // 🔹 Step 1: custom claim
+    const tok = await getIdTokenResult(user, true);
+    if (tok?.claims?.admin === true) {
+      state.isAdmin = true;
+      return true;
+    }
+  } catch (e) {
+    console.warn("token check failed", e);
   }
-  return state.isAdmin;
+
+  try {
+    // 🔹 Step 2: fallback users doc
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const role = snap.exists() ? snap.data().role : null;
+    state.isAdmin = role === "admin" || role === "owner";
+    return state.isAdmin;
+  } catch (e) {
+    console.warn("users doc check failed", e);
+    state.isAdmin = false;
+    return false;
+  }
 }
 
 // Greeting

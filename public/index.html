@@ -75,9 +75,10 @@
               <div class="member-title">Membership</div>
               <div class="member-sub">2%/3% cashback all year</div>
             </div>
-            <button id="btnMembership" class="btn btn-outline">
-              Buy / Manage
+            <button id="btnMembership" class="btn btn-outline btn-soft">
+              Membership
             </button>
+            ">
           </div>
           <!-- renamed to match app.js -->
           <div
@@ -142,6 +143,55 @@
       <section id="view-orders" class="view">
         <h2 class="pad">My Orders</h2>
         <div id="ordersList" class="stack"></div>
+      </section>
+
+      <!-- Cart view (show as a full page) -->
+      <section id="view-cart" class="view" style="display: none">
+        <div class="card">
+          <div class="pad">
+            <div class="row between">
+              <h3 class="card-title">Your Cart</h3>
+              <button class="btn-soft" onclick="switchView('shop')">
+                ← Continue shopping
+              </button>
+            </div>
+            <div id="cartPageList" class="stack"></div>
+
+            <div
+              class="row between"
+              style="margin-top: 1rem; align-items: flex-end"
+            >
+              <div>
+                <div class="small">Promo (optional)</div>
+                <div class="row" style="gap: 0.5rem">
+                  <input
+                    id="cartPromo"
+                    class="input"
+                    placeholder="Promo code"
+                  />
+                  <button id="applyCartPromo" class="btn-mini">Apply</button>
+                </div>
+              </div>
+              <div style="text-align: right">
+                <div class="small">Subtotal</div>
+                <div id="cartSubtotal" class="price">$0.00</div>
+                <div class="small">Estimated delivery</div>
+                <div id="cartShip" class="price">$0.00</div>
+                <div class="strong" style="margin-top: 0.4rem">Total</div>
+                <div id="cartTotal" class="price" style="font-size: 1.35rem">
+                  $0.00
+                </div>
+                <div class="row" style="gap: 0.5rem; margin-top: 0.6rem">
+                  <select id="cartFulfill" class="input">
+                    <option value="delivery">Delivery</option>
+                    <option value="pickup">Store pickup</option>
+                  </select>
+                  <button id="btnCheckout" class="btn">Checkout</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- About -->
@@ -211,18 +261,18 @@
         </p>
 
         <div class="stack" style="margin: 1rem 0">
-          <label class="radio">
-            <input type="radio" name="mplan" value="basic" checked />
-            <span>Basic — <b>2% cashback</b> — <i>$9/year</i></span>
-          </label>
-          <label class="radio">
-            <input type="radio" name="mplan" value="plus" />
-            <span>Plus — <b>3% cashback</b> — <i>$19/year</i></span>
-          </label>
-          <label class="radio">
-            <input type="radio" name="mplan" value="pro" />
-            <span>Pro — <b>5% cashback</b> — <i>$39/year</i></span>
-          </label>
+          <label class="radio"
+            ><input type="radio" name="mplan" value="basic" checked />
+            <span>Basic — <b>2% cashback</b> — <i>$9/year</i></span></label
+          >
+          <label class="radio"
+            ><input type="radio" name="mplan" value="plus" />
+            <span>Plus — <b>3% cashback</b> — <i>$19/year</i></span></label
+          >
+          <label class="radio"
+            ><input type="radio" name="mplan" value="pro" />
+            <span>Pro — <b>5% cashback</b> — <i>$39/year</i></span></label
+          >
         </div>
 
         <div class="row between" style="margin: 0.6rem 0">
@@ -238,11 +288,9 @@
           </select>
         </div>
 
-        <div class="row gap" style="margin-top: 0.6rem">
-          <button id="buyMembership" class="btn" style="width: 100%">
-            Continue
-          </button>
-        </div>
+        <button id="buyMembership" class="btn" style="width: 100%">
+          Continue
+        </button>
       </div>
     </dialog>
 
