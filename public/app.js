@@ -190,7 +190,7 @@ window.addEventListener("storage", (e) => {
   if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
 
-// Ensure the cart markup exists inside the drawer-body (single shell)
+// Ensure the cart markup exists inside the drawer-body (single shell, with promo/member/pay & delivery)
 function ensureCartDrawerShell() {
   const drawer = document.getElementById("cartDrawer");
   const body = drawer?.querySelector(".drawer-body");
@@ -205,13 +205,16 @@ function ensureCartDrawerShell() {
 
       <div id="cartPageList" class="vlist"></div>
 
-      <!-- Promo & Member controls -->
+      <!-- Controls: Promo / Member / Delivery -->
       <div class="card" style="border:1px solid rgba(255,255,255,.08); border-radius:12px; margin-top:.5rem;">
-        <div class="pad" style="display:grid; gap:.5rem;">
+        <div class="pad" style="display:grid; gap:.6rem;">
+          <!-- Promo -->
           <div class="row between" style="gap:.5rem;">
-            <input id="promoInput" class="input" placeholder="Promo code" style="flex:1 1 auto;">
+            <input id="promoInput" class="input" placeholder="Promo code (e.g. DEMO10)" style="flex:1 1 auto;">
             <button id="applyPromoBtn" class="btn-mini">Apply</button>
+            <button id="demoPromoBtn" class="btn-mini" title="Fill a test promo">Use Demo</button>
           </div>
+          <!-- Member -->
           <div class="row between" style="gap:.5rem; align-items:center;">
             <label class="row" style="gap:.35rem; align-items:center;">
               <input id="applyMemberChk" type="checkbox">
@@ -222,6 +225,24 @@ function ensureCartDrawerShell() {
               <option value="0.10" selected>10% off</option>
               <option value="0.15">15% off</option>
             </select>
+          </div>
+          <!-- Delivery -->
+          <div class="row between" style="gap:.5rem; align-items:center;">
+            <label for="deliveryModeSelect">Delivery option</label>
+            <select id="deliveryModeSelect" class="input compact" style="width:160px;">
+              <option value="pickup" selected>Pickup</option>
+              <option value="delivery">Delivery</option>
+            </select>
+          </div>
+          <div id="deliveryFields" style="display:none;">
+            <div class="row" style="gap:.5rem; margin-top:.25rem;">
+              <input id="addrLine" class="input" placeholder="Address line" style="flex:1 1 60%;">
+              <input id="city" class="input" placeholder="City" style="flex:1 1 40%;">
+            </div>
+            <div class="row" style="gap:.5rem; margin-top:.25rem;">
+              <input id="phone" class="input" placeholder="Phone" style="flex:1 1 40%;">
+              <input id="note"  class="input" placeholder="Note (optional)" style="flex:1 1 60%;">
+            </div>
           </div>
         </div>
       </div>
@@ -244,35 +265,73 @@ function ensureCartDrawerShell() {
       <!-- Pay buttons -->
       <div class="row" style="gap:.5rem; margin-top:.6rem; flex-wrap:wrap;">
         <button id="btnPayPal" class="btn-mini">PayPal</button>
-        <button id="btnKBZ" class="btn-mini">KBZPay</button>
-        <button id="btnCB" class="btn-mini">CBPay</button>
-        <button id="btnAya" class="btn-mini">AyaPay</button>
+        <button id="btnKBZ"   class="btn-mini">KBZPay</button>
+        <button id="btnCB"    class="btn-mini">CBPay</button>
+        <button id="btnAya"   class="btn-mini">AyaPay</button>
       </div>
     `;
 
-    // ONE-TIME delegation for qty -/+/delete (drawer won't close)
-    if (!body.dataset.cartWired) {
-      body.addEventListener("click", (e) => {
-        const inc = e.target.closest?.("[data-inc]");
-        const dec = e.target.closest?.("[data-dec]");
-        const rem = e.target.closest?.("[data-remove]");
-        const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
-        if (!id) return;
+    // ---- ONE-TIME wiring inside drawer ----
+    // qty -/+ / remove (drawer won't close)
+    body.addEventListener("click", (e) => {
+      const inc = e.target.closest?.("[data-inc]");
+      const dec = e.target.closest?.("[data-dec]");
+      const rem = e.target.closest?.("[data-remove]");
+      const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+      if (!id) return;
 
-        const cart = ensureCart();
-        const i = cart.findIndex(x => x.id === id);
-        if (i < 0) return;
+      const cart = ensureCart();
+      const i = cart.findIndex(x => x.id === id);
+      if (i < 0) return;
 
-        if (inc) cart[i].qty += 1;
-        if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
-        if (rem || cart[i].qty === 0) cart.splice(i, 1);
+      if (inc) cart[i].qty += 1;
+      if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
+      if (rem || cart[i].qty === 0) cart.splice(i, 1);
 
-        setCart(cart);
-        renderCartPage(); // re-render; drawer stays open
-      });
-      body.dataset.cartWired = "1";
-    }
+      setCart(cart);
+      renderCartPage(); // re-render; drawer stays open
+    });
+
+    // Promo: Apply & Demo
+    body.querySelector("#applyPromoBtn")?.addEventListener("click", () => {
+      const code = body.querySelector("#promoInput")?.value || "";
+      applyPromo(code);
+    });
+    body.querySelector("#demoPromoBtn")?.addEventListener("click", () => {
+      const input = body.querySelector("#promoInput");
+      if (input) input.value = "DEMO10";
+      applyPromo("DEMO10"); // ✅ sample promo: 10% off
+    });
+
+    // Member toggle / rate
+    body.querySelector("#applyMemberChk")?.addEventListener("change", (e) => {
+      const on = !!e.target.checked;
+      const rate = body.querySelector("#memberRateSelect")?.value || "0.10";
+      setMembershipActive(on, rate);
+    });
+    body.querySelector("#memberRateSelect")?.addEventListener("change", (e) => {
+      const on = body.querySelector("#applyMemberChk")?.checked;
+      const rate = e.target.value;
+      setMembershipActive(!!on, rate);
+    });
+
+    // Delivery: show/hide address fields
+    const modeSel = body.querySelector("#deliveryModeSelect");
+    const fields  = body.querySelector("#deliveryFields");
+    const syncDeliveryUI = () => {
+      if (!modeSel || !fields) return;
+      fields.style.display = (modeSel.value === "delivery") ? "" : "none";
+    };
+    modeSel?.addEventListener("change", syncDeliveryUI);
+    syncDeliveryUI();
+
+    // Pay buttons (attach directly so clicks always work)
+    body.querySelector("#btnPayPal")?.addEventListener("click", () => proceedPayment("PayPal"));
+    body.querySelector("#btnKBZ")  ?.addEventListener("click", () => proceedPayment("KBZPay"));
+    body.querySelector("#btnCB")   ?.addEventListener("click", () => proceedPayment("CBPay"));
+    body.querySelector("#btnAya")  ?.addEventListener("click", () => proceedPayment("AyaPay"));
   }
+
   return body;
 }
 
@@ -280,21 +339,18 @@ function ensureCartDrawerShell() {
 function applyPromo(code) {
   code = (code || "").trim().toUpperCase();
   if (!code) { state.globalPromo = { active:false }; renderCartPage(); return; }
-  // demo rules: SAVE10 = 10% off, OFF5 = $5 off
-  if (code === "SAVE10") {
+  if (code === "DEMO10") {
     state.globalPromo = { active:true, code, type:"percent", value:10 };
   } else if (code === "OFF5") {
     state.globalPromo = { active:true, code, type:"amount", value:5 };
   } else {
-    // unknown code → deactivate
     state.globalPromo = { active:false, code };
   }
   renderCartPage();
 }
-
 function setMembershipActive(on, rate) {
   if (on) state.membership = { rate: Number(rate || 0) };
-  else state.membership = { rate: 0 };
+  else    state.membership = { rate: 0 };
   renderCartPage();
 }
 
@@ -320,12 +376,26 @@ document.addEventListener("change", (e) => {
 
 // === Pay buttons (demo flow) ===
 function proceedPayment(method) {
-  const t = computeTotals();
-  if (t.total <= 0) { alert("Cart is empty or total is $0.00"); return; }
-  // Demo: simulate success and clear cart (keep drawer open)
+  // If delivery is chosen, require basic fields
+  const drawer = document.getElementById("cartDrawer");
+  const body = drawer?.querySelector(".drawer-body");
+  const mode = body?.querySelector("#deliveryModeSelect")?.value || "pickup";
+  if (mode === "delivery") {
+    const addr = body.querySelector("#addrLine")?.value?.trim();
+    const city = body.querySelector("#city")?.value?.trim();
+    const phone = body.querySelector("#phone")?.value?.trim();
+    if (!addr || !city || !phone) {
+      alert("Please fill Address, City, and Phone for delivery.");
+      return;
+    }
+  }
+
+  const t = (typeof computeTotals === "function") ? computeTotals() : { total: 0 };
+  if (!t || t.total <= 0) { alert("Cart is empty or total is $0.00"); return; }
+
   alert(`Paid with ${method}. Charged ${fmt(t.total)}. Thank you!`);
-  setCart([]);           // clear cart
-  renderCartPage();      // show empty state
+  setCart([]);           // clear cart after mock payment
+  renderCartPage();      // show empty state in drawer
 }
 document.addEventListener("click", (e) => {
   if (e.target?.id === "btnPayPal") proceedPayment("PayPal");
