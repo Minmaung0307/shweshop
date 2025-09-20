@@ -90,13 +90,18 @@ function updateCartCount() {
 
 // -- main renderer (IDs are fixed & simple) --
 function renderCartPage() {
-  // hydrate from storage to reflect latest
+  // sync from localStorage
   setCart(getCart());
 
-  const wrap = document.getElementById("cartPageList");
-  const sub  = document.getElementById("cartSubtotal");
-  const ship = document.getElementById("cartShip");
-  const tot  = document.getElementById("cartTotal");
+  // 🔎 prefer drawer-body first
+  const scope =
+    document.getElementById("cartDrawer")?.querySelector(".drawer-body") ||
+    document;
+
+  const wrap = scope.querySelector("#cartPageList");
+  const sub  = scope.querySelector("#cartSubtotal");
+  const ship = scope.querySelector("#cartShip");
+  const tot  = scope.querySelector("#cartTotal");
   if (!wrap) return;
 
   const items = ensureCart();
@@ -175,9 +180,9 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
 // -- open cart as PAGE & render (single listener) --
 // Open cart drawer and render inside drawer-body
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  ensureCartDrawerShell();                 // ⬅ drawer-body ထဲ shell တည်ဆောက်
+  ensureCartDrawerShell();                 // drawer-body ထဲ container တည်ဆောက်
   document.getElementById("cartDrawer")?.classList.add("open");
-  renderCartPage?.();                      // ⬅ IDs ကို drawer-body ထဲမှာ သုံးထားလိမ့်မယ်
+  renderCartPage();                        // drawer-body scope IDs ပေါ် render
 });
 
 // -- boot & cross-tab sync (single) --
@@ -187,13 +192,12 @@ window.addEventListener("storage", (e) => {
   if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
 
-// Ensure the cart markup exists inside the drawer body
+// Ensure the cart markup exists inside the drawer-body
 function ensureCartDrawerShell() {
   const drawer = document.getElementById("cartDrawer");
   const body = drawer?.querySelector(".drawer-body");
   if (!body) return null;
 
-  // Only create once
   if (!body.querySelector("#cartPageList")) {
     body.innerHTML = `
       <div class="pad">
@@ -208,6 +212,29 @@ function ensureCartDrawerShell() {
         <div class="row between strong"><div>Total</div><div id="cartTotal" class="price">$0.00</div></div>
       </div></div>
     `;
+
+    // delegate +/-/remove (attach ONCE)
+    if (!body.dataset.cartWired) {
+      body.addEventListener("click", (e) => {
+        const inc = e.target.closest?.("[data-inc]");
+        const dec = e.target.closest?.("[data-dec]");
+        const rem = e.target.closest?.("[data-remove]");
+        const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+        if (!id) return;
+
+        const cart = ensureCart();
+        const i = cart.findIndex((x) => x.id === id);
+        if (i < 0) return;
+
+        if (inc) cart[i].qty += 1;
+        if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
+        if (rem || cart[i].qty === 0) cart.splice(i, 1);
+
+        setCart(cart);
+        renderCartPage();
+      });
+      body.dataset.cartWired = "1";
+    }
   }
   return body;
 }
