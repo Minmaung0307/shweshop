@@ -65,6 +65,7 @@ function updateCartCount() {
 
 // cart PAGE renderer
 function renderCartPage() {
+  restoreCart(); // ✅ always load latest cart from localStorage
   const wrap = document.getElementById("cartPageList");
   const sub = document.getElementById("cartSubtotal");
   const ship = document.getElementById("cartShip");
@@ -152,7 +153,7 @@ restoreCart();
 updateCartCount();
 
 // delegation for +/-/remove
-document.getElementById("cartList")?.addEventListener("click", (e) => {
+document.getElementById("cartPageList")?.addEventListener("click", (e) => {
   const inc = e.target.closest("[data-inc]");
   const dec = e.target.closest("[data-dec]");
   const rem = e.target.closest("[data-remove]");
