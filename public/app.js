@@ -90,18 +90,17 @@ function updateCartCount() {
 
 // -- main renderer (IDs are fixed & simple) --
 function renderCartPage() {
-  // sync from localStorage
   setCart(getCart());
 
-  // 🔎 prefer drawer-body first
+  // Prefer drawer-body scope
   const scope =
     document.getElementById("cartDrawer")?.querySelector(".drawer-body") ||
     document;
 
   const wrap = scope.querySelector("#cartPageList");
-  const sub  = scope.querySelector("#cartSubtotal");
-  const ship = scope.querySelector("#cartShip");
-  const tot  = scope.querySelector("#cartTotal");
+  const elSub  = scope.querySelector("#cartSubtotal");
+  const elShip = scope.querySelector("#cartShip");
+  const elTot  = scope.querySelector("#cartTotal");
   if (!wrap) return;
 
   const items = ensureCart();
@@ -109,27 +108,21 @@ function renderCartPage() {
 
   if (!items.length) {
     wrap.innerHTML = `<p class="small">Your cart is empty.</p>`;
-    if (sub)  sub.textContent  = "$0.00";
-    if (ship) ship.textContent = "$0.00";
-    if (tot)  tot.textContent  = "$0.00";
+    if (elSub)  elSub.textContent  = "$0.00";
+    if (elShip) elShip.textContent = "$0.00";
+    if (elTot)  elTot.textContent  = "$0.00";
     updateCartCount();
     return;
   }
 
-  let subtotal = 0;
-  for (const it of items) {
+  items.forEach((it) => {
     const line = (it.price || 0) * (it.qty || 0);
-    subtotal += line;
-
     const row = document.createElement("div");
     row.className = "row between item-line";
     row.innerHTML = `
-      <div class="row" style="gap:.7rem; align-items:center">
-        <img class="thumb" alt="${it.title || ""}">
-        <div>
-          <div class="strong">${it.title || ""}</div>
-          <div class="small">${fmt(it.price || 0)} each</div>
-        </div>
+      <div class="col" style="gap:.25rem">
+        <div class="strong">${it.title || ""}</div>
+        <div class="small">${fmt(it.price || 0)} each</div>
       </div>
       <div class="row" style="gap:.6rem; align-items:center">
         <div class="row qty-box" style="gap:.25rem;">
@@ -141,15 +134,13 @@ function renderCartPage() {
         <button class="btn-mini btn-outline" data-remove="${it.id}">Remove</button>
       </div>
     `;
-    const im = row.querySelector("img.thumb");
-    if (im) im.src = it.img || "";
     wrap.appendChild(row);
-  }
+  });
 
-  const shipping = subtotal > 0 ? 3.99 : 0;
-  if (sub)  sub.textContent  = fmt(subtotal);
-  if (ship) ship.textContent = fmt(shipping);
-  if (tot)  tot.textContent  = fmt(subtotal + shipping);
+  const t = computeTotals();
+  if (elSub)  elSub.textContent  = fmt(t.subtotal);
+  if (elShip) elShip.textContent = fmt(t.shipping);
+  if (elTot)  elTot.textContent  = fmt(t.total);
 
   updateCartCount();
 }
@@ -177,10 +168,9 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
   renderCartPage();
 });
 
-// -- open cart as PAGE & render (single listener) --
 // Open cart drawer and render inside drawer-body
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  ensureCartDrawerShell();                 // drawer-body ထဲ container တည်ဆောက်
+  ensureCartDrawerShell();                 // drawer-body ထဲ shell တည်ဆောက်
   document.getElementById("cartDrawer")?.classList.add("open");
   renderCartPage();                        // drawer-body scope IDs ပေါ် render
 });
@@ -198,14 +188,15 @@ function ensureCartDrawerShell() {
   const body = drawer?.querySelector(".drawer-body");
   if (!body) return null;
 
+  // ❌ remove any duplicate/old summaries that show zeros
+  body.querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]")
+    .forEach(n => n.remove());
+
+  // Create our single cart shell if missing
   if (!body.querySelector("#cartPageList")) {
     body.innerHTML = `
-      <div class="pad">
-        <div class="card-title">Your Cart</div>
-      </div>
-
+      <div class="pad"><div class="card-title">Your Cart</div></div>
       <div id="cartPageList" class="vlist"></div>
-
       <div class="card"><div class="pad">
         <div class="row between"><div>Subtotal</div><div id="cartSubtotal" class="price">$0.00</div></div>
         <div class="row between"><div>Shipping</div><div id="cartShip" class="price">$0.00</div></div>
@@ -213,7 +204,7 @@ function ensureCartDrawerShell() {
       </div></div>
     `;
 
-    // delegate +/-/remove (attach ONCE)
+    // qty +/- / remove delegation (attach ONCE)
     if (!body.dataset.cartWired) {
       body.addEventListener("click", (e) => {
         const inc = e.target.closest?.("[data-inc]");
@@ -223,7 +214,7 @@ function ensureCartDrawerShell() {
         if (!id) return;
 
         const cart = ensureCart();
-        const i = cart.findIndex((x) => x.id === id);
+        const i = cart.findIndex(x => x.id === id);
         if (i < 0) return;
 
         if (inc) cart[i].qty += 1;
@@ -237,6 +228,29 @@ function ensureCartDrawerShell() {
     }
   }
   return body;
+}
+
+function computeTotals() {
+  const items = ensureCart();
+  let subtotal = 0;
+  items.forEach(it => subtotal += (it.price || 0) * (it.qty || 0));
+
+  // optional promos
+  let promo = 0;
+  if (state.globalPromo) {
+    const gp = state.globalPromo;
+    if (gp.type === "percent") promo = subtotal * (Number(gp.value || 0) / 100);
+    if (gp.type === "amount")  promo = Number(gp.value || 0);
+  }
+  // member discount (%)
+  let member = 0;
+  if (state.membership?.rate) {
+    member = subtotal * Number(state.membership.rate || 0);
+  }
+  const shipping = subtotal > 0 ? 3.99 : 0;
+
+  const total = Math.max(0, subtotal - promo - member + shipping);
+  return { subtotal, promo, member, shipping, total };
 }
 
 // Mount a clean Cart shell into #view-cart (once)
