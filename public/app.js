@@ -2060,14 +2060,28 @@ onAuthStateChanged(auth, async (user) => {
   });
 
   function updateAuthUI(user){
-    const authed = !!user;
-    if (btnAuth) btnAuth.style.display = authed ? "none" : "inline-block";
-    if (btnLogout) btnLogout.style.display = authed ? "inline-block" : "none";
-    // Update all #greet spans (there are 2 in DOM)
-    document.querySelectorAll("#greet").forEach(el=>{
-      el.textContent = authed ? ("Hello, " + (user.email || "User")) : "";
-    });
+  const btnAuth = document.getElementById("btnAuth");
+  const btnLogout = document.getElementById("btnLogout");
+  const greetEl = document.getElementById("greet");
+  const authed = !!user;
+
+  // Toggle buttons
+  if (btnAuth) btnAuth.style.display = authed ? "none" : "inline-block";
+  if (btnLogout) btnLogout.style.display = authed ? "inline-block" : "none";
+
+  // Username: prefer displayName; else email local-part
+  let uname = "";
+  if (authed) {
+    if (user.displayName && user.displayName.trim()) {
+      uname = user.displayName.split(" ")[0];
+    } else if (user.email) {
+      uname = user.email.split("@")[0];
+    } else {
+      uname = "User";
+    }
   }
+  if (greetEl) greetEl.textContent = authed ? ("Welcome, " + uname) : "";
+};
 
   // A dedicated listener just for UI (safe even if another listener exists)
   try {
@@ -2081,4 +2095,3 @@ onAuthStateChanged(auth, async (user) => {
   // Also run once on boot in case auth already resolved
   setTimeout(()=>updateAuthUI(window.state?.user||null), 0);
 })();
-
