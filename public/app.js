@@ -2017,3 +2017,82 @@ onAuthStateChanged(auth, async (user) => {
   await checkAdmin(user);
   updateAdminChip();
 });
+
+// === Quick Prefs: Theme & Font Size ===
+(function setupQuickPrefs(){
+  const root = document.documentElement;
+  function applyTheme(name){
+    const t = (name || localStorage.getItem("theme") || "dark").trim();
+    root.setAttribute("data-theme", t);
+    const sel = document.getElementById("themeSelect"); if (sel) sel.value = t;
+    try { localStorage.setItem("theme", t); } catch {}
+  }
+  function applyFs(scale){
+    const fs = String(scale || localStorage.getItem("fs") || "1.00");
+    root.style.setProperty("--fs", fs);
+    const sel = document.getElementById("fsSelect"); if (sel) sel.value = fs;
+    try { localStorage.setItem("fs", fs); } catch {}
+  }
+  document.getElementById("themeSelect")?.addEventListener("change",(e)=>applyTheme(e.target.value));
+  document.getElementById("fsSelect")?.addEventListener("change",(e)=>applyFs(e.target.value));
+  applyTheme();
+  applyFs();
+})();
+
+
+// === Auth UI Toggle (robust) ===
+(function ensureAuthUIToggle(){
+  const btnAuth = document.getElementById("btnAuth");
+  const btnLogout = document.getElementById("btnLogout");
+
+  async function doLogout(){
+    try {
+      await signOut(auth);
+      console.log("Signed out");
+    } catch (e) {
+      console.warn("signOut failed", e);
+    }
+  }
+  btnLogout?.addEventListener("click", doLogout);
+  btnAuth?.addEventListener("click", ()=>{
+    if (window.state?.user) return;
+    document.getElementById("authModal")?.showModal();
+  });
+
+  function updateAuthUI(user){
+  const btnAuth = document.getElementById("btnAuth");
+  const btnLogout = document.getElementById("btnLogout");
+  const greetEl = document.getElementById("greet");
+  const authed = !!user;
+
+  // Toggle buttons
+  if (btnAuth) btnAuth.style.display = authed ? "none" : "inline-block";
+  if (btnLogout) btnLogout.style.display = authed ? "inline-block" : "none";
+
+  // Username: prefer displayName; else email local-part
+  let uname = "";
+  if (authed) {
+    if (user.displayName && user.displayName.trim()) {
+      uname = user.displayName.split(" ")[0];
+    } else if (user.email) {
+      uname = user.email.split("@")[0];
+    } else {
+      uname = "User";
+    }
+  }
+  if (greetEl) greetEl.textContent = authed ? ("Welcome, " + uname) : "";
+};
+
+  // A dedicated listener just for UI (safe even if another listener exists)
+  try {
+    onAuthStateChanged(auth, (user)=>{
+      window.state = window.state || {};
+      window.state.user = user || null;
+      updateAuthUI(user);
+    });
+  } catch {}
+
+  // Also run once on boot in case auth already resolved
+  setTimeout(()=>updateAuthUI(window.state?.user||null), 0);
+})();
+
