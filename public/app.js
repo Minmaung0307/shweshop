@@ -174,8 +174,9 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
 
 // -- open cart as PAGE & render (single listener) --
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  if (typeof switchView === "function") switchView("cart"); // page view
-  renderCartPage?.();                                       // draw rows
+  if (typeof switchView === "function") switchView("cart");
+  ensureCartViewShell();   // ⬅ make sure the cart section lives in #view-cart
+  renderCartPage?.();      // ⬅ then paint rows/totals
   window.scrollTo?.({ top: 0, behavior: "smooth" });
 });
 
@@ -185,6 +186,29 @@ updateCartCount();
 window.addEventListener("storage", (e) => {
   if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
+
+// Mount a clean Cart shell into #view-cart (once)
+function ensureCartViewShell() {
+  const view = document.getElementById("view-cart");
+  if (!view) return null;
+  // If our cart containers are not present, create them
+  if (!document.getElementById("cartPageList")) {
+    view.innerHTML = `
+      <div class="card"><div class="pad">
+        <div class="card-title">Your Cart</div>
+      </div></div>
+
+      <div id="cartPageList" class="vlist"></div>
+
+      <div class="card"><div class="pad">
+        <div class="row between"><div>Subtotal</div><div id="cartSubtotal" class="price">$0.00</div></div>
+        <div class="row between"><div>Shipping</div><div id="cartShip" class="price">$0.00</div></div>
+        <div class="row between strong"><div>Total</div><div id="cartTotal" class="price">$0.00</div></div>
+      </div></div>
+    `;
+  }
+  return view;
+}
 
 // === Image placeholders ===
 const IMG_PLACE = "https://picsum.photos/seed/shweshop/600/600";
@@ -790,16 +814,20 @@ function getSearchQuery() {
 }
 function wireSearchInputs() {
   const run = () => {
-    currentCategory = ""; // no category lock for search
-    showShopGrid(getSearchQuery() ? "Results" : "Shop"); // render grid
-    window.scrollTo({ top: 0, behavior: "smooth" }); // ⬅ go to top
+    const q = getSearchQuery();
+    currentCategory = "";                  // clear category lock for search
+    showShopGrid(q ? "Results" : "Shop");  // render grid + switch to shop
+    if (typeof homeSections !== "undefined" && homeSections) {
+      homeSections.style.display = q ? "none" : ""; // hide ads/sections on search
+    }
+    document.getElementById("view-shop")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" }); // ⬅ ensure at top
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   ["searchInput", "searchInputMobile"].forEach((id) => {
     const el = document.getElementById(id);
     el?.addEventListener("input", run);
-    el?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") run();
-    });
+    el?.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
   });
 }
 
