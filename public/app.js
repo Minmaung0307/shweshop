@@ -259,6 +259,51 @@ function ensureCartDrawerShell() {
   return body;
 }
 
+// Keep cart drawer open on internal clicks & button actions
+function wireCartDrawerGuards() {
+  const drawer = document.getElementById("cartDrawer");
+  if (!drawer) return;
+
+  // 1) Any clicks inside drawer should NOT bubble to "outside-click to close"
+  drawer.addEventListener("click", (e) => {
+    // stop all inside clicks from reaching document-level closers
+    e.stopPropagation();
+  });
+
+  // 2) Also guard the drawer-body explicitly (some UIs attach on body)
+  const body = drawer.querySelector(".drawer-body");
+  body?.addEventListener("click", (e) => e.stopPropagation());
+
+  // 3) Re-open class if anything toggled it off by other code (safety)
+  const keepOpen = () => drawer.classList.add("open");
+
+  // 4) Ensure our qty+/−/remove re-render doesn't close drawer
+  body?.addEventListener("click", (e) => {
+    const hit = e.target.closest?.("[data-inc],[data-dec],[data-remove]");
+    if (!hit) return;
+    // In case any other global handler tries to close after click:
+    setTimeout(keepOpen, 0);
+  });
+
+  // 5) If you have an overlay that closes on click, ensure only overlay clicks close it
+  const overlay = drawer.querySelector(".drawer-overlay");
+  overlay?.addEventListener("click", () => drawer.classList.remove("open"));
+
+  // If there's a close button, it should close — we keep its behavior
+  // document.getElementById("btnCartClose")?.addEventListener("click", () => drawer.classList.remove("open"));
+}
+
+// Call after shell creation (ensureCartDrawerShell) and on first load
+document.addEventListener("DOMContentLoaded", wireCartDrawerGuards);
+
+// Update your Cart button to mount shell, guard, and render (keep drawer open)
+document.getElementById("btnCart")?.addEventListener("click", () => {
+  ensureCartDrawerShell?.();      // build shell if missing
+  wireCartDrawerGuards();         // make sure guards are attached
+  document.getElementById("cartDrawer")?.classList.add("open");
+  renderCartPage?.();             // paint items/totals in drawer-body
+});
+
 function computeTotals() {
   const items = ensureCart();
   let subtotal = 0;
