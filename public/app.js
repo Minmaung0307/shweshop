@@ -115,7 +115,6 @@ function renderCartPage() {
     return;
   }
 
-  // Item rows
   items.forEach((it, idx) => {
     const line = (it.price || 0) * (it.qty || 0);
 
@@ -137,7 +136,7 @@ function renderCartPage() {
             <button class="btn-mini btn-outline" data-remove="${it.id}" title="Remove">🗑️</button>
           </div>
         </div>
-        <div class="row between" style="margin-top:.4rem; color:rgba(255,255,255,.9);">
+        <div class="row between" style="margin-top:.4rem;">
           <div class="small" style="opacity:.8;">&nbsp;</div>
           <div class="price">${fmt(line)}</div>
         </div>
@@ -146,17 +145,7 @@ function renderCartPage() {
     listEl.appendChild(row);
   });
 
-  // Totals (single panel only)
-  const t = (typeof computeTotals === "function")
-    ? computeTotals()
-    : (() => {
-        let subtotal = 0;
-        items.forEach(it => subtotal += (it.price || 0) * (it.qty || 0));
-        const shipping = subtotal > 0 ? 3.99 : 0;
-        const total = subtotal + shipping;
-        return { subtotal, shipping, total, promo: 0, member: 0 };
-      })();
-
+  const t = computeTotals();
   if (elSub)  elSub.textContent  = fmt(t.subtotal);
   if (elShip) elShip.textContent = fmt(t.shipping);
   if (elTot)  elTot.textContent  = fmt(t.total);
@@ -207,17 +196,38 @@ function ensureCartDrawerShell() {
   const body = drawer?.querySelector(".drawer-body");
   if (!body) return null;
 
-  // ❌ Remove any old/duplicate summaries or panels that showed zeros
+  // Remove any old/duplicate summaries that showed zeros
   body.querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]").forEach(n => n.remove());
 
-  // Create our single cart shell if missing
   if (!body.querySelector("#cartPageList")) {
     body.innerHTML = `
       <div class="pad"><div class="card-title">Your Cart</div></div>
 
       <div id="cartPageList" class="vlist"></div>
 
-      <div id="cartTotals" class="card" style="background:var(--bg2,#0b0f14); border:1px solid rgba(255,255,255,.08); border-radius:12px; margin-top:.75rem;">
+      <!-- Promo & Member controls -->
+      <div class="card" style="border:1px solid rgba(255,255,255,.08); border-radius:12px; margin-top:.5rem;">
+        <div class="pad" style="display:grid; gap:.5rem;">
+          <div class="row between" style="gap:.5rem;">
+            <input id="promoInput" class="input" placeholder="Promo code" style="flex:1 1 auto;">
+            <button id="applyPromoBtn" class="btn-mini">Apply</button>
+          </div>
+          <div class="row between" style="gap:.5rem; align-items:center;">
+            <label class="row" style="gap:.35rem; align-items:center;">
+              <input id="applyMemberChk" type="checkbox">
+              <span>Member discount</span>
+            </label>
+            <select id="memberRateSelect" class="input compact" title="Member % off" style="width:110px;">
+              <option value="0.05">5% off</option>
+              <option value="0.10" selected>10% off</option>
+              <option value="0.15">15% off</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Totals (single panel only) -->
+      <div id="cartTotals" class="card" style="background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.12); border-radius:12px; margin-top:.75rem;">
         <div class="pad">
           <div class="row between" style="padding:.25rem 0;">
             <div>Subtotal</div><div id="cartSubtotal" class="price">$0.00</div>
@@ -229,6 +239,14 @@ function ensureCartDrawerShell() {
             <div>Total</div><div id="cartTotal" class="price">$0.00</div>
           </div>
         </div>
+      </div>
+
+      <!-- Pay buttons -->
+      <div class="row" style="gap:.5rem; margin-top:.6rem; flex-wrap:wrap;">
+        <button id="btnPayPal" class="btn-mini">PayPal</button>
+        <button id="btnKBZ" class="btn-mini">KBZPay</button>
+        <button id="btnCB" class="btn-mini">CBPay</button>
+        <button id="btnAya" class="btn-mini">AyaPay</button>
       </div>
     `;
 
@@ -247,7 +265,6 @@ function ensureCartDrawerShell() {
 
         if (inc) cart[i].qty += 1;
         if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
-        // qty == 0 → auto remove (no separate remove needed)
         if (rem || cart[i].qty === 0) cart.splice(i, 1);
 
         setCart(cart);
@@ -258,6 +275,64 @@ function ensureCartDrawerShell() {
   }
   return body;
 }
+
+// === Promo & Member handlers ===
+function applyPromo(code) {
+  code = (code || "").trim().toUpperCase();
+  if (!code) { state.globalPromo = { active:false }; renderCartPage(); return; }
+  // demo rules: SAVE10 = 10% off, OFF5 = $5 off
+  if (code === "SAVE10") {
+    state.globalPromo = { active:true, code, type:"percent", value:10 };
+  } else if (code === "OFF5") {
+    state.globalPromo = { active:true, code, type:"amount", value:5 };
+  } else {
+    // unknown code → deactivate
+    state.globalPromo = { active:false, code };
+  }
+  renderCartPage();
+}
+
+function setMembershipActive(on, rate) {
+  if (on) state.membership = { rate: Number(rate || 0) };
+  else state.membership = { rate: 0 };
+  renderCartPage();
+}
+
+// wire inputs (id-based)
+document.addEventListener("click", (e) => {
+  if (e.target?.id === "applyPromoBtn") {
+    const code = document.getElementById("promoInput")?.value;
+    applyPromo(code);
+  }
+});
+document.addEventListener("change", (e) => {
+  if (e.target?.id === "applyMemberChk") {
+    const on = !!e.target.checked;
+    const rate = document.getElementById("memberRateSelect")?.value || "0.10";
+    setMembershipActive(on, rate);
+  }
+  if (e.target?.id === "memberRateSelect") {
+    const on = document.getElementById("applyMemberChk")?.checked;
+    const rate = e.target.value;
+    setMembershipActive(on, rate);
+  }
+});
+
+// === Pay buttons (demo flow) ===
+function proceedPayment(method) {
+  const t = computeTotals();
+  if (t.total <= 0) { alert("Cart is empty or total is $0.00"); return; }
+  // Demo: simulate success and clear cart (keep drawer open)
+  alert(`Paid with ${method}. Charged ${fmt(t.total)}. Thank you!`);
+  setCart([]);           // clear cart
+  renderCartPage();      // show empty state
+}
+document.addEventListener("click", (e) => {
+  if (e.target?.id === "btnPayPal") proceedPayment("PayPal");
+  if (e.target?.id === "btnKBZ")    proceedPayment("KBZPay");
+  if (e.target?.id === "btnCB")     proceedPayment("CBPay");
+  if (e.target?.id === "btnAya")    proceedPayment("AyaPay");
+});
 
 // Keep cart drawer open on internal clicks & button actions
 function wireCartDrawerGuards() {
@@ -309,20 +384,21 @@ function computeTotals() {
   let subtotal = 0;
   items.forEach(it => subtotal += (it.price || 0) * (it.qty || 0));
 
-  // optional promos
+  // promo
   let promo = 0;
-  if (state.globalPromo) {
+  if (state.globalPromo?.active) {
     const gp = state.globalPromo;
     if (gp.type === "percent") promo = subtotal * (Number(gp.value || 0) / 100);
     if (gp.type === "amount")  promo = Number(gp.value || 0);
+    promo = Math.min(promo, subtotal); // don't over-discount
   }
-  // member discount (%)
-  let member = 0;
-  if (state.membership?.rate) {
-    member = subtotal * Number(state.membership.rate || 0);
-  }
-  const shipping = subtotal > 0 ? 3.99 : 0;
 
+  // member
+  let member = 0;
+  const rate = Number(state.membership?.rate || 0);
+  if (rate > 0) member = subtotal * rate;
+
+  const shipping = subtotal > 0 ? 3.99 : 0;
   const total = Math.max(0, subtotal - promo - member + shipping);
   return { subtotal, promo, member, shipping, total };
 }
