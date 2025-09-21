@@ -24,9 +24,17 @@
       defer
     ></script>
     <script>
-    // အောက်က "YOUR_PUBLIC_KEY" ကို သင့် EmailJS Dashboard ထဲက Public Key နဲ့ အစားထိုးပါ
-    emailjs.init("WT0GOYrL9HnDKvLUf");
-  </script>
+      // SDK loadပြီးနောက်မှ init ခေါ်ပါ
+      (function () {
+        if (window.emailjs) {
+          // ⬇️ သင့် EmailJS Dashboard မှ Public Key နဲ့ အစားထိုးပါ
+          emailjs.init("YWT0GOYrL9HnDKvLUf");
+          console.log("EmailJS initialized");
+        } else {
+          console.warn("EmailJS SDK not loaded");
+        }
+      })();
+    </script>
     <script type="module" src="./config.js"></script>
   </head>
   <body>
