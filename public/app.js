@@ -65,24 +65,30 @@ function getCart() {
   try {
     const raw = localStorage.getItem(CART_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 function setCart(arr) {
-  try { localStorage.setItem(CART_KEY, JSON.stringify(arr)); } catch {}
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(arr));
+  } catch {}
   state.cart = Array.isArray(arr) ? arr : [];
 }
 function ensureCart() {
   if (!Array.isArray(state.cart)) state.cart = getCart();
   return state.cart;
 }
-function saveCart() { setCart(ensureCart()); }
+function saveCart() {
+  setCart(ensureCart());
+}
 
 // ==== PAYMENT CONFIG (edit as needed) ====
 const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID"; // <-- သင့် client id ထည့်ပါ
 const PAY_MERCHANT = {
-  kbz: "KBZ-STORE-001",  // KBZPay merchant/ref
-  cb:  "CB-STORE-001",   // CBPay merchant/ref
-  aya: "AYA-STORE-001"   // AyaPay merchant/ref
+  kbz: "KBZ-STORE-001", // KBZPay merchant/ref
+  cb: "CB-STORE-001", // CBPay merchant/ref
+  aya: "AYA-STORE-001", // AyaPay merchant/ref
 };
 
 // build a unified memo / payload for QR & PayPal
@@ -102,7 +108,9 @@ function loadPayPalSdk(clientId) {
   return new Promise((resolve, reject) => {
     if (window.paypal) return resolve();
     const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+      clientId
+    )}&currency=USD`;
     s.onload = () => resolve();
     s.onerror = reject;
     document.head.appendChild(s);
@@ -118,26 +126,33 @@ async function renderPayPalButtons() {
     await loadPayPalSdk(PAYPAL_CLIENT_ID);
     const memo = buildPaymentMemo("PayPal");
     if (!window.paypal) throw new Error("PayPal SDK not available");
-    window.paypal.Buttons({
-      style: { layout: "horizontal", height: 40 },
-      createOrder: (data, actions) => {
-        return actions.order.create({
-          purchase_units: [{
-            amount: { value: memo.amount.toFixed(2) },
-            description: memo.note
-          }]
-        });
-      },
-      onApprove: async (data, actions) => {
-        try { await actions.order.capture(); } catch {}
-        alert(`PayPal paid ${memo.amount.toFixed(2)} USD. Thanks!`);
-        setCart([]); renderCartPage();
-      },
-      onError: (err) => {
-        console.error("PayPal error:", err);
-        alert("PayPal payment failed. Please try again.");
-      }
-    }).render(zone);
+    window.paypal
+      .Buttons({
+        style: { layout: "horizontal", height: 40 },
+        createOrder: (data, actions) => {
+          return actions.order.create({
+            purchase_units: [
+              {
+                amount: { value: memo.amount.toFixed(2) },
+                description: memo.note,
+              },
+            ],
+          });
+        },
+        onApprove: async (data, actions) => {
+          try {
+            await actions.order.capture();
+          } catch {}
+          alert(`PayPal paid ${memo.amount.toFixed(2)} USD. Thanks!`);
+          setCart([]);
+          renderCartPage();
+        },
+        onError: (err) => {
+          console.error("PayPal error:", err);
+          alert("PayPal payment failed. Please try again.");
+        },
+      })
+      .render(zone);
   } catch (e) {
     console.error(e);
     zone.innerHTML = `<p class="small">PayPal unavailable. Check client id or network.</p>`;
@@ -164,13 +179,21 @@ function openQrPay(method) {
 
   const memo = buildPaymentMemo(method);
   const merchant =
-    method === "KBZPay" ? PAY_MERCHANT.kbz :
-    method === "CBPay"  ? PAY_MERCHANT.cb  :
-    method === "AyaPay" ? PAY_MERCHANT.aya : "STORE";
+    method === "KBZPay"
+      ? PAY_MERCHANT.kbz
+      : method === "CBPay"
+      ? PAY_MERCHANT.cb
+      : method === "AyaPay"
+      ? PAY_MERCHANT.aya
+      : "STORE";
 
   const payload = {
-    method, merchant, amount: memo.amount.toFixed(2),
-    currency: memo.currency, note: memo.note, ts: memo.ts
+    method,
+    merchant,
+    amount: memo.amount.toFixed(2),
+    currency: memo.currency,
+    note: memo.note,
+    ts: memo.ts,
   };
 
   // Create (or reuse) modal
@@ -206,7 +229,9 @@ function openQrPay(method) {
     `;
     body.appendChild(modal);
     // Close button
-    modal.querySelector("#qrClose")?.addEventListener("click", () => modal.close());
+    modal
+      .querySelector("#qrClose")
+      ?.addEventListener("click", () => modal.close());
   }
 
   // Fill brand, amount, merchant
@@ -227,12 +252,13 @@ function openQrPay(method) {
     // prepare fallback
     const fallback = generateQrImgSrc(payload, "qrserver");
 
-    const tryLoad = (src) => new Promise((resolve, reject) => {
-      const test = new Image();
-      test.onload = () => resolve(src);
-      test.onerror = reject;
-      test.src = src;
-    });
+    const tryLoad = (src) =>
+      new Promise((resolve, reject) => {
+        const test = new Image();
+        test.onload = () => resolve(src);
+        test.onerror = reject;
+        test.src = src;
+      });
 
     try {
       const good = await tryLoad(primary).catch(() => tryLoad(fallback));
@@ -250,7 +276,9 @@ function openQrPay(method) {
     try {
       await navigator.clipboard.writeText(JSON.stringify(payload));
       alert("Payload copied.");
-    } catch { alert("Copy failed."); }
+    } catch {
+      alert("Copy failed.");
+    }
   });
   modal.querySelector("#qrDownload")?.addEventListener("click", async () => {
     try {
@@ -258,7 +286,9 @@ function openQrPay(method) {
       a.href = img.src;
       a.download = `${method}-qr.png`;
       a.click();
-    } catch { alert("Download failed."); }
+    } catch {
+      alert("Download failed.");
+    }
   });
 
   modal.showModal();
@@ -267,21 +297,44 @@ function openQrPay(method) {
 
 // === MEMBERSHIP: mapping & state helpers ===
 const MEMBERSHIP_PLANS = {
-  gold:    { label:"Gold Member",    fee:29, rate:0.05, cashback:0.01, color:"#ffda7a" },
-  platinum:{ label:"Platinum Member",fee:59, rate:0.10, cashback:0.02, color:"#b6f5ff" },
-  diamond: { label:"Diamond Member", fee:99, rate:0.15, cashback:0.03, color:"#bfa1ff" },
+  gold: {
+    label: "Gold Member",
+    fee: 29,
+    rate: 0.05,
+    cashback: 0.01,
+    color: "#ffda7a",
+  },
+  platinum: {
+    label: "Platinum Member",
+    fee: 59,
+    rate: 0.1,
+    cashback: 0.02,
+    color: "#b6f5ff",
+  },
+  diamond: {
+    label: "Diamond Member",
+    fee: 99,
+    rate: 0.15,
+    cashback: 0.03,
+    color: "#bfa1ff",
+  },
 };
 
 // persist membership (optional)
 function loadMembership() {
-  try { const raw = localStorage.getItem("membership"); if (raw) state.membership = JSON.parse(raw); } catch {}
+  try {
+    const raw = localStorage.getItem("membership");
+    if (raw) state.membership = JSON.parse(raw);
+  } catch {}
 }
 function saveMembership() {
-  try { localStorage.setItem("membership", JSON.stringify(state.membership||{})); } catch {}
+  try {
+    localStorage.setItem("membership", JSON.stringify(state.membership || {}));
+  } catch {}
 }
 
 // Open/close modal
-(function wireMembershipModal(){
+(function wireMembershipModal() {
   const open = () => document.getElementById("memberModal")?.showModal();
   const close = () => document.getElementById("memberModal")?.close();
 
@@ -336,10 +389,21 @@ function saveMembership() {
 // load persisted membership at boot
 loadMembership();
 
+// ===== EmailJS config (REPLACE these three) =====
+const EMAILJS_PUBLIC_KEY = "WT0GOYrL9HnDKvLUf"; // e.g. "AbC123..."
+const EMAILJS_SERVICE_ID = "service_z9tkmvr"; // e.g. "service_xxxxxx"
+const EMAILJS_TEMPLATE_ID = "template_q5q471f"; // e.g. "template_membership"
+
+// (optional) who receives admin notifications (can be your company email)
+const ADMIN_EMAIL = "minmaung0307@gmail.com";
+
 // -- utils --
 function fmt(n) {
-  try { return n.toLocaleString(undefined, { style: "currency", currency: "USD" }); }
-  catch { return `$${(+n || 0).toFixed(2)}`; }
+  try {
+    return n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  } catch {
+    return `$${(+n || 0).toFixed(2)}`;
+  }
 }
 function updateCartCount() {
   const n = ensureCart().reduce((s, x) => s + (x.qty || 0), 0);
@@ -357,9 +421,9 @@ function renderCartPage() {
     document;
 
   const listEl = scope.querySelector("#cartPageList");
-  const elSub  = scope.querySelector("#cartSubtotal");
+  const elSub = scope.querySelector("#cartSubtotal");
   const elShip = scope.querySelector("#cartShip");
-  const elTot  = scope.querySelector("#cartTotal");
+  const elTot = scope.querySelector("#cartTotal");
   if (!listEl) return;
 
   const items = ensureCart();
@@ -367,9 +431,9 @@ function renderCartPage() {
 
   if (!items.length) {
     listEl.innerHTML = `<p class="small">Your cart is empty.</p>`;
-    if (elSub)  elSub.textContent  = "$0.00";
+    if (elSub) elSub.textContent = "$0.00";
     if (elShip) elShip.textContent = "$0.00";
-    if (elTot)  elTot.textContent  = "$0.00";
+    if (elTot) elTot.textContent = "$0.00";
     updateCartCount();
     return;
   }
@@ -389,10 +453,16 @@ function renderCartPage() {
         <div class="row between" style="gap:.75rem; align-items:center;">
           <div class="strong" style="text-align:left">${it.title || ""}</div>
           <div class="row" style="gap:.35rem; align-items:center;">
-            <button class="btn-mini" data-dec="${it.id}" title="Decrease">−</button>
+            <button class="btn-mini" data-dec="${
+              it.id
+            }" title="Decrease">−</button>
             <span class="strong" aria-live="polite">${it.qty || 0}</span>
-            <button class="btn-mini" data-inc="${it.id}" title="Increase">＋</button>
-            <button class="btn-mini btn-outline" data-remove="${it.id}" title="Remove">🗑️</button>
+            <button class="btn-mini" data-inc="${
+              it.id
+            }" title="Increase">＋</button>
+            <button class="btn-mini btn-outline" data-remove="${
+              it.id
+            }" title="Remove">🗑️</button>
           </div>
         </div>
         <div class="row between" style="margin-top:.4rem;">
@@ -405,9 +475,9 @@ function renderCartPage() {
   });
 
   const t = computeTotals();
-  if (elSub)  elSub.textContent  = fmt(t.subtotal);
+  if (elSub) elSub.textContent = fmt(t.subtotal);
   if (elShip) elShip.textContent = fmt(t.shipping);
-  if (elTot)  elTot.textContent  = fmt(t.total);
+  if (elTot) elTot.textContent = fmt(t.total);
 
   updateCartCount();
 }
@@ -420,11 +490,11 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
   const inc = e.target.closest("[data-inc]");
   const dec = e.target.closest("[data-dec]");
   const rem = e.target.closest("[data-remove]");
-  const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+  const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
   if (!id) return;
 
   const cart = ensureCart();
-  const i = cart.findIndex(x => x.id === id);
+  const i = cart.findIndex((x) => x.id === id);
   if (i < 0) return;
 
   if (inc) cart[i].qty += 1;
@@ -437,16 +507,19 @@ document.getElementById("cartPageList")?.addEventListener("click", (e) => {
 
 // Open cart drawer and render inside drawer-body
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  ensureCartDrawerShell();                 // drawer-body ထဲ shell တည်ဆောက်
+  ensureCartDrawerShell(); // drawer-body ထဲ shell တည်ဆောက်
   document.getElementById("cartDrawer")?.classList.add("open");
-  renderCartPage();                        // drawer-body scope IDs ပေါ် render
+  renderCartPage(); // drawer-body scope IDs ပေါ် render
 });
 
 // -- boot & cross-tab sync (single) --
 setCart(getCart());
 updateCartCount();
 window.addEventListener("storage", (e) => {
-  if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
+  if (e.key === CART_KEY) {
+    setCart(getCart());
+    renderCartPage();
+  }
 });
 
 // Ensure the cart markup exists inside the drawer-body (single shell, with promo/member/pay & delivery & pickup list)
@@ -456,7 +529,9 @@ function ensureCartDrawerShell() {
   if (!body) return null;
 
   // Remove old/duplicate summaries that showed zeros
-  body.querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]").forEach(n => n.remove());
+  body
+    .querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]")
+    .forEach((n) => n.remove());
 
   if (!body.querySelector("#cartPageList")) {
     body.innerHTML = `
@@ -555,11 +630,11 @@ function ensureCartDrawerShell() {
       const inc = e.target.closest?.("[data-inc]");
       const dec = e.target.closest?.("[data-dec]");
       const rem = e.target.closest?.("[data-remove]");
-      const id  = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
+      const id = inc?.dataset.inc || dec?.dataset.dec || rem?.dataset.remove;
       if (!id) return;
 
       const cart = ensureCart();
-      const i = cart.findIndex(x => x.id === id);
+      const i = cart.findIndex((x) => x.id === id);
       if (i < 0) return;
       if (inc) cart[i].qty += 1;
       if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
@@ -596,17 +671,25 @@ function ensureCartDrawerShell() {
     const deliveryBox = body.querySelector("#deliveryFields");
     const syncModeUI = () => {
       const isDelivery = modeSel?.value === "delivery";
-      if (pickupBox)   pickupBox.style.display   = isDelivery ? "none" : "";
+      if (pickupBox) pickupBox.style.display = isDelivery ? "none" : "";
       if (deliveryBox) deliveryBox.style.display = isDelivery ? "" : "none";
     };
     modeSel?.addEventListener("change", syncModeUI);
     syncModeUI();
 
     // Pay buttons
-    body.querySelector("#btnPayPal")?.addEventListener("click", () => renderPayPalButtons());
-    body.querySelector("#btnKBZ")  ?.addEventListener("click", () => openQrPay("KBZPay"));
-    body.querySelector("#btnCB")   ?.addEventListener("click", () => openQrPay("CBPay"));
-    body.querySelector("#btnAya")  ?.addEventListener("click", () => openQrPay("AyaPay"));
+    body
+      .querySelector("#btnPayPal")
+      ?.addEventListener("click", () => renderPayPalButtons());
+    body
+      .querySelector("#btnKBZ")
+      ?.addEventListener("click", () => openQrPay("KBZPay"));
+    body
+      .querySelector("#btnCB")
+      ?.addEventListener("click", () => openQrPay("CBPay"));
+    body
+      .querySelector("#btnAya")
+      ?.addEventListener("click", () => openQrPay("AyaPay"));
   }
 
   return body;
@@ -615,19 +698,23 @@ function ensureCartDrawerShell() {
 // === Promo & Member handlers ===
 function applyPromo(code) {
   code = (code || "").trim().toUpperCase();
-  if (!code) { state.globalPromo = { active:false }; renderCartPage(); return; }
+  if (!code) {
+    state.globalPromo = { active: false };
+    renderCartPage();
+    return;
+  }
   if (code === "DEMO10") {
-    state.globalPromo = { active:true, code, type:"percent", value:10 };
+    state.globalPromo = { active: true, code, type: "percent", value: 10 };
   } else if (code === "OFF5") {
-    state.globalPromo = { active:true, code, type:"amount", value:5 };
+    state.globalPromo = { active: true, code, type: "amount", value: 5 };
   } else {
-    state.globalPromo = { active:false, code };
+    state.globalPromo = { active: false, code };
   }
   renderCartPage();
 }
 function setMembershipActive(on, rate) {
   if (on) state.membership = { rate: Number(rate || 0) };
-  else    state.membership = { rate: 0 };
+  else state.membership = { rate: 0 };
   renderCartPage();
 }
 
@@ -667,18 +754,22 @@ function proceedPayment(method) {
     }
   }
 
-  const t = (typeof computeTotals === "function") ? computeTotals() : { total: 0 };
-  if (!t || t.total <= 0) { alert("Cart is empty or total is $0.00"); return; }
+  const t =
+    typeof computeTotals === "function" ? computeTotals() : { total: 0 };
+  if (!t || t.total <= 0) {
+    alert("Cart is empty or total is $0.00");
+    return;
+  }
 
   alert(`Paid with ${method}. Charged ${fmt(t.total)}. Thank you!`);
-  setCart([]);           // clear cart after mock payment
-  renderCartPage();      // show empty state in drawer
+  setCart([]); // clear cart after mock payment
+  renderCartPage(); // show empty state in drawer
 }
 document.addEventListener("click", (e) => {
   if (e.target?.id === "btnPayPal") proceedPayment("PayPal");
-  if (e.target?.id === "btnKBZ")    proceedPayment("KBZPay");
-  if (e.target?.id === "btnCB")     proceedPayment("CBPay");
-  if (e.target?.id === "btnAya")    proceedPayment("AyaPay");
+  if (e.target?.id === "btnKBZ") proceedPayment("KBZPay");
+  if (e.target?.id === "btnCB") proceedPayment("CBPay");
+  if (e.target?.id === "btnAya") proceedPayment("AyaPay");
 });
 
 // Keep cart drawer open on internal clicks & button actions
@@ -720,23 +811,23 @@ document.addEventListener("DOMContentLoaded", wireCartDrawerGuards);
 
 // Update your Cart button to mount shell, guard, and render (keep drawer open)
 document.getElementById("btnCart")?.addEventListener("click", () => {
-  ensureCartDrawerShell?.();      // build shell if missing
-  wireCartDrawerGuards();         // make sure guards are attached
+  ensureCartDrawerShell?.(); // build shell if missing
+  wireCartDrawerGuards(); // make sure guards are attached
   document.getElementById("cartDrawer")?.classList.add("open");
-  renderCartPage?.();             // paint items/totals in drawer-body
+  renderCartPage?.(); // paint items/totals in drawer-body
 });
 
 function computeTotals() {
   const items = ensureCart();
   let subtotal = 0;
-  items.forEach(it => subtotal += (it.price || 0) * (it.qty || 0));
+  items.forEach((it) => (subtotal += (it.price || 0) * (it.qty || 0)));
 
   // promo
   let promo = 0;
   if (state.globalPromo?.active) {
     const gp = state.globalPromo;
     if (gp.type === "percent") promo = subtotal * (Number(gp.value || 0) / 100);
-    if (gp.type === "amount")  promo = Number(gp.value || 0);
+    if (gp.type === "amount") promo = Number(gp.value || 0);
     promo = Math.min(promo, subtotal); // don't over-discount
   }
 
@@ -1378,19 +1469,22 @@ function getSearchQuery() {
 function wireSearchInputs() {
   const run = () => {
     const q = getSearchQuery();
-    currentCategory = "";                  // clear category lock for search
-    showShopGrid(q ? "Results" : "Shop");  // render grid + switch to shop
+    currentCategory = ""; // clear category lock for search
+    showShopGrid(q ? "Results" : "Shop"); // render grid + switch to shop
     if (typeof homeSections !== "undefined" && homeSections) {
       homeSections.style.display = q ? "none" : ""; // hide ads/sections on search
     }
-    document.getElementById("view-shop")
+    document
+      .getElementById("view-shop")
       ?.scrollIntoView({ behavior: "smooth", block: "start" }); // ⬅ ensure at top
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   ["searchInput", "searchInputMobile"].forEach((id) => {
     const el = document.getElementById(id);
     el?.addEventListener("input", run);
-    el?.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+    el?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") run();
+    });
   });
 }
 
@@ -1656,8 +1750,8 @@ function addToCart(p, qty = 1) {
   if (i >= 0) cart[i].qty += qty;
   else cart.push({ id: p.id, title: p.title, price: p.price, img: p.img, qty });
 
-  setCart(cart);        // <- persist
-  updateCartCount();    // <- badge
+  setCart(cart); // <- persist
+  updateCartCount(); // <- badge
   // optional: if cart view is open, re-render rows immediately
   if (document.getElementById("view-cart")?.classList.contains("active")) {
     renderCartPage?.();
@@ -2526,9 +2620,9 @@ function init() {
 
   // Open membership as modal
   // === Membership modal open ===
-document.getElementById("btnMembership")?.addEventListener("click", () => {
-  document.getElementById("memberModal")?.showModal();
-});
+  document.getElementById("btnMembership")?.addEventListener("click", () => {
+    document.getElementById("memberModal")?.showModal();
+  });
   // document.getElementById("btnMembership")?.addEventListener("click", (e) => {
   //   e.preventDefault();
   //   const dlg = document.getElementById("memberModal");
@@ -2597,103 +2691,143 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!joinBtn) return;
 
   // helper: crude email check
-  const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
+  const isEmail = (s) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
 
+  // === Send member welcome + admin notify via EmailJS ===
   async function sendMembershipEmail(member) {
-    // Prefer EmailJS if available & initialized
-    const subject = `[ShweShop] Welcome ${member.label} — ${member.name}`;
-    const body =
-`Hi ${member.name},
-
-Thanks for joining ${member.label}!
-
-Your membership details:
-- Level: ${member.label}
-- Annual fee: $${member.fee}
-- Discount: ${(member.rate * 100)|0}% off
-- Cashback: ${Math.round((member.cashback||0)*100)}%
-- Member ID: ${member.memberId}
-
-Saved address for card shipping:
-${member.addr}, ${member.city}
-Phone: ${member.phone}
-
-We’re glad to have you with us!
-— ShweShop Team`;
-
-    // EMAILJS path (configure your IDs below)
-    if (window.emailjs && emailjs.send) {
-      const SERVICE_ID = "YOUR_SERVICE_ID";   // e.g. "service_xxxx"
-      const TEMPLATE_ID = "YOUR_TEMPLATE_ID"; // e.g. "template_membership"
-      try {
-        await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
-          to_email: member.email,
-          to_name: member.name,
-          subject,
-          message: body
-        });
-        console.log("EmailJS: sent");
-        return true;
-      } catch (e) {
-        console.warn("EmailJS failed, fallback to mailto:", e);
-      }
+    // sanity checks
+    if (!window.emailjs) {
+      console.error("EmailJS SDK not loaded");
+      return false;
+    }
+    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+      console.error("EmailJS config missing");
+      return false;
     }
 
-    // Fallback: mailto (opens client)
-    const mailtoHref =
-      `mailto:${encodeURIComponent(member.email)}?` +
-      `subject=${encodeURIComponent(subject)}&` +
-      `body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoHref;
-    return true;
+    // payload variables must MATCH your EmailJS template variable names
+    const vars = {
+      // recipient
+      to_email: member.email, // <-- your template must use {{to_email}}
+      to_name: member.name, // <-- {{to_name}}
+      // content
+      subject: `Welcome ${member.label} — ${member.name}`,
+      level: member.label, // <-- {{level}}
+      discount: `${(member.rate * 100) | 0}%`, // <-- {{discount}}
+      cashback: `${Math.round((member.cashback || 0) * 100)}%`, // <-- {{cashback}}
+      member_id: member.memberId, // <-- {{member_id}}
+      // address
+      addr: member.addr,
+      city: member.city,
+      phone: member.phone,
+      // total (optional)
+      fee: `$${member.fee}`,
+      // admin copy (optional)
+      admin_email: ADMIN_EMAIL,
+    };
+
+    try {
+      // main email to member
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, vars);
+
+      // optional: second mail to admin (if you prefer a separate template)
+      // await emailjs.send(EMAILJS_SERVICE_ID, "template_admin_notify", vars);
+
+      console.log("EmailJS: sent to member");
+      return true;
+    } catch (e) {
+      console.error("EmailJS failed:", e);
+      // last-resort fallback opens user mail client (optional)
+      try {
+        const subject = vars.subject;
+        const body = `Hi ${member.name},
+
+Thanks for joining ${member.label}!
+Discount: ${vars.discount}
+Cashback: ${vars.cashback}
+Member ID: ${vars.member_id}
+
+Address: ${member.addr}, ${member.city}
+Phone: ${member.phone}`;
+        window.location.href = `mailto:${encodeURIComponent(
+          member.email
+        )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+          body
+        )}`;
+      } catch {}
+      return false;
+    }
   }
 
   joinBtn.addEventListener("click", async () => {
-    const tier  = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
-    const name  = document.getElementById("mName")?.value.trim();
-    const email = document.getElementById("mEmail")?.value.trim();    // 🆕
+    // 1) တန်ဖိုးတွေယူပြီး validation လုပ်
+    const tier =
+      document.querySelector('input[name="mTier"]:checked')?.value || "gold";
+    const name = document.getElementById("mName")?.value.trim();
+    const email = document.getElementById("mEmail")?.value.trim();
     const phone = document.getElementById("mPhone")?.value.trim();
-    const addr  = document.getElementById("mAddr")?.value.trim();
-    const city  = document.getElementById("mCity")?.value.trim();
+    const addr = document.getElementById("mAddr")?.value.trim();
+    const city = document.getElementById("mCity")?.value.trim();
 
     if (!name || !email || !phone || !addr || !city) {
       alert("❗ Please fill Name, Email, Phone, Address, and City");
       return;
     }
-    if (!isEmail(email)) {
-      alert("❗ Please enter a valid email address");
-      return;
-    }
 
+    // 2) Membership plan တန်ဖိုးများ သတ်မှတ်
     const plans = {
-      gold:    { label:"Gold Member",    fee:29, rate:0.05, cashback:0.01 },
-      platinum:{ label:"Platinum Member",fee:59, rate:0.10, cashback:0.02 },
-      diamond: { label:"Diamond Member", fee:99, rate:0.15, cashback:0.03 }
+      gold: { label: "Gold Member", fee: 29, rate: 0.05, cashback: 0.01 },
+      platinum: {
+        label: "Platinum Member",
+        fee: 59,
+        rate: 0.1,
+        cashback: 0.02,
+      },
+      diamond: { label: "Diamond Member", fee: 99, rate: 0.15, cashback: 0.03 },
     };
     const plan = plans[tier] || plans.gold;
 
-    // Save to state/localStorage
+    // 3) State & localStorage ထဲသိမ်း
     state.membership = {
-      active:true,
-      level:tier,
-      label:plan.label,
-      fee:plan.fee,
-      rate:plan.rate,
-      cashback:plan.cashback,
-      name, email, phone, addr, city,
-      joinedAt:Date.now(),
-      memberId: "MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
+      active: true,
+      level: tier,
+      label: plan.label,
+      fee: plan.fee,
+      rate: plan.rate,
+      cashback: plan.cashback,
+      name,
+      email,
+      phone,
+      addr,
+      city,
+      joinedAt: Date.now(),
+      memberId: "MBR-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
     };
-    try { localStorage.setItem("membership", JSON.stringify(state.membership)); } catch {}
+    try {
+      localStorage.setItem("membership", JSON.stringify(state.membership));
+    } catch {}
 
-    // Email the member about discount
-    await sendMembershipEmail(state.membership);
+    // 4) 🆕 ဒီနေရာမှာ သင့်ပေးထားတဲ့ကုဒ်ထည့်ပါ
+    const ok = await sendMembershipEmail(state.membership);
+    if (!ok) {
+      alert(
+        "Joined, but sending email failed. Please check EmailJS keys/template."
+      );
+    } else {
+      console.log("Welcome email sent.");
+    }
 
-    alert(`🎉 ${plan.label} joined!\nAnnual fee $${plan.fee}.\n${plan.rate*100}% discount will apply.`);
+    // 5) UI update + modal close
+    alert(
+      `🎉 ${plan.label} joined!\nAnnual fee $${plan.fee}.\n${
+        plan.rate * 100
+      }% discount will apply.`
+    );
     document.getElementById("memberModal")?.close();
-
-    // Totals refresh (cart discount)
-    try { renderCartPage?.(); } catch {}
+    try {
+      renderCartPage?.();
+    } catch {}
   });
 });
 
@@ -2715,33 +2849,42 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // === Quick Prefs: Theme & Font Size ===
-(function setupQuickPrefs(){
+(function setupQuickPrefs() {
   const root = document.documentElement;
-  function applyTheme(name){
+  function applyTheme(name) {
     const t = (name || localStorage.getItem("theme") || "dark").trim();
     root.setAttribute("data-theme", t);
-    const sel = document.getElementById("themeSelect"); if (sel) sel.value = t;
-    try { localStorage.setItem("theme", t); } catch {}
+    const sel = document.getElementById("themeSelect");
+    if (sel) sel.value = t;
+    try {
+      localStorage.setItem("theme", t);
+    } catch {}
   }
-  function applyFs(scale){
+  function applyFs(scale) {
     const fs = String(scale || localStorage.getItem("fs") || "1.00");
     root.style.setProperty("--fs", fs);
-    const sel = document.getElementById("fsSelect"); if (sel) sel.value = fs;
-    try { localStorage.setItem("fs", fs); } catch {}
+    const sel = document.getElementById("fsSelect");
+    if (sel) sel.value = fs;
+    try {
+      localStorage.setItem("fs", fs);
+    } catch {}
   }
-  document.getElementById("themeSelect")?.addEventListener("change",(e)=>applyTheme(e.target.value));
-  document.getElementById("fsSelect")?.addEventListener("change",(e)=>applyFs(e.target.value));
+  document
+    .getElementById("themeSelect")
+    ?.addEventListener("change", (e) => applyTheme(e.target.value));
+  document
+    .getElementById("fsSelect")
+    ?.addEventListener("change", (e) => applyFs(e.target.value));
   applyTheme();
   applyFs();
 })();
 
-
 // === Auth UI Toggle (robust) ===
-(function ensureAuthUIToggle(){
+(function ensureAuthUIToggle() {
   const btnAuth = document.getElementById("btnAuth");
   const btnLogout = document.getElementById("btnLogout");
 
-  async function doLogout(){
+  async function doLogout() {
     try {
       await signOut(auth);
       console.log("Signed out");
@@ -2750,38 +2893,38 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
   btnLogout?.addEventListener("click", doLogout);
-  btnAuth?.addEventListener("click", ()=>{
+  btnAuth?.addEventListener("click", () => {
     if (window.state?.user) return;
     document.getElementById("authModal")?.showModal();
   });
 
-  function updateAuthUI(user){
-  const btnAuth = document.getElementById("btnAuth");
-  const btnLogout = document.getElementById("btnLogout");
-  const greetEl = document.getElementById("greet");
-  const authed = !!user;
+  function updateAuthUI(user) {
+    const btnAuth = document.getElementById("btnAuth");
+    const btnLogout = document.getElementById("btnLogout");
+    const greetEl = document.getElementById("greet");
+    const authed = !!user;
 
-  // Toggle buttons
-  if (btnAuth) btnAuth.style.display = authed ? "none" : "inline-block";
-  if (btnLogout) btnLogout.style.display = authed ? "inline-block" : "none";
+    // Toggle buttons
+    if (btnAuth) btnAuth.style.display = authed ? "none" : "inline-block";
+    if (btnLogout) btnLogout.style.display = authed ? "inline-block" : "none";
 
-  // Username: prefer displayName; else email local-part
-  let uname = "";
-  if (authed) {
-    if (user.displayName && user.displayName.trim()) {
-      uname = user.displayName.split(" ")[0];
-    } else if (user.email) {
-      uname = user.email.split("@")[0];
-    } else {
-      uname = "User";
+    // Username: prefer displayName; else email local-part
+    let uname = "";
+    if (authed) {
+      if (user.displayName && user.displayName.trim()) {
+        uname = user.displayName.split(" ")[0];
+      } else if (user.email) {
+        uname = user.email.split("@")[0];
+      } else {
+        uname = "User";
+      }
     }
+    if (greetEl) greetEl.textContent = authed ? "Hi, " + uname : "";
   }
-  if (greetEl) greetEl.textContent = authed ? ("Hi, " + uname) : "";
-};
 
   // A dedicated listener just for UI (safe even if another listener exists)
   try {
-    onAuthStateChanged(auth, (user)=>{
+    onAuthStateChanged(auth, (user) => {
       window.state = window.state || {};
       window.state.user = user || null;
       updateAuthUI(user);
@@ -2789,16 +2932,21 @@ onAuthStateChanged(auth, async (user) => {
   } catch {}
 
   // Also run once on boot in case auth already resolved
-  setTimeout(()=>updateAuthUI(window.state?.user||null), 0);
+  setTimeout(() => updateAuthUI(window.state?.user || null), 0);
 })();
 
 // === MEMBERSHIP MODAL WIRES (robust) ===
 (function () {
-  function getDlg() { return document.getElementById("memberModal"); }
+  function getDlg() {
+    return document.getElementById("memberModal");
+  }
 
   function openMemberModal() {
     const dlg = getDlg();
-    if (!dlg) { console.warn("memberModal not found"); return; }
+    if (!dlg) {
+      console.warn("memberModal not found");
+      return;
+    }
     // If <dialog> is supported use showModal; else fallback to [open] attribute
     if (typeof dlg.showModal === "function") {
       dlg.showModal();
@@ -2820,18 +2968,26 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   // 1) Direct binding (if button exists now)
-  document.getElementById("btnMembership")?.addEventListener("click", openMemberModal);
+  document
+    .getElementById("btnMembership")
+    ?.addEventListener("click", openMemberModal);
 
   // 2) Delegated binding (if the button is rendered later)
   document.addEventListener("click", (e) => {
     const btn = e.target.closest?.("#btnMembership");
-    if (btn) { openMemberModal(); e.preventDefault(); }
-    if (e.target?.id === "mClose") { closeMemberModal(); }
+    if (btn) {
+      openMemberModal();
+      e.preventDefault();
+    }
+    if (e.target?.id === "mClose") {
+      closeMemberModal();
+    }
   });
 
   // 3) ESC key closes (fallback)
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && getDlg()?.hasAttribute("open")) closeMemberModal();
+    if (e.key === "Escape" && getDlg()?.hasAttribute("open"))
+      closeMemberModal();
   });
 
   // 4) Click backdrop to close (native dialog already handles; fallback for polyfill)
@@ -2845,20 +3001,28 @@ onAuthStateChanged(auth, async (user) => {
   }
 })();
 
-
 // === MEMBERSHIP BUTTON → ALWAYS OPEN MODAL (block nav) ===
 (function () {
   function openMemberModal() {
     const dlg = document.getElementById("memberModal");
-    if (!dlg) { console.warn("memberModal not found"); return; }
+    if (!dlg) {
+      console.warn("memberModal not found");
+      return;
+    }
     if (typeof dlg.showModal === "function") dlg.showModal();
-    else { dlg.setAttribute("open",""); dlg.style.display = "block"; }
+    else {
+      dlg.setAttribute("open", "");
+      dlg.style.display = "block";
+    }
   }
   function closeMemberModal() {
     const dlg = document.getElementById("memberModal");
     if (!dlg) return;
     if (typeof dlg.close === "function") dlg.close();
-    else { dlg.removeAttribute("open"); dlg.style.display = "none"; }
+    else {
+      dlg.removeAttribute("open");
+      dlg.style.display = "none";
+    }
   }
 
   // 1) Direct bind (if the element exists now)
@@ -2873,24 +3037,31 @@ onAuthStateChanged(auth, async (user) => {
   btn?.addEventListener("click", stopNavAndOpen);
 
   // 2) Defensive: capture-phase delegate (wins over global nav handlers)
-  document.addEventListener("click", (e) => {
-    const trigger = e.target.closest?.(
-      '#btnMembership, [data-action="membership"], a[href="#membership"]'
-    );
-    if (!trigger) return;
-    stopNavAndOpen(e);
-  }, true); // ← capture=true (very important)
+  document.addEventListener(
+    "click",
+    (e) => {
+      const trigger = e.target.closest?.(
+        '#btnMembership, [data-action="membership"], a[href="#membership"]'
+      );
+      if (!trigger) return;
+      stopNavAndOpen(e);
+    },
+    true
+  ); // ← capture=true (very important)
 
   // 3) Optional: neutralize auto-router attributes on the button
   if (btn) {
-    btn.removeAttribute?.("data-view");      // avoid switchView('shop')
+    btn.removeAttribute?.("data-view"); // avoid switchView('shop')
     if (btn.tagName === "A") btn.setAttribute("href", ""); // avoid hash nav
     btn.setAttribute("role", "button");
   }
 
   // 4) Close button / ESC / backdrop
   document.addEventListener("click", (e) => {
-    if (e.target?.id === "mClose") { e.preventDefault(); closeMemberModal(); }
+    if (e.target?.id === "mClose") {
+      e.preventDefault();
+      closeMemberModal();
+    }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMemberModal();
@@ -2904,9 +3075,8 @@ onAuthStateChanged(auth, async (user) => {
   }
 })();
 
-
 // === MEMBERSHIP TOPBAR ICON → OPEN MODAL (block nav/router) ===
-(function(){
+(function () {
   // ensure the button exists in topbar; if not, try to append next to btnCart
   if (!document.getElementById("btnMembership")) {
     const cartBtn = document.getElementById("btnCart");
@@ -2915,35 +3085,54 @@ onAuthStateChanged(auth, async (user) => {
       btn.id = "btnMembership";
       btn.className = "icon-btn";
       btn.title = "Membership";
-      btn.setAttribute("aria-label","Membership");
+      btn.setAttribute("aria-label", "Membership");
       btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M3 7l4.5 3 3.5-5 3.5 5L19 7l2 10H3L3 7zm2.8 12h12.4c.4 0 .8-.3.9-.7l.7-3.8-3.6 1.6a1 1 0 0 1-1.1-.2L12 11.8 8.9 16a1 1 0 0 1-1.1.2L4.2 14.5l.7 3.8c.1.4.5.7.9.7z" fill="currentColor"/></svg>`;
       cartBtn.parentElement.insertBefore(btn, cartBtn); // put before cart; or use .appendChild(btn)
     }
   }
 
-  function openMemberModal(e){
-    if (e){ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation?.(); }
+  function openMemberModal(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation?.();
+    }
     const dlg = document.getElementById("memberModal");
-    if (!dlg){ console.warn("memberModal not found"); return; }
+    if (!dlg) {
+      console.warn("memberModal not found");
+      return;
+    }
     if (typeof dlg.showModal === "function") dlg.showModal();
-    else { dlg.setAttribute("open",""); dlg.style.display = "block"; }
+    else {
+      dlg.setAttribute("open", "");
+      dlg.style.display = "block";
+    }
     return false;
   }
 
-  function closeMemberModal(){
+  function closeMemberModal() {
     const dlg = document.getElementById("memberModal");
     if (!dlg) return;
     if (typeof dlg.close === "function") dlg.close();
-    else { dlg.removeAttribute("open"); dlg.style.display = "none"; }
+    else {
+      dlg.removeAttribute("open");
+      dlg.style.display = "none";
+    }
   }
 
   // bind (capture phase to beat routers like data-view / SPA handlers)
-  document.addEventListener("click", (e) => {
-    const hit = e.target.closest?.('#btnMembership, [data-action="membership"], a[href="#membership"]');
-    if (hit) openMemberModal(e);
-    if (e.target?.id === "mClose") closeMemberModal();
-  }, true); // capture=true
+  document.addEventListener(
+    "click",
+    (e) => {
+      const hit = e.target.closest?.(
+        '#btnMembership, [data-action="membership"], a[href="#membership"]'
+      );
+      if (hit) openMemberModal(e);
+      if (e.target?.id === "mClose") closeMemberModal();
+    },
+    true
+  ); // capture=true
 
   // Esc/backdrop (fallback for non-native dialog)
   const dlg = document.getElementById("memberModal");
@@ -2956,10 +3145,9 @@ onAuthStateChanged(auth, async (user) => {
 
   // safety: remove router attrs from the button if any
   const b = document.getElementById("btnMembership");
-  if (b){
+  if (b) {
     b.removeAttribute?.("data-view"); // avoid switchView('shop') etc
-    if (b.tagName === "A") b.setAttribute("href",""); // neutralize hash nav
-    b.setAttribute("role","button");
+    if (b.tagName === "A") b.setAttribute("href", ""); // neutralize hash nav
+    b.setAttribute("role", "button");
   }
 })();
-

@@ -564,17 +564,10 @@
     <!-- App -->
      <!-- ✅ Load EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-
-<!-- ✅ Init after SDK is guaranteed to be loaded -->
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    if (window.emailjs) {
-      emailjs.init("YWT0GOYrL9HnDKvLUf"); // ⬅️ သင့် Public Key
-      console.log("✅ EmailJS initialized");
-    } else {
-      console.error("❌ EmailJS SDK not loaded");
-    }
-  });
+  // 🔑 Replace with your real Public Key from EmailJS dashboard
+  emailjs.init({ publicKey: "WT0GOYrL9HnDKvLUf" });
+  console.log("✅ EmailJS initialized");
 </script>
     <script type="module" src="./config.js"></script>
     <script type="module" src="./app.js" defer></script>
