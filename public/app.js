@@ -2731,3 +2731,62 @@ onAuthStateChanged(auth, async (user) => {
   }
 })();
 
+
+// === MEMBERSHIP BUTTON → ALWAYS OPEN MODAL (block nav) ===
+(function () {
+  function openMemberModal() {
+    const dlg = document.getElementById("memberModal");
+    if (!dlg) { console.warn("memberModal not found"); return; }
+    if (typeof dlg.showModal === "function") dlg.showModal();
+    else { dlg.setAttribute("open",""); dlg.style.display = "block"; }
+  }
+  function closeMemberModal() {
+    const dlg = document.getElementById("memberModal");
+    if (!dlg) return;
+    if (typeof dlg.close === "function") dlg.close();
+    else { dlg.removeAttribute("open"); dlg.style.display = "none"; }
+  }
+
+  // 1) Direct bind (if the element exists now)
+  const btn = document.getElementById("btnMembership");
+  const stopNavAndOpen = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation?.();
+    openMemberModal();
+    return false;
+  };
+  btn?.addEventListener("click", stopNavAndOpen);
+
+  // 2) Defensive: capture-phase delegate (wins over global nav handlers)
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest?.(
+      '#btnMembership, [data-action="membership"], a[href="#membership"]'
+    );
+    if (!trigger) return;
+    stopNavAndOpen(e);
+  }, true); // ← capture=true (very important)
+
+  // 3) Optional: neutralize auto-router attributes on the button
+  if (btn) {
+    btn.removeAttribute?.("data-view");      // avoid switchView('shop')
+    if (btn.tagName === "A") btn.setAttribute("href", ""); // avoid hash nav
+    btn.setAttribute("role", "button");
+  }
+
+  // 4) Close button / ESC / backdrop
+  document.addEventListener("click", (e) => {
+    if (e.target?.id === "mClose") { e.preventDefault(); closeMemberModal(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMemberModal();
+  });
+  const dlg = document.getElementById("memberModal");
+  if (dlg && typeof dlg.showModal !== "function") {
+    dlg.addEventListener("click", (ev) => {
+      const box = dlg.querySelector(".m-wrap");
+      if (box && !box.contains(ev.target)) closeMemberModal();
+    });
+  }
+})();
+
