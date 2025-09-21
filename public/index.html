@@ -19,22 +19,7 @@
       src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD"
       defer
     ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
-      defer
-    ></script>
-    <script>
-      // SDK loadပြီးနောက်မှ init ခေါ်ပါ
-      (function () {
-        if (window.emailjs) {
-          // ⬇️ သင့် EmailJS Dashboard မှ Public Key နဲ့ အစားထိုးပါ
-          emailjs.init("YWT0GOYrL9HnDKvLUf");
-          console.log("EmailJS initialized");
-        } else {
-          console.warn("EmailJS SDK not loaded");
-        }
-      })();
-    </script>
+    
     <script type="module" src="./config.js"></script>
   </head>
   <body>
@@ -577,6 +562,22 @@
     </dialog>
 
     <!-- App -->
+     <script
+      src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
+      defer
+    ></script>
+    <script>
+      // SDK loadပြီးနောက်မှ init ခေါ်ပါ
+      (function () {
+        if (window.emailjs) {
+          // ⬇️ သင့် EmailJS Dashboard မှ Public Key နဲ့ အစားထိုးပါ
+          emailjs.init("YWT0GOYrL9HnDKvLUf");
+          console.log("EmailJS initialized");
+        } else {
+          console.warn("EmailJS SDK not loaded");
+        }
+      })();
+    </script>
     <script type="module" src="./config.js"></script>
     <script type="module" src="./app.js" defer></script>
   </body>
