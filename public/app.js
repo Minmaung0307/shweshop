@@ -2591,6 +2591,52 @@ document.getElementById("btnMembership")?.addEventListener("click", () => {
 // ✅ Only run init after DOM is ready
 document.addEventListener("DOMContentLoaded", init);
 
+// === MEMBERSHIP: Join Now handler ===
+document.addEventListener("DOMContentLoaded", () => {
+  const joinBtn = document.getElementById("mJoin");
+  if (!joinBtn) return;
+
+  joinBtn.addEventListener("click", () => {
+    const tier = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
+    const name  = document.getElementById("mName")?.value.trim();
+    const phone = document.getElementById("mPhone")?.value.trim();
+    const addr  = document.getElementById("mAddr")?.value.trim();
+    const city  = document.getElementById("mCity")?.value.trim();
+
+    if (!name || !phone || !addr || !city) {
+      alert("❗ Please fill Name, Phone, Address and City");
+      return;
+    }
+
+    // membership plans
+    const plans = {
+      gold:    { label:"Gold Member", fee:29, rate:0.05 },
+      platinum:{ label:"Platinum Member", fee:59, rate:0.10 },
+      diamond: { label:"Diamond Member", fee:99, rate:0.15 }
+    };
+    const plan = plans[tier];
+
+    // Save to state
+    state.membership = {
+      active:true,
+      level:tier,
+      label:plan.label,
+      fee:plan.fee,
+      rate:plan.rate,
+      name, phone, addr, city,
+      joinedAt:Date.now(),
+      memberId:"MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
+    };
+    try { localStorage.setItem("membership", JSON.stringify(state.membership)); } catch {}
+
+    alert(`🎉 ${plan.label} joined!\nAnnual fee $${plan.fee}.\n${plan.rate*100}% discount will apply.`);
+    document.getElementById("memberModal")?.close();
+
+    // Refresh cart totals if needed
+    try { renderCartPage?.(); } catch {}
+  });
+});
+
 // === Admin chip show/hide AFTER auth & nav built ===
 function updateAdminChip() {
   const nav = document.getElementById("navScroll");
