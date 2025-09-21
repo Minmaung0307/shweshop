@@ -3313,3 +3313,308 @@ document.addEventListener("visibilitychange", () => {
     startScanner().catch(()=>{});
   }
 });
+
+/* ===========================================================
+   PRODUCT MANAGER — Firestore + Storage (Consolidated)
+   Requires:
+     - window.db (Firestore compat) / window.storage (Storage compat)
+     - Buttons:   #btnAddProduct, #btnProductManager
+     - Modals:    #productModal, #productListModal
+     - Form:      #productForm  (inputs: #pId #pTitle #pCategory #pPrice #pBarcode #pImgFile)
+     - Preview:   #pThumbPreview
+     - Manager:   #plSearch #plCategory #plSort #plList
+   =========================================================== */
+(function () {
+  // ---------- Guards ----------
+  if (!window.db || !window.storage) {
+    console.error(
+      "[ProductManager] Firebase not initialized. Include compat SDKs and set window.db/window.storage before this script."
+    );
+  }
+
+  // ---------- Small UI helpers ----------
+  function openDialog(id) {
+    const d = document.getElementById(id);
+    if (!d) return;
+    (d.showModal ? d.showModal() : d.setAttribute("open", ""));
+  }
+  function closeDialog(id) {
+    const d = document.getElementById(id);
+    if (!d) return;
+    (d.close ? d.close() : d.removeAttribute("open"));
+  }
+
+  // ---------- Cloud Store ----------
+  const PRODUCTS_COL = "products";
+
+  async function loadProducts() {
+    const snap = await db.collection(PRODUCTS_COL).orderBy("updatedAt", "desc").get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+
+  async function upsertProduct(p) {
+    const id = p.id || db.collection(PRODUCTS_COL).doc().id;
+    const now = Date.now();
+    const data = { ...p, updatedAt: now, createdAt: p.createdAt || now };
+    await db.collection(PRODUCTS_COL).doc(id).set(data, { merge: true });
+    return id;
+  }
+
+  async function deleteProduct(id) {
+    try {
+      await db.collection(PRODUCTS_COL).doc(id).delete();
+    } catch (e) {
+      console.warn("delete doc:", e);
+    }
+    try {
+      await storage.ref(`products/${id}/thumb.jpg`).delete();
+    } catch (e) {
+      /* file may not exist */
+    }
+  }
+
+  // ---------- Image helpers ----------
+  async function fileToPreviewURL(file) {
+    return new Promise((res) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.readAsDataURL(file);
+    });
+  }
+  async function uploadProductThumb(file, productId) {
+    if (!file) return "";
+    const ref = storage.ref(`products/${productId}/thumb.jpg`);
+    await ref.put(file);
+    return await ref.getDownloadURL();
+  }
+
+  // ---------- Form / Modal wires ----------
+  const elForm = document.getElementById("productForm");
+  const elThumbPrev = document.getElementById("pThumbPreview");
+  const elImgFile = document.getElementById("pImgFile");
+
+  function resetProductForm() {
+    const mode = document.getElementById("pmMode");
+    if (mode) mode.textContent = "Add";
+    elForm?.reset();
+    const idEl = document.getElementById("pId");
+    if (idEl) idEl.value = "";
+    if (elThumbPrev) elThumbPrev.src = "";
+  }
+
+  // Reset button listener
+document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
+
+  document.getElementById("btnAddProduct")?.addEventListener("click", () => {
+    resetProductForm();
+    openDialog("productModal");
+  });
+  document.getElementById("pmClose")?.addEventListener("click", () => closeDialog("productModal"));
+
+  elImgFile?.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) {
+      if (elThumbPrev) elThumbPrev.src = "";
+      return;
+    }
+    if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
+  });
+
+  elForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    // Prepare id early to upload under stable path
+    let id =
+      document.getElementById("pId")?.value.trim() ||
+      db.collection(PRODUCTS_COL).doc().id;
+
+    const title = document.getElementById("pTitle")?.value.trim();
+    const category = document.getElementById("pCategory")?.value.trim();
+    const price = parseFloat(document.getElementById("pPrice")?.value);
+    const barcode = document.getElementById("pBarcode")?.value.trim();
+    const file = document.getElementById("pImgFile")?.files?.[0] || null;
+
+    if (!title || !category || isNaN(price) || !barcode) {
+      alert("Please fill Title, Category, Price, Barcode");
+      return;
+    }
+
+    // Preview already set on change; ensure present for UX
+    if (file && elThumbPrev && !elThumbPrev.src) {
+      elThumbPrev.src = await fileToPreviewURL(file);
+    }
+
+    // Upload image if any → get downloadURL
+    let thumbURL = elThumbPrev?.src || "";
+    if (file) {
+      try {
+        thumbURL = await uploadProductThumb(file, id);
+      } catch (err) {
+        console.error("upload error:", err);
+        alert("Image upload failed (permission or network).");
+      }
+    }
+
+    const prod = { id, title, category, price: +price, barcode, thumb: thumbURL };
+    id = await upsertProduct(prod);
+
+    // Keep BARCODE_MAP fresh for scanner usage
+    window.BARCODE_MAP = window.BARCODE_MAP || {};
+    window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
+
+    alert("Product saved.");
+    closeDialog("productModal");
+  });
+
+  // ---------- Products Manager (list/search/filter/sort) ----------
+  const elPlList = document.getElementById("plList");
+  const elPlSearch = document.getElementById("plSearch");
+  const elPlCategory = document.getElementById("plCategory");
+  const elPlSort = document.getElementById("plSort");
+
+  let _productsCache = [];
+  let _unsubProducts = null;
+
+  function ensureProductsRealtime() {
+    if (_unsubProducts || !window.db) return;
+    _unsubProducts = db
+      .collection(PRODUCTS_COL)
+      .onSnapshot(
+        (snap) => {
+          _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          // Sync BARCODE_MAP
+          window.BARCODE_MAP = {};
+          for (const p of _productsCache) {
+            if (p.barcode)
+              window.BARCODE_MAP[p.barcode] = {
+                id: p.id,
+                title: p.title,
+                price: p.price,
+                img: p.thumb,
+              };
+          }
+          renderProductList();
+        },
+        (err) => console.error("realtime error:", err)
+      );
+  }
+
+  function populateCategoriesDropdown() {
+    if (!elPlCategory) return;
+    const cats = Array.from(
+      new Set(_productsCache.map((x) => x.category).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    const cur = elPlCategory.value;
+    elPlCategory.innerHTML =
+      `<option value="">All categories</option>` +
+      cats.map((c) => `<option value="${c}">${c}</option>`).join("");
+    if (cats.includes(cur)) elPlCategory.value = cur;
+  }
+
+  function filteredSortedProducts() {
+    const q = (elPlSearch?.value || "").trim().toLowerCase();
+    const cat = elPlCategory?.value || "";
+    const sort = elPlSort?.value || "new";
+
+    let items = _productsCache.slice();
+
+    if (q)
+      items = items.filter(
+        (x) =>
+          (x.title || "").toLowerCase().includes(q) ||
+          (x.barcode || "").toLowerCase().includes(q) ||
+          (x.id || "").toLowerCase().includes(q)
+      );
+    if (cat) items = items.filter((x) => (x.category || "") === cat);
+
+    const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+    if (sort === "title_az") items.sort((a, b) => collator.compare(a.title, b.title));
+    if (sort === "title_za") items.sort((a, b) => collator.compare(b.title, a.title));
+    if (sort === "price_low") items.sort((a, b) => (a.price || 0) - (b.price || 0));
+    if (sort === "price_high") items.sort((a, b) => (b.price || 0) - (a.price || 0));
+    if (sort === "new") items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    return items;
+  }
+
+  function renderProductList() {
+    if (!elPlList) return;
+    populateCategoriesDropdown();
+
+    const items = filteredSortedProducts();
+    elPlList.innerHTML = "";
+    if (!items.length) {
+      elPlList.innerHTML = `<div class="small" style="opacity:.8;">No products yet.</div>`;
+      return;
+    }
+    for (const p of items) {
+      const card = document.createElement("div");
+      card.className = "pm-card";
+      card.innerHTML = `
+        <img alt="${p.title ?? ""}" src="${p.thumb || ""}">
+        <div class="row"><div class="strong">${p.title ?? ""}</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="small" style="opacity:.85;">${p.category || "-"}</div><div class="small">#${p.id}</div></div>
+        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${p.barcode || "-"}</div></div>
+        <div class="row" style="gap:.4rem; justify-content:flex-end;">
+          <button class="btn-mini" data-edit="${p.id}">Edit</button>
+          <button class="btn-mini btn-outline" data-del="${p.id}">Delete</button>
+        </div>
+      `;
+      elPlList.appendChild(card);
+    }
+  }
+
+  // Search/filter/sort events
+  elPlSearch?.addEventListener("input", renderProductList);
+  elPlCategory?.addEventListener("change", renderProductList);
+  elPlSort?.addEventListener("change", renderProductList);
+
+  // Edit/Delete delegation
+  elPlList?.addEventListener("click", async (e) => {
+    const edit = e.target.closest?.("[data-edit]");
+    const del = e.target.closest?.("[data-del]");
+    if (!edit && !del) return;
+
+    const id = edit?.dataset.edit || del?.dataset.del;
+    const p = _productsCache.find((x) => x.id === id);
+    if (!p) return;
+
+    if (del) {
+      if (confirm(`Delete "${p.title}"?`)) {
+        await deleteProduct(id);
+        // Snapshot will refresh UI & BARCODE_MAP
+      }
+      return;
+    }
+
+    // Edit flow
+    const mode = document.getElementById("pmMode");
+    if (mode) mode.textContent = "Edit";
+    document.getElementById("pId").value = p.id;
+    document.getElementById("pTitle").value = p.title || "";
+    document.getElementById("pCategory").value = p.category || "";
+    document.getElementById("pPrice").value = p.price || 0;
+    document.getElementById("pBarcode").value = p.barcode || "";
+    document.getElementById("pThumbPreview").src = p.thumb || "";
+    openDialog("productModal");
+  });
+
+  // Manager modal open
+  document.getElementById("btnProductManager")?.addEventListener("click", () => {
+    ensureProductsRealtime();
+    openDialog("productListModal");
+  });
+  document.getElementById("plClose")?.addEventListener("click", () =>
+    closeDialog("productListModal")
+  );
+
+  // ---------- Boot: keep scanner map ready even if manager not opened ----------
+  document.addEventListener("DOMContentLoaded", () => {
+    try {
+      ensureProductsRealtime();
+    } catch (e) {
+      console.warn(e);
+    }
+    // Ensure BARCODE_MAP exists
+    window.BARCODE_MAP = window.BARCODE_MAP || {};
+  });
+})();
