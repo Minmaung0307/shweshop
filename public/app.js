@@ -77,6 +77,128 @@ function ensureCart() {
 }
 function saveCart() { setCart(ensureCart()); }
 
+// ==== PAYMENT CONFIG (edit as needed) ====
+const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID"; // <-- သင့် client id ထည့်ပါ
+const PAY_MERCHANT = {
+  kbz: "KBZ-STORE-001",  // KBZPay merchant/ref
+  cb:  "CB-STORE-001",   // CBPay merchant/ref
+  aya: "AYA-STORE-001"   // AyaPay merchant/ref
+};
+
+// build a unified memo / payload for QR & PayPal
+function buildPaymentMemo(method) {
+  const t = computeTotals?.() || { total: 0, subtotal: 0, shipping: 0 };
+  return {
+    method,
+    amount: Number(t.total || 0),
+    currency: "USD",
+    ts: Date.now(),
+    note: "ShweShop Order",
+  };
+}
+
+// Dynamically load PayPal SDK once
+function loadPayPalSdk(clientId) {
+  return new Promise((resolve, reject) => {
+    if (window.paypal) return resolve();
+    const s = document.createElement("script");
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`;
+    s.onload = () => resolve();
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// Render PayPal Buttons into #paypalZone (inside drawer)
+async function renderPayPalButtons() {
+  const zone = document.getElementById("paypalZone");
+  if (!zone) return;
+  zone.innerHTML = ""; // clear previous
+  try {
+    await loadPayPalSdk(PAYPAL_CLIENT_ID);
+    const memo = buildPaymentMemo("PayPal");
+    if (!window.paypal) throw new Error("PayPal SDK not available");
+    window.paypal.Buttons({
+      style: { layout: "horizontal", height: 40 },
+      createOrder: (data, actions) => {
+        return actions.order.create({
+          purchase_units: [{
+            amount: { value: memo.amount.toFixed(2) },
+            description: memo.note
+          }]
+        });
+      },
+      onApprove: async (data, actions) => {
+        try { await actions.order.capture(); } catch {}
+        alert(`PayPal paid ${memo.amount.toFixed(2)} USD. Thanks!`);
+        setCart([]); renderCartPage();
+      },
+      onError: (err) => {
+        console.error("PayPal error:", err);
+        alert("PayPal payment failed. Please try again.");
+      }
+    }).render(zone);
+  } catch (e) {
+    console.error(e);
+    zone.innerHTML = `<p class="small">PayPal unavailable. Check client id or network.</p>`;
+  }
+}
+
+// Lightweight QR (Google Charts API) – builds an <img> with encoded payload
+function generateQrImgSrc(payload) {
+  const txt = typeof payload === "string" ? payload : JSON.stringify(payload);
+  const enc = encodeURIComponent(txt);
+  return `https://chart.googleapis.com/chart?cht=qr&chs=260x260&chl=${enc}`;
+}
+
+// Open a minimal QR modal for KBZ/CB/Aya
+function openQrPay(method) {
+  const drawer = document.getElementById("cartDrawer");
+  const body = drawer?.querySelector(".drawer-body");
+  if (!body) return;
+  const memo = buildPaymentMemo(method);
+  // Simple payload example (replace with your scheme if you have official format)
+  const merchant =
+    method === "KBZPay" ? PAY_MERCHANT.kbz :
+    method === "CBPay"  ? PAY_MERCHANT.cb  :
+    method === "AyaPay" ? PAY_MERCHANT.aya : "STORE";
+  const payload = {
+    method, merchant, amount: memo.amount.toFixed(2), currency: memo.currency, note: memo.note, ts: memo.ts
+  };
+  // Create (or reuse) modal
+  let modal = body.querySelector("#qrPayModal");
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "qrPayModal";
+    modal.style.padding = "0";
+    modal.innerHTML = `
+      <div class="pad" style="min-width:320px; background:#0f131a; color:#e9f1ff; border:1px solid rgba(255,255,255,.12); border-radius:12px;">
+        <div class="row between" style="margin-bottom:.5rem;">
+          <div class="strong">Scan to Pay</div>
+          <button id="qrClose" class="btn-mini btn-outline">✕</button>
+        </div>
+        <div id="qrWrap" class="col" style="gap:.5rem; align-items:center; text-align:center;"></div>
+        <div class="small" style="opacity:.8; margin-top:.5rem;">Amount will be matched on confirmation.</div>
+      </div>
+    `;
+    body.appendChild(modal);
+    modal.querySelector("#qrClose")?.addEventListener("click", () => modal.close());
+  }
+  const wrap = modal.querySelector("#qrWrap");
+  wrap.innerHTML = `
+    <div>${method}</div>
+    <img id="qrImg" alt="QR ${method}" style="width:260px;height:260px;border-radius:8px; background:#fff;" />
+    <div class="row between" style="width:100%;max-width:320px;">
+      <div>Amount</div><div class="price">$${memo.amount.toFixed(2)}</div>
+    </div>
+    <div class="row between" style="width:100%;max-width:320px;">
+      <div>Merchant</div><div>${merchant}</div>
+    </div>
+  `;
+  wrap.querySelector("#qrImg").src = generateQrImgSrc(payload);
+  modal.showModal();
+}
+
 // -- utils --
 function fmt(n) {
   try { return n.toLocaleString(undefined, { style: "currency", currency: "USD" }); }
@@ -190,13 +312,13 @@ window.addEventListener("storage", (e) => {
   if (e.key === CART_KEY) { setCart(getCart()); renderCartPage(); }
 });
 
-// Ensure the cart markup exists inside the drawer-body (single shell, with promo/member/pay & delivery)
+// Ensure the cart markup exists inside the drawer-body (single shell, with promo/member/pay & delivery & pickup list)
 function ensureCartDrawerShell() {
   const drawer = document.getElementById("cartDrawer");
   const body = drawer?.querySelector(".drawer-body");
   if (!body) return null;
 
-  // Remove any old/duplicate summaries that showed zeros
+  // Remove old/duplicate summaries that showed zeros
   body.querySelectorAll(".pay-summary, #paySummary, [data-pay-summary]").forEach(n => n.remove());
 
   if (!body.querySelector("#cartPageList")) {
@@ -226,14 +348,30 @@ function ensureCartDrawerShell() {
               <option value="0.15">15% off</option>
             </select>
           </div>
-          <!-- Delivery -->
+          <!-- Mode -->
           <div class="row between" style="gap:.5rem; align-items:center;">
-            <label for="deliveryModeSelect">Delivery option</label>
-            <select id="deliveryModeSelect" class="input compact" style="width:160px;">
+            <label for="deliveryModeSelect">Order type</label>
+            <select id="deliveryModeSelect" class="input compact" style="width:180px;">
               <option value="pickup" selected>Pickup</option>
               <option value="delivery">Delivery</option>
             </select>
           </div>
+
+          <!-- Pickup locations (show only when pickup) -->
+          <div id="pickupFields" style="display:block;">
+            <div class="col" style="gap:.35rem;">
+              <label class="row" style="gap:.35rem; align-items:center;">
+                <input type="radio" name="pickupLoc" value="Downtown Store" checked>
+                <span>Downtown Store — 123 Main St (10:00–20:00)</span>
+              </label>
+              <label class="row" style="gap:.35rem; align-items:center;">
+                <input type="radio" name="pickupLoc" value="Riverside Kiosk">
+                <span>Riverside Kiosk — 88 River Rd (11:00–19:00)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Delivery fields (show only when delivery) -->
           <div id="deliveryFields" style="display:none;">
             <div class="row" style="gap:.5rem; margin-top:.25rem;">
               <input id="addrLine" class="input" placeholder="Address line" style="flex:1 1 60%;">
@@ -262,16 +400,19 @@ function ensureCartDrawerShell() {
         </div>
       </div>
 
-      <!-- Pay buttons -->
-      <div class="row" style="gap:.5rem; margin-top:.6rem; flex-wrap:wrap;">
-        <button id="btnPayPal" class="btn-mini">PayPal</button>
-        <button id="btnKBZ"   class="btn-mini">KBZPay</button>
-        <button id="btnCB"    class="btn-mini">CBPay</button>
-        <button id="btnAya"   class="btn-mini">AyaPay</button>
+      <!-- Pay controls -->
+      <div class="col" style="gap:.5rem; margin-top:.6rem;">
+        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+          <button id="btnPayPal" class="btn-mini">PayPal</button>
+          <button id="btnKBZ"   class="btn-mini">KBZPay</button>
+          <button id="btnCB"    class="btn-mini">CBPay</button>
+          <button id="btnAya"   class="btn-mini">AyaPay</button>
+        </div>
+        <!-- PayPal button zone -->
+        <div id="paypalZone" style="margin-top:.25rem;"></div>
       </div>
     `;
 
-    // ---- ONE-TIME wiring inside drawer ----
     // qty -/+ / remove (drawer won't close)
     body.addEventListener("click", (e) => {
       const inc = e.target.closest?.("[data-inc]");
@@ -283,16 +424,14 @@ function ensureCartDrawerShell() {
       const cart = ensureCart();
       const i = cart.findIndex(x => x.id === id);
       if (i < 0) return;
-
       if (inc) cart[i].qty += 1;
       if (dec) cart[i].qty = Math.max(0, (cart[i].qty || 0) - 1);
       if (rem || cart[i].qty === 0) cart.splice(i, 1);
-
       setCart(cart);
-      renderCartPage(); // re-render; drawer stays open
+      renderCartPage();
     });
 
-    // Promo: Apply & Demo
+    // Promo
     body.querySelector("#applyPromoBtn")?.addEventListener("click", () => {
       const code = body.querySelector("#promoInput")?.value || "";
       applyPromo(code);
@@ -300,7 +439,7 @@ function ensureCartDrawerShell() {
     body.querySelector("#demoPromoBtn")?.addEventListener("click", () => {
       const input = body.querySelector("#promoInput");
       if (input) input.value = "DEMO10";
-      applyPromo("DEMO10"); // ✅ sample promo: 10% off
+      applyPromo("DEMO10"); // 10% off demo
     });
 
     // Member toggle / rate
@@ -311,25 +450,26 @@ function ensureCartDrawerShell() {
     });
     body.querySelector("#memberRateSelect")?.addEventListener("change", (e) => {
       const on = body.querySelector("#applyMemberChk")?.checked;
-      const rate = e.target.value;
-      setMembershipActive(!!on, rate);
+      setMembershipActive(!!on, e.target.value);
     });
 
-    // Delivery: show/hide address fields
+    // Mode toggle: pickup vs delivery
     const modeSel = body.querySelector("#deliveryModeSelect");
-    const fields  = body.querySelector("#deliveryFields");
-    const syncDeliveryUI = () => {
-      if (!modeSel || !fields) return;
-      fields.style.display = (modeSel.value === "delivery") ? "" : "none";
+    const pickupBox = body.querySelector("#pickupFields");
+    const deliveryBox = body.querySelector("#deliveryFields");
+    const syncModeUI = () => {
+      const isDelivery = modeSel?.value === "delivery";
+      if (pickupBox)   pickupBox.style.display   = isDelivery ? "none" : "";
+      if (deliveryBox) deliveryBox.style.display = isDelivery ? "" : "none";
     };
-    modeSel?.addEventListener("change", syncDeliveryUI);
-    syncDeliveryUI();
+    modeSel?.addEventListener("change", syncModeUI);
+    syncModeUI();
 
-    // Pay buttons (attach directly so clicks always work)
-    body.querySelector("#btnPayPal")?.addEventListener("click", () => proceedPayment("PayPal"));
-    body.querySelector("#btnKBZ")  ?.addEventListener("click", () => proceedPayment("KBZPay"));
-    body.querySelector("#btnCB")   ?.addEventListener("click", () => proceedPayment("CBPay"));
-    body.querySelector("#btnAya")  ?.addEventListener("click", () => proceedPayment("AyaPay"));
+    // Pay buttons
+    body.querySelector("#btnPayPal")?.addEventListener("click", () => renderPayPalButtons());
+    body.querySelector("#btnKBZ")  ?.addEventListener("click", () => openQrPay("KBZPay"));
+    body.querySelector("#btnCB")   ?.addEventListener("click", () => openQrPay("CBPay"));
+    body.querySelector("#btnAya")  ?.addEventListener("click", () => openQrPay("AyaPay"));
   }
 
   return body;
