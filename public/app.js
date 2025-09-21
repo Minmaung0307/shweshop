@@ -3117,3 +3117,142 @@ onAuthStateChanged(auth, async (user) => {
     b.setAttribute("role", "button");
   }
 })();
+
+// ================= BARCODE SCAN → ADD TO CART =================
+
+// 3.1 Map barcode → product (သင့်ရဲ့ SKU/ID အတိုင်း ပြင်ပါ)
+const BARCODE_MAP = {
+  // "EAN_13 or CODE128 text": product object (id/title/price/img)
+  "5901234123457": { id:"m101", title:"Men Graphic Tee",   price:14.50, img:"images/products/men/m101/thumb.jpg" },
+  "5901234123458": { id:"m205", title:"Men Running Shorts", price:18.00, img:"images/products/men/m205/thumb.jpg" },
+  "978020137962":  { id:"w202", title:"Women Tote Bag",     price:19.00, img:"images/products/women/w202/thumb.jpg" },
+  // TODO: သင့် shop ရဲ့ barcode/sku များကို ဒီနေရာထပ်ဖြည့်ပါ
+};
+
+// 3.2 helper: add to cart by product object (id/title/price/img)
+function addProductToCart(prod) {
+  if (!prod?.id) return;
+  const cart = ensureCart();
+  const i = cart.findIndex(x => x.id === prod.id);
+  if (i >= 0) cart[i].qty = (cart[i].qty || 0) + 1;
+  else cart.push({ id: prod.id, title: prod.title, price: prod.price, img: prod.img, qty: 1 });
+  setCart(cart);
+  updateCartCount();
+  // drawer-body ထဲမှာပြနေတဲ့အခါ refresh
+  try { renderCartPage?.(); } catch {}
+}
+
+// 3.3 barcode → product lookup
+function handleDetectedBarcode(text) {
+  const prod = BARCODE_MAP[text];
+  if (!prod) {
+    // မတွေ့ရင် အချက်ပေး
+    console.warn("Unknown barcode:", text);
+    const hint = document.getElementById("scanHint");
+    if (hint) hint.textContent = `Unknown barcode: ${text}`;
+    return false;
+  }
+  addProductToCart(prod);
+  // success hint
+  const hint = document.getElementById("scanHint");
+  if (hint) hint.textContent = `Added: ${prod.title} (${text})`;
+  return true;
+}
+
+// 3.4 ZXing scanner wires
+let zxingReader = null;
+let currentDeviceId = null;
+
+async function listCameras() {
+  const sel = document.getElementById("scanCameraSelect");
+  if (!sel) return;
+  sel.innerHTML = "";
+  try {
+    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+    devices.forEach((d,i) => {
+      const opt = document.createElement("option");
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Camera ${i+1}`;
+      sel.appendChild(opt);
+    });
+    // rear camera preference
+    const rear = [...devices].find(d => /back|rear/i.test(d.label));
+    sel.value = rear?.deviceId || devices[0]?.deviceId || "";
+    currentDeviceId = sel.value;
+  } catch (e) {
+    console.error("Camera list failed", e);
+  }
+}
+
+async function startScanner() {
+  const videoEl = document.getElementById("scanVideo");
+  const sel = document.getElementById("scanCameraSelect");
+  if (!videoEl) return;
+  if (!zxingReader) zxingReader = new ZXing.BrowserMultiFormatReader();
+
+  currentDeviceId = sel?.value || currentDeviceId;
+  try {
+    await zxingReader.decodeFromVideoDevice(currentDeviceId, videoEl, (result, err) => {
+      if (result?.text) {
+        // One successful decode → add to cart (debounce by stopping briefly)
+        const ok = handleDetectedBarcode(result.text);
+        if (ok) {
+          // brief pause to avoid duplicates
+          zxingReader.reset();
+          setTimeout(() => startScanner().catch(()=>{}), 600);
+        }
+      }
+      // err is normal (decode loop); ignore
+    });
+    document.getElementById("scanHint").textContent = "Scanning…";
+  } catch (e) {
+    console.error("Scanner start failed", e);
+    document.getElementById("scanHint").textContent = "Camera error. Check permissions.";
+  }
+}
+
+function stopScanner() {
+  if (zxingReader) {
+    try { zxingReader.reset(); } catch {}
+  }
+  const hint = document.getElementById("scanHint");
+  if (hint) hint.textContent = "Scanner stopped.";
+}
+
+// 3.5 Modal open/close
+function openScanModal() {
+  const dlg = document.getElementById("scanModal");
+  if (!dlg) return;
+  if (typeof dlg.showModal === "function") dlg.showModal();
+  else { dlg.setAttribute("open",""); dlg.style.display="block"; }
+  listCameras().then(startScanner).catch(()=>startScanner());
+}
+function closeScanModal() {
+  stopScanner();
+  const dlg = document.getElementById("scanModal");
+  if (!dlg) return;
+  if (typeof dlg.close === "function") dlg.close();
+  else { dlg.removeAttribute("open"); dlg.style.display="none"; }
+}
+
+// 3.6 UI events
+document.getElementById("btnScan")?.addEventListener("click", (e) => {
+  e.preventDefault(); e.stopPropagation();
+  openScanModal();
+});
+document.getElementById("scanClose")?.addEventListener("click", closeScanModal);
+document.getElementById("scanStart")?.addEventListener("click", startScanner);
+document.getElementById("scanStop")?.addEventListener("click", stopScanner);
+document.getElementById("scanCameraSelect")?.addEventListener("change", () => {
+  stopScanner();
+  startScanner();
+});
+
+// 3.7 iOS Safari permissions hint (user gesture is needed)
+document.addEventListener("visibilitychange", () => {
+  const dlgOpen = document.getElementById("scanModal")?.open;
+  if (document.visibilityState === "visible" && dlgOpen) {
+    // try to keep scanning after switching apps/permissions sheet
+    startScanner().catch(()=>{});
+  }
+});

@@ -19,7 +19,7 @@
       src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD"
       defer
     ></script>
-    
+
     <script type="module" src="./config.js"></script>
   </head>
   <body>
@@ -39,6 +39,15 @@
       <div class="top-actions">
         <button id="btnCart" class="icon-btn badge" aria-label="Cart">
           🛒 <span id="cartCount" class="badge-dot">0</span>
+        </button>
+        <button
+          id="btnScan"
+          class="icon-btn"
+          type="button"
+          title="Scan barcode"
+          aria-label="Scan"
+        >
+          📷
         </button>
         <!-- 🆕 Membership button -->
         <button id="btnMembership" class="icon-btn" title="Membership">
@@ -506,6 +515,78 @@
       </div>
     </dialog>
 
+    <!-- === Barcode Scan Modal === -->
+    <dialog
+      id="scanModal"
+      style="
+        padding: 0;
+        border: none;
+        border-radius: 14px;
+        overflow: hidden;
+        max-width: 96vw;
+        width: 520px;
+      "
+    >
+      <div
+        style="
+          background: #0f131a;
+          color: #e9f1ff;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          "
+        >
+          <div style="font-weight: 800">Scan a barcode</div>
+          <button id="scanClose" class="btn-mini btn-outline">✕</button>
+        </div>
+
+        <div style="padding: 10px 12px; display: grid; gap: 10px">
+          <select
+            id="scanCameraSelect"
+            class="input"
+            style="max-width: 100%"
+          ></select>
+          <div
+            style="
+              display: grid;
+              place-items: center;
+              background: rgba(255, 255, 255, 0.04);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              border-radius: 12px;
+              padding: 8px;
+            "
+          >
+            <video
+              id="scanVideo"
+              autoplay
+              muted
+              playsinline
+              style="
+                width: 100%;
+                max-height: 320px;
+                border-radius: 10px;
+                background: #000;
+              "
+            ></video>
+          </div>
+          <div id="scanHint" class="small" style="opacity: 0.8">
+            Tip: rear camera / good lighting
+          </div>
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
+            <button id="scanStart" class="btn-mini">Start</button>
+            <button id="scanStop" class="btn-mini btn-outline">Stop</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
     <!-- Auth mini modal -->
     <dialog id="authModal" class="modal">
       <button class="close" data-close="authModal" aria-label="Close">✕</button>
@@ -562,13 +643,14 @@
     </dialog>
 
     <!-- App -->
-     <!-- ✅ Load EmailJS SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script>
-  // 🔑 Replace with your real Public Key from EmailJS dashboard
-  emailjs.init({ publicKey: "WT0GOYrL9HnDKvLUf" });
-  console.log("✅ EmailJS initialized");
-</script>
+    <!-- ✅ Load EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+      // 🔑 Replace with your real Public Key from EmailJS dashboard
+      emailjs.init({ publicKey: "WT0GOYrL9HnDKvLUf" });
+      console.log("✅ EmailJS initialized");
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3"></script>
     <script type="module" src="./config.js"></script>
     <script type="module" src="./app.js" defer></script>
   </body>
