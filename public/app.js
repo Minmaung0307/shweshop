@@ -3164,57 +3164,112 @@ function handleDetectedBarcode(text) {
 let zxingReader = null;
 let currentDeviceId = null;
 
+// --- REPLACE your listCameras() with this native version ---
 async function listCameras() {
   const sel = document.getElementById("scanCameraSelect");
   if (!sel) return;
   sel.innerHTML = "";
+
   try {
-    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-    devices.forEach((d,i) => {
+    // 1) Ensure permission prompt shows up at least once on some browsers
+    // (enumerateDevices may return empty labels until permission granted)
+    if (!window._triedCameraProbe) {
+      window._triedCameraProbe = true;
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        s.getTracks().forEach(t => t.stop());
+      } catch (_) {
+        // ignore; user will press Start later
+      }
+    }
+
+    // 2) List devices natively
+    const devices = (await navigator.mediaDevices.enumerateDevices())
+      .filter(d => d.kind === "videoinput");
+
+    if (!devices.length) {
+      sel.innerHTML = `<option value="">No camera found</option>`;
+      return;
+    }
+
+    // fill options
+    devices.forEach((d, i) => {
       const opt = document.createElement("option");
-      opt.value = d.deviceId;
-      opt.textContent = d.label || `Camera ${i+1}`;
+      opt.value = d.deviceId || "";
+      opt.textContent = d.label || `Camera ${i + 1}`;
       sel.appendChild(opt);
     });
-    // rear camera preference
-    const rear = [...devices].find(d => /back|rear/i.test(d.label));
+
+    // prefer rear camera by label hint
+    const rear = devices.find(d => /back|rear|environment/i.test(d.label));
     sel.value = rear?.deviceId || devices[0]?.deviceId || "";
-    currentDeviceId = sel.value;
+    currentDeviceId = sel.value || null;
   } catch (e) {
     console.error("Camera list failed", e);
+    sel.innerHTML = `<option value="">Camera access blocked</option>`;
   }
 }
 
+// --- REPLACE your startScanner() with this robust version ---
 async function startScanner() {
   const videoEl = document.getElementById("scanVideo");
   const sel = document.getElementById("scanCameraSelect");
+  const hint = document.getElementById("scanHint");
   if (!videoEl) return;
+
   if (!zxingReader) zxingReader = new ZXing.BrowserMultiFormatReader();
 
-  currentDeviceId = sel?.value || currentDeviceId;
+  // pick deviceId if available; otherwise use facingMode
+  const deviceId = sel?.value || currentDeviceId || "";
+  const constraints = deviceId
+    ? { video: { deviceId: { exact: deviceId } }, audio: false }
+    : { video: { facingMode: { ideal: "environment" } }, audio: false };
+
   try {
-    await zxingReader.decodeFromVideoDevice(currentDeviceId, videoEl, (result, err) => {
-      if (result?.text) {
-        // One successful decode → add to cart (debounce by stopping briefly)
-        const ok = handleDetectedBarcode(result.text);
-        if (ok) {
-          // brief pause to avoid duplicates
-          zxingReader.reset();
-          setTimeout(() => startScanner().catch(()=>{}), 600);
+    // Warm up a stream so that browsers grant permission before decoding loop
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoEl.srcObject = stream;
+
+    // Start ZXing decode loop
+    await zxingReader.decodeFromVideoDevice(
+      deviceId || undefined, // undefined lets ZXing pick the current stream
+      videoEl,
+      (result, err) => {
+        if (result?.text) {
+          const ok = handleDetectedBarcode(result.text);
+          if (ok) {
+            // stop briefly to avoid rapid duplicates
+            try { zxingReader.reset(); } catch {}
+            // leave stream alive to keep permission
+            setTimeout(() => startScanner().catch(()=>{}), 600);
+          }
         }
+        // err is normal during scan; ignore
       }
-      // err is normal (decode loop); ignore
-    });
-    document.getElementById("scanHint").textContent = "Scanning…";
+    );
+
+    hint && (hint.textContent = "Scanning… Aim barcode inside the frame.");
   } catch (e) {
+    // Permission dismissed/denied or other error
     console.error("Scanner start failed", e);
-    document.getElementById("scanHint").textContent = "Camera error. Check permissions.";
+    if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) {
+      hint && (hint.textContent = "Camera permission denied/dismissed. Please allow camera access and press Start again.");
+    } else if (e && e.name === "NotFoundError") {
+      hint && (hint.textContent = "No camera device found.");
+    } else {
+      hint && (hint.textContent = "Camera error. Try another camera or reload.");
+    }
   }
 }
 
 function stopScanner() {
   if (zxingReader) {
     try { zxingReader.reset(); } catch {}
+  }
+  const videoEl = document.getElementById("scanVideo");
+  if (videoEl?.srcObject) {
+    try { videoEl.srcObject.getTracks().forEach(t => t.stop()); } catch {}
+    videoEl.srcObject = null;
   }
   const hint = document.getElementById("scanHint");
   if (hint) hint.textContent = "Scanner stopped.";
@@ -3226,7 +3281,8 @@ function openScanModal() {
   if (!dlg) return;
   if (typeof dlg.showModal === "function") dlg.showModal();
   else { dlg.setAttribute("open",""); dlg.style.display="block"; }
-  listCameras().then(startScanner).catch(()=>startScanner());
+  // list first; let user choose; Start ကိုနှိပ်မှ decode
+  listCameras().catch(()=>{});
 }
 function closeScanModal() {
   stopScanner();
