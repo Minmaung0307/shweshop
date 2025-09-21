@@ -3521,7 +3521,14 @@ document.addEventListener("visibilitychange", () => {
       barcode,
       thumb: thumbURL,
     };
-    id = await upsertProduct(prod);
+    // id = await upsertProduct(prod);
+    try {
+      id = await upsertProduct(prod);
+    } catch (err) {
+      console.error("save error:", err);
+      alert("Save failed. You may not have permission to add/edit products.");
+      return;
+    }
 
     // Keep BARCODE_MAP fresh for scanner usage
     window.BARCODE_MAP = window.BARCODE_MAP || {};
@@ -3538,13 +3545,16 @@ document.addEventListener("visibilitychange", () => {
   const elPlSort = document.getElementById("plSort");
 
   let _productsCache = [];
+  // Realtime boot with guard + retry
   let _unsubProducts = null;
 
   function ensureProductsRealtime() {
     if (_unsubProducts) return;
 
-    if (!window.db || typeof db.collection !== "function") {
-      console.warn("Firestore not ready yet. Waiting for fb-ready…");
+    // Guard: wait until Firestore compat is ready
+    if (!window.db || typeof window.db.collection !== "function") {
+      console.warn("Firestore not ready yet. Retrying in 300ms…");
+      setTimeout(ensureProductsRealtime, 300);
       return;
     }
 
@@ -3561,11 +3571,21 @@ document.addEventListener("visibilitychange", () => {
               img: p.thumb,
             };
         }
-        renderProductList();
+        renderProductList?.();
       },
       (err) => console.error("realtime error:", err)
     );
   }
+
+  // Listen for fb-ready (fired after auth state known + window.db set)
+  document.addEventListener("fb-ready", () => {
+    ensureProductsRealtime();
+  });
+
+  // Fallback: DOM ready → in case fb-ready fired before app.js attached listener
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!_unsubProducts) ensureProductsRealtime();
+  });
 
   function populateCategoriesDropdown() {
     if (!elPlCategory) return;
@@ -3690,18 +3710,4 @@ document.addEventListener("visibilitychange", () => {
   document
     .getElementById("plClose")
     ?.addEventListener("click", () => closeDialog("productListModal"));
-
-  // ---------- Boot: keep scanner map ready even if manager not opened ----------
-  // document.addEventListener("DOMContentLoaded", () => {
-  //   try {
-  //     ensureProductsRealtime();
-  //   } catch (e) {
-  //     console.warn(e);
-  //   }
-  //   // Ensure BARCODE_MAP exists
-  //   window.BARCODE_MAP = window.BARCODE_MAP || {};
-  // });
-  document.addEventListener("fb-ready", () => {
-  try { ensureProductsRealtime(); } catch(e){ console.warn(e); }
-});
 })();

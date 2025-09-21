@@ -752,35 +752,36 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
     <script>
-      // TODO: သင့် Firebase project config နဲ့ အစားထိုးပါ
-      const firebaseConfig = {
-        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
-        authDomain: "shweshop-mm.firebaseapp.com",
-        projectId: "shweshop-mm",
-        storageBucket: "shweshop-mm.appspot.com",
-        messagingSenderId: "361216212375",
-        appId: "1:361216212375:web:fed19b7fe4072000c298d2",
-        measurementId: "G-WBJJZZNLX6",
-      };
+  // ---- Firebase config (make sure storageBucket is appspot.com) ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+    authDomain: "shweshop-mm.firebaseapp.com",
+    projectId: "shweshop-mm",
+    storageBucket: "shweshop-mm.appspot.com",
+    messagingSenderId: "361216212375",
+    appId: "1:361216212375:web:fed19b7fe4072000c298d2",
+    measurementId: "G-WBJJZZNLX6",
+  };
+  firebase.initializeApp(firebaseConfig);
 
-      firebase.initializeApp(firebaseConfig);
+  // ---- Expose compat instances BEFORE 'fb-ready' ----
+  window.db = firebase.firestore();
+  window.storage = firebase.storage();
 
-      // (A) Anonymous sign-in သည် console မှာ Enable လုပ်ပြီးမှ အလုပ်လုပ်မယ်
-      firebase
-        .auth()
-        .signInAnonymously()
-        .catch((e) => console.warn("anon signin:", e.code, e.message));
-
-      // (B) Globals for compat usage
-      window.db = firebase.firestore();
-      window.storage = firebase.storage();
-
-      // (C) Ready event to avoid race conditions
-      firebase.auth().onAuthStateChanged((user) => {
-        console.log("auth state:", !!user, user?.uid);
-        document.dispatchEvent(new Event("fb-ready"));
-      });
-    </script>
+  // ---- Only try anonymous sign-in if needed ----
+  // (If Anonymous provider is disabled in Console, calling this throws 'admin-restricted-operation')
+  firebase.auth().onAuthStateChanged((user) => {
+    console.log("auth state:", !!user, user?.uid || "");
+    if (!user) {
+      // OPTIONAL: uncomment only if Anonymous provider is ENABLED in console
+      // firebase.auth().signInAnonymously().catch((e) => {
+      //   console.warn("anon signin:", e.code, e.message);
+      // });
+    }
+    // Fire 'fb-ready' AFTER window.db/window.storage exist
+    document.dispatchEvent(new Event("fb-ready"));
+  });
+</script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
