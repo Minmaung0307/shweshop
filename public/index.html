@@ -92,12 +92,12 @@
   </div> -->
       </div>
       <!-- Topbar: Product Manager buttons -->
-<button id="btnProductManager" class="icon-btn" title="Products">
-  📦
-</button>
-<button id="btnAddProduct" class="icon-btn" title="Add product">
-  ➕
-</button>
+      <button id="btnProductManager" class="icon-btn" title="Products">
+        📦
+      </button>
+      <button id="btnAddProduct" class="icon-btn" title="Add product">
+        ➕
+      </button>
     </header>
 
     <!-- Mobile second-line search -->
@@ -650,61 +650,99 @@
     </dialog>
 
     <!-- === Add / Edit Product Modal === -->
-<dialog id="productModal" class="pm-modal" aria-modal="true">
-  <div class="pm-wrap">
-    <div class="pm-head">
-      <div class="pm-title"><span id="pmMode">Add</span> Product</div>
-      <button id="pmClose" class="btn-mini btn-outline">✕</button>
-    </div>
+    <dialog id="productModal" class="pm-modal" aria-modal="true">
+      <div class="pm-wrap">
+        <div class="pm-head">
+          <div class="pm-title"><span id="pmMode">Add</span> Product</div>
+          <button id="pmClose" class="btn-mini btn-outline">✕</button>
+        </div>
 
-    <form id="productForm" class="pm-form">
-      <input id="pId"      type="hidden">
-      <div class="pm-grid">
-        <input id="pTitle"     class="input" placeholder="Product title" required>
-        <input id="pCategory"  class="input" placeholder="Category (e.g. Men, Women, Bags)" required>
-        <input id="pPrice"     class="input" placeholder="Price (e.g. 19.50)" inputmode="decimal" required>
-        <input id="pBarcode"   class="input" placeholder="Barcode / SKU" required>
-        <input id="pImgFile"   class="input" type="file" accept="image/*">
+        <form id="productForm" class="pm-form">
+          <input id="pId" type="hidden" />
+          <div class="pm-grid">
+            <input
+              id="pTitle"
+              class="input"
+              placeholder="Product title"
+              required
+            />
+            <input
+              id="pCategory"
+              class="input"
+              placeholder="Category (e.g. Men, Women, Bags)"
+              required
+            />
+            <input
+              id="pPrice"
+              class="input"
+              placeholder="Price (e.g. 19.50)"
+              inputmode="decimal"
+              required
+            />
+            <input
+              id="pBarcode"
+              class="input"
+              placeholder="Barcode / SKU"
+              required
+            />
+            <input id="pImgFile" class="input" type="file" accept="image/*" />
+          </div>
+
+          <div class="pm-thumbrow">
+            <div class="small" style="opacity: 0.8">Thumbnail preview</div>
+            <img
+              id="pThumbPreview"
+              alt="thumb"
+              style="
+                width: 96px;
+                height: 96px;
+                border-radius: 10px;
+                background: #111;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                object-fit: cover;
+              "
+            />
+          </div>
+
+          <div class="pm-foot">
+            <button type="submit" class="btn-mini">Save</button>
+            <button type="button" id="pmReset" class="btn-mini btn-outline">
+              Reset
+            </button>
+          </div>
+        </form>
       </div>
+    </dialog>
 
-      <div class="pm-thumbrow">
-        <div class="small" style="opacity:.8;">Thumbnail preview</div>
-        <img id="pThumbPreview" alt="thumb" style="width:96px;height:96px;border-radius:10px;background:#111;border:1px solid rgba(255,255,255,.1);object-fit:cover;">
+    <!-- === Products Manager (list/search/filter/sort) === -->
+    <dialog id="productListModal" class="pm-modal" aria-modal="true">
+      <div class="pm-wrap">
+        <div class="pm-head">
+          <div class="pm-title">Products Manager</div>
+          <button id="plClose" class="btn-mini btn-outline">✕</button>
+        </div>
+
+        <div class="pm-toolbar">
+          <input
+            id="plSearch"
+            class="input"
+            placeholder="Search by title or barcode…"
+          />
+          <select id="plCategory" class="input">
+            <option value="">All categories</option>
+          </select>
+          <select id="plSort" class="input">
+            <option value="new">Newest</option>
+            <option value="title_az">Title A→Z</option>
+            <option value="title_za">Title Z→A</option>
+            <option value="price_low">Price low→high</option>
+            <option value="price_high">Price high→low</option>
+          </select>
+        </div>
+
+        <div id="plList" class="pm-list"></div>
       </div>
-
-      <div class="pm-foot">
-        <button type="submit" class="btn-mini">Save</button>
-        <button type="button" id="pmReset" class="btn-mini btn-outline">Reset</button>
-      </div>
-    </form>
-  </div>
-</dialog>
-
-<!-- === Products Manager (list/search/filter/sort) === -->
-<dialog id="productListModal" class="pm-modal" aria-modal="true">
-  <div class="pm-wrap">
-    <div class="pm-head">
-      <div class="pm-title">Products Manager</div>
-      <button id="plClose" class="btn-mini btn-outline">✕</button>
-    </div>
-
-    <div class="pm-toolbar">
-      <input id="plSearch" class="input" placeholder="Search by title or barcode…">
-      <select id="plCategory" class="input">
-        <option value="">All categories</option>
-      </select>
-      <select id="plSort" class="input">
-        <option value="new">Newest</option>
-        <option value="title_az">Title A→Z</option>
-        <option value="title_za">Title Z→A</option>
-        <option value="price_low">Price low→high</option>
-        <option value="price_high">Price high→low</option>
-      </select>
-    </div>
-
-    <div id="plList" class="pm-list"></div>
-  </div>
-</dialog>
+    </dialog>
 
     <!-- App -->
     <!-- Firebase (Compat CDN) — place these BEFORE app.js -->
@@ -724,14 +762,24 @@
         appId: "1:361216212375:web:fed19b7fe4072000c298d2",
         measurementId: "G-WBJJZZNLX6",
       };
+
       firebase.initializeApp(firebaseConfig);
 
-      // Optional: anonymous sign-in (write အတွက်လိုတတ်)
-      firebase.auth().signInAnonymously().catch(console.warn);
+      // (A) Anonymous sign-in သည် console မှာ Enable လုပ်ပြီးမှ အလုပ်လုပ်မယ်
+      firebase
+        .auth()
+        .signInAnonymously()
+        .catch((e) => console.warn("anon signin:", e.code, e.message));
 
-      // Globals for app.js
+      // (B) Globals for compat usage
       window.db = firebase.firestore();
       window.storage = firebase.storage();
+
+      // (C) Ready event to avoid race conditions
+      firebase.auth().onAuthStateChanged((user) => {
+        console.log("auth state:", !!user, user?.uid);
+        document.dispatchEvent(new Event("fb-ready"));
+      });
     </script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -742,7 +790,7 @@
     </script>
     <!-- ZXing browser bundle -->
     <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-    <script type="module" src="./config.js"></script>
+    <!-- <script type="module" src="./config.js"></script> -->
     <script type="module" src="./app.js"></script>
   </body>
 </html>

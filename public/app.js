@@ -2696,35 +2696,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === Send member welcome + admin notify via EmailJS ===
   async function sendMembershipEmail(member) {
-  if (!window.emailjs) { console.error("EmailJS SDK not loaded"); return false; }
-  if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
-    console.error("EmailJS config missing"); return false;
-  }
+    if (!window.emailjs) {
+      console.error("EmailJS SDK not loaded");
+      return false;
+    }
+    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+      console.error("EmailJS config missing");
+      return false;
+    }
 
-  const vars = {
-    to_email: member.email,     // ← Template “To email” must be {{to_email}}
-    to_name:  member.name,
-    subject:  `Welcome ${member.label} — ${member.name}`,
-    level:    member.label,
-    discount: `${(member.rate*100)|0}%`,
-    cashback: `${Math.round((member.cashback||0)*100)}%`,
-    member_id: member.memberId,
-    addr:     member.addr,
-    city:     member.city,
-    phone:    member.phone,
-    fee:      `$${member.fee}`,
-    admin_email: ADMIN_EMAIL
-  };
+    const vars = {
+      to_email: member.email, // ← Template “To email” must be {{to_email}}
+      to_name: member.name,
+      subject: `Welcome ${member.label} — ${member.name}`,
+      level: member.label,
+      discount: `${(member.rate * 100) | 0}%`,
+      cashback: `${Math.round((member.cashback || 0) * 100)}%`,
+      member_id: member.memberId,
+      addr: member.addr,
+      city: member.city,
+      phone: member.phone,
+      fee: `$${member.fee}`,
+      admin_email: ADMIN_EMAIL,
+    };
 
-  try {
-    const res = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, vars);
-    console.log("EmailJS response:", res.status, res.text, vars);
-    return true;
-  } catch (e) {
-    console.error("EmailJS failed:", e, vars);
-    return false;
+    try {
+      const res = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        vars
+      );
+      console.log("EmailJS response:", res.status, res.text, vars);
+      return true;
+    } catch (e) {
+      console.error("EmailJS failed:", e, vars);
+      return false;
+    }
   }
-}
 
   joinBtn.addEventListener("click", async () => {
     // 1) တန်ဖိုးတွေယူပြီး validation လုပ်
@@ -3124,9 +3132,24 @@ onAuthStateChanged(auth, async (user) => {
 const codeReader = new ZXing.BrowserMultiFormatReader();
 const BARCODE_MAP = {
   // "EAN_13 or CODE128 text": product object (id/title/price/img)
-  "5901234123457": { id:"m101", title:"Men Graphic Tee",   price:14.50, img:"images/products/men/m101/thumb.jpg" },
-  "5901234123458": { id:"m205", title:"Men Running Shorts", price:18.00, img:"images/products/men/m205/thumb.jpg" },
-  "978020137962":  { id:"w202", title:"Women Tote Bag",     price:19.00, img:"images/products/women/w202/thumb.jpg" },
+  5901234123457: {
+    id: "m101",
+    title: "Men Graphic Tee",
+    price: 14.5,
+    img: "images/products/men/m101/thumb.jpg",
+  },
+  5901234123458: {
+    id: "m205",
+    title: "Men Running Shorts",
+    price: 18.0,
+    img: "images/products/men/m205/thumb.jpg",
+  },
+  978020137962: {
+    id: "w202",
+    title: "Women Tote Bag",
+    price: 19.0,
+    img: "images/products/women/w202/thumb.jpg",
+  },
   // TODO: သင့် shop ရဲ့ barcode/sku များကို ဒီနေရာထပ်ဖြည့်ပါ
 };
 
@@ -3134,13 +3157,22 @@ const BARCODE_MAP = {
 function addProductToCart(prod) {
   if (!prod?.id) return;
   const cart = ensureCart();
-  const i = cart.findIndex(x => x.id === prod.id);
+  const i = cart.findIndex((x) => x.id === prod.id);
   if (i >= 0) cart[i].qty = (cart[i].qty || 0) + 1;
-  else cart.push({ id: prod.id, title: prod.title, price: prod.price, img: prod.img, qty: 1 });
+  else
+    cart.push({
+      id: prod.id,
+      title: prod.title,
+      price: prod.price,
+      img: prod.img,
+      qty: 1,
+    });
   setCart(cart);
   updateCartCount();
   // drawer-body ထဲမှာပြနေတဲ့အခါ refresh
-  try { renderCartPage?.(); } catch {}
+  try {
+    renderCartPage?.();
+  } catch {}
 }
 
 // 3.3 barcode → product lookup
@@ -3176,16 +3208,20 @@ async function listCameras() {
     if (!window._triedCameraProbe) {
       window._triedCameraProbe = true;
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        s.getTracks().forEach(t => t.stop());
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+        s.getTracks().forEach((t) => t.stop());
       } catch (_) {
         // ignore; user will press Start later
       }
     }
 
     // 2) List devices natively
-    const devices = (await navigator.mediaDevices.enumerateDevices())
-      .filter(d => d.kind === "videoinput");
+    const devices = (await navigator.mediaDevices.enumerateDevices()).filter(
+      (d) => d.kind === "videoinput"
+    );
 
     if (!devices.length) {
       sel.innerHTML = `<option value="">No camera found</option>`;
@@ -3201,7 +3237,7 @@ async function listCameras() {
     });
 
     // prefer rear camera by label hint
-    const rear = devices.find(d => /back|rear|environment/i.test(d.label));
+    const rear = devices.find((d) => /back|rear|environment/i.test(d.label));
     sel.value = rear?.deviceId || devices[0]?.deviceId || "";
     currentDeviceId = sel.value || null;
   } catch (e) {
@@ -3239,9 +3275,11 @@ async function startScanner() {
           const ok = handleDetectedBarcode(result.text);
           if (ok) {
             // stop briefly to avoid rapid duplicates
-            try { zxingReader.reset(); } catch {}
+            try {
+              zxingReader.reset();
+            } catch {}
             // leave stream alive to keep permission
-            setTimeout(() => startScanner().catch(()=>{}), 600);
+            setTimeout(() => startScanner().catch(() => {}), 600);
           }
         }
         // err is normal during scan; ignore
@@ -3253,22 +3291,29 @@ async function startScanner() {
     // Permission dismissed/denied or other error
     console.error("Scanner start failed", e);
     if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) {
-      hint && (hint.textContent = "Camera permission denied/dismissed. Please allow camera access and press Start again.");
+      hint &&
+        (hint.textContent =
+          "Camera permission denied/dismissed. Please allow camera access and press Start again.");
     } else if (e && e.name === "NotFoundError") {
       hint && (hint.textContent = "No camera device found.");
     } else {
-      hint && (hint.textContent = "Camera error. Try another camera or reload.");
+      hint &&
+        (hint.textContent = "Camera error. Try another camera or reload.");
     }
   }
 }
 
 function stopScanner() {
   if (zxingReader) {
-    try { zxingReader.reset(); } catch {}
+    try {
+      zxingReader.reset();
+    } catch {}
   }
   const videoEl = document.getElementById("scanVideo");
   if (videoEl?.srcObject) {
-    try { videoEl.srcObject.getTracks().forEach(t => t.stop()); } catch {}
+    try {
+      videoEl.srcObject.getTracks().forEach((t) => t.stop());
+    } catch {}
     videoEl.srcObject = null;
   }
   const hint = document.getElementById("scanHint");
@@ -3280,21 +3325,28 @@ function openScanModal() {
   const dlg = document.getElementById("scanModal");
   if (!dlg) return;
   if (typeof dlg.showModal === "function") dlg.showModal();
-  else { dlg.setAttribute("open",""); dlg.style.display="block"; }
+  else {
+    dlg.setAttribute("open", "");
+    dlg.style.display = "block";
+  }
   // list first; let user choose; Start ကိုနှိပ်မှ decode
-  listCameras().catch(()=>{});
+  listCameras().catch(() => {});
 }
 function closeScanModal() {
   stopScanner();
   const dlg = document.getElementById("scanModal");
   if (!dlg) return;
   if (typeof dlg.close === "function") dlg.close();
-  else { dlg.removeAttribute("open"); dlg.style.display="none"; }
+  else {
+    dlg.removeAttribute("open");
+    dlg.style.display = "none";
+  }
 }
 
 // 3.6 UI events
 document.getElementById("btnScan")?.addEventListener("click", (e) => {
-  e.preventDefault(); e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
   openScanModal();
 });
 document.getElementById("scanClose")?.addEventListener("click", closeScanModal);
@@ -3310,7 +3362,7 @@ document.addEventListener("visibilitychange", () => {
   const dlgOpen = document.getElementById("scanModal")?.open;
   if (document.visibilityState === "visible" && dlgOpen) {
     // try to keep scanning after switching apps/permissions sheet
-    startScanner().catch(()=>{});
+    startScanner().catch(() => {});
   }
 });
 
@@ -3336,19 +3388,22 @@ document.addEventListener("visibilitychange", () => {
   function openDialog(id) {
     const d = document.getElementById(id);
     if (!d) return;
-    (d.showModal ? d.showModal() : d.setAttribute("open", ""));
+    d.showModal ? d.showModal() : d.setAttribute("open", "");
   }
   function closeDialog(id) {
     const d = document.getElementById(id);
     if (!d) return;
-    (d.close ? d.close() : d.removeAttribute("open"));
+    d.close ? d.close() : d.removeAttribute("open");
   }
 
   // ---------- Cloud Store ----------
   const PRODUCTS_COL = "products";
 
   async function loadProducts() {
-    const snap = await db.collection(PRODUCTS_COL).orderBy("updatedAt", "desc").get();
+    const snap = await db
+      .collection(PRODUCTS_COL)
+      .orderBy("updatedAt", "desc")
+      .get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 
@@ -3403,13 +3458,17 @@ document.addEventListener("visibilitychange", () => {
   }
 
   // Reset button listener
-document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
+  document
+    .getElementById("pmReset")
+    ?.addEventListener("click", resetProductForm);
 
   document.getElementById("btnAddProduct")?.addEventListener("click", () => {
     resetProductForm();
     openDialog("productModal");
   });
-  document.getElementById("pmClose")?.addEventListener("click", () => closeDialog("productModal"));
+  document
+    .getElementById("pmClose")
+    ?.addEventListener("click", () => closeDialog("productModal"));
 
   elImgFile?.addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
@@ -3454,7 +3513,14 @@ document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
       }
     }
 
-    const prod = { id, title, category, price: +price, barcode, thumb: thumbURL };
+    const prod = {
+      id,
+      title,
+      category,
+      price: +price,
+      barcode,
+      thumb: thumbURL,
+    };
     id = await upsertProduct(prod);
 
     // Keep BARCODE_MAP fresh for scanner usage
@@ -3475,27 +3541,30 @@ document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
   let _unsubProducts = null;
 
   function ensureProductsRealtime() {
-    if (_unsubProducts || !window.db) return;
-    _unsubProducts = db
-      .collection(PRODUCTS_COL)
-      .onSnapshot(
-        (snap) => {
-          _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          // Sync BARCODE_MAP
-          window.BARCODE_MAP = {};
-          for (const p of _productsCache) {
-            if (p.barcode)
-              window.BARCODE_MAP[p.barcode] = {
-                id: p.id,
-                title: p.title,
-                price: p.price,
-                img: p.thumb,
-              };
-          }
-          renderProductList();
-        },
-        (err) => console.error("realtime error:", err)
-      );
+    if (_unsubProducts) return;
+
+    if (!window.db || typeof db.collection !== "function") {
+      console.warn("Firestore not ready yet. Waiting for fb-ready…");
+      return;
+    }
+
+    _unsubProducts = db.collection(PRODUCTS_COL).onSnapshot(
+      (snap) => {
+        _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        window.BARCODE_MAP = {};
+        for (const p of _productsCache) {
+          if (p.barcode)
+            window.BARCODE_MAP[p.barcode] = {
+              id: p.id,
+              title: p.title,
+              price: p.price,
+              img: p.thumb,
+            };
+        }
+        renderProductList();
+      },
+      (err) => console.error("realtime error:", err)
+    );
   }
 
   function populateCategoriesDropdown() {
@@ -3527,11 +3596,16 @@ document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
     if (cat) items = items.filter((x) => (x.category || "") === cat);
 
     const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-    if (sort === "title_az") items.sort((a, b) => collator.compare(a.title, b.title));
-    if (sort === "title_za") items.sort((a, b) => collator.compare(b.title, a.title));
-    if (sort === "price_low") items.sort((a, b) => (a.price || 0) - (b.price || 0));
-    if (sort === "price_high") items.sort((a, b) => (b.price || 0) - (a.price || 0));
-    if (sort === "new") items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (sort === "title_az")
+      items.sort((a, b) => collator.compare(a.title, b.title));
+    if (sort === "title_za")
+      items.sort((a, b) => collator.compare(b.title, a.title));
+    if (sort === "price_low")
+      items.sort((a, b) => (a.price || 0) - (b.price || 0));
+    if (sort === "price_high")
+      items.sort((a, b) => (b.price || 0) - (a.price || 0));
+    if (sort === "new")
+      items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
     return items;
   }
@@ -3551,12 +3625,20 @@ document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
       card.className = "pm-card";
       card.innerHTML = `
         <img alt="${p.title ?? ""}" src="${p.thumb || ""}">
-        <div class="row"><div class="strong">${p.title ?? ""}</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
-        <div class="row"><div class="small" style="opacity:.85;">${p.category || "-"}</div><div class="small">#${p.id}</div></div>
-        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${p.barcode || "-"}</div></div>
+        <div class="row"><div class="strong">${
+          p.title ?? ""
+        }</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="small" style="opacity:.85;">${
+          p.category || "-"
+        }</div><div class="small">#${p.id}</div></div>
+        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${
+          p.barcode || "-"
+        }</div></div>
         <div class="row" style="gap:.4rem; justify-content:flex-end;">
           <button class="btn-mini" data-edit="${p.id}">Edit</button>
-          <button class="btn-mini btn-outline" data-del="${p.id}">Delete</button>
+          <button class="btn-mini btn-outline" data-del="${
+            p.id
+          }">Delete</button>
         </div>
       `;
       elPlList.appendChild(card);
@@ -3599,22 +3681,27 @@ document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
   });
 
   // Manager modal open
-  document.getElementById("btnProductManager")?.addEventListener("click", () => {
-    ensureProductsRealtime();
-    openDialog("productListModal");
-  });
-  document.getElementById("plClose")?.addEventListener("click", () =>
-    closeDialog("productListModal")
-  );
+  document
+    .getElementById("btnProductManager")
+    ?.addEventListener("click", () => {
+      ensureProductsRealtime();
+      openDialog("productListModal");
+    });
+  document
+    .getElementById("plClose")
+    ?.addEventListener("click", () => closeDialog("productListModal"));
 
   // ---------- Boot: keep scanner map ready even if manager not opened ----------
-  document.addEventListener("DOMContentLoaded", () => {
-    try {
-      ensureProductsRealtime();
-    } catch (e) {
-      console.warn(e);
-    }
-    // Ensure BARCODE_MAP exists
-    window.BARCODE_MAP = window.BARCODE_MAP || {};
-  });
+  // document.addEventListener("DOMContentLoaded", () => {
+  //   try {
+  //     ensureProductsRealtime();
+  //   } catch (e) {
+  //     console.warn(e);
+  //   }
+  //   // Ensure BARCODE_MAP exists
+  //   window.BARCODE_MAP = window.BARCODE_MAP || {};
+  // });
+  document.addEventListener("fb-ready", () => {
+  try { ensureProductsRealtime(); } catch(e){ console.warn(e); }
+});
 })();
