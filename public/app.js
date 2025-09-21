@@ -3378,17 +3378,25 @@ document.addEventListener("visibilitychange", () => {
    =========================================================== */
 (function () {
   // ---------- Bind compat instances safely (avoid modular shadowing) ----------
-  const fdb = (window.db && typeof window.db.collection === "function")
-    ? window.db
-    : (window.firebase && firebase.firestore ? firebase.firestore() : null);
+  const fdb =
+    window.db && typeof window.db.collection === "function"
+      ? window.db
+      : window.firebase && firebase.firestore
+      ? firebase.firestore()
+      : null;
 
-  const fstorage = (window.storage && typeof window.storage.ref === "function")
-    ? window.storage
-    : (window.firebase && firebase.storage ? firebase.storage() : null);
+  const fstorage =
+    window.storage && typeof window.storage.ref === "function"
+      ? window.storage
+      : window.firebase && firebase.storage
+      ? firebase.storage()
+      : null;
 
   // ---------- Guards ----------
   if (!fdb || !fstorage) {
-    console.error("[ProductManager] Firebase compat not ready. Ensure compat SDKs are loaded and firebase.initializeApp(...) ran before app.js.");
+    console.error(
+      "[ProductManager] Firebase compat not ready. Ensure compat SDKs are loaded and firebase.initializeApp(...) ran before app.js."
+    );
   }
 
   // ---------- Small UI helpers ----------
@@ -3446,7 +3454,8 @@ document.addEventListener("visibilitychange", () => {
   async function uploadProductThumb(file, productId) {
     if (!file) return "";
     const ref = fstorage.ref(`products/${productId}/thumb.jpg`);
-    await ref.put(file);
+    // ✅ contentType တိကျစွာ assign
+    await ref.put(file, { contentType: file.type || "image/jpeg" });
     return await ref.getDownloadURL();
   }
 
@@ -3465,13 +3474,17 @@ document.addEventListener("visibilitychange", () => {
   }
 
   // Reset button listener
-  document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
+  document
+    .getElementById("pmReset")
+    ?.addEventListener("click", resetProductForm);
 
   document.getElementById("btnAddProduct")?.addEventListener("click", () => {
     resetProductForm();
     openDialog("productModal");
   });
-  document.getElementById("pmClose")?.addEventListener("click", () => closeDialog("productModal"));
+  document
+    .getElementById("pmClose")
+    ?.addEventListener("click", () => closeDialog("productModal"));
 
   elImgFile?.addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
@@ -3485,7 +3498,9 @@ document.addEventListener("visibilitychange", () => {
   elForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     // Prepare id early to upload under stable path
-    let id = document.getElementById("pId")?.value.trim() || fdb.collection(PRODUCTS_COL).doc().id;
+    let id =
+      document.getElementById("pId")?.value.trim() ||
+      fdb.collection(PRODUCTS_COL).doc().id;
 
     const title = document.getElementById("pTitle")?.value.trim();
     const category = document.getElementById("pCategory")?.value.trim();
@@ -3514,7 +3529,14 @@ document.addEventListener("visibilitychange", () => {
       }
     }
 
-    const prod = { id, title, category, price: +price, barcode, thumb: thumbURL };
+    const prod = {
+      id,
+      title,
+      category,
+      price: +price,
+      barcode,
+      thumb: thumbURL,
+    };
     try {
       id = await upsertProduct(prod);
     } catch (err) {
@@ -3639,12 +3661,20 @@ document.addEventListener("visibilitychange", () => {
       card.className = "pm-card";
       card.innerHTML = `
         <img alt="${p.title ?? ""}" src="${p.thumb || ""}">
-        <div class="row"><div class="strong">${p.title ?? ""}</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
-        <div class="row"><div class="small" style="opacity:.85;">${p.category || "-"}</div><div class="small">#${p.id}</div></div>
-        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${p.barcode || "-"}</div></div>
+        <div class="row"><div class="strong">${
+          p.title ?? ""
+        }</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="small" style="opacity:.85;">${
+          p.category || "-"
+        }</div><div class="small">#${p.id}</div></div>
+        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${
+          p.barcode || "-"
+        }</div></div>
         <div class="row" style="gap:.4rem; justify-content:flex-end;">
           <button class="btn-mini" data-edit="${p.id}">Edit</button>
-          <button class="btn-mini btn-outline" data-del="${p.id}">Delete</button>
+          <button class="btn-mini btn-outline" data-del="${
+            p.id
+          }">Delete</button>
         </div>
       `;
       elPlList.appendChild(card);
@@ -3687,9 +3717,13 @@ document.addEventListener("visibilitychange", () => {
   });
 
   // Manager modal open
-  document.getElementById("btnProductManager")?.addEventListener("click", () => {
-    ensureProductsRealtime();
-    openDialog("productListModal");
-  });
-  document.getElementById("plClose")?.addEventListener("click", () => closeDialog("productListModal"));
+  document
+    .getElementById("btnProductManager")
+    ?.addEventListener("click", () => {
+      ensureProductsRealtime();
+      openDialog("productListModal");
+    });
+  document
+    .getElementById("plClose")
+    ?.addEventListener("click", () => closeDialog("productListModal"));
 })();
