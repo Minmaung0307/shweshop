@@ -3451,12 +3451,91 @@ document.addEventListener("visibilitychange", () => {
       r.readAsDataURL(file);
     });
   }
+  // helper: File → resized JPEG Blob
+  async function fileToJpegBlob(file, max = 1024, quality = 0.85) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    const ctx = cv.getContext("2d");
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise((res) =>
+      cv.toBlob(res, "image/jpeg", quality)
+    );
+    try {
+      bmp.close();
+    } catch {}
+    return blob;
+  }
+
+  // ✅ UPDATED: upload with contentType + resized blob
   async function uploadProductThumb(file, productId) {
-    if (!file) return "";
     const ref = fstorage.ref(`products/${productId}/thumb.jpg`);
-    // ✅ contentType တိကျစွာ assign
-    await ref.put(file, { contentType: file.type || "image/jpeg" });
+    const blob = await fileToJpegBlob(file, 1024, 0.85);
+    await ref.put(blob, { contentType: "image/jpeg" });
     return await ref.getDownloadURL();
+  }
+
+  function renderStorefrontFromCloud(items) {
+    const grid =
+      document.getElementById("productGrid") ||
+      document.getElementById("grid") ||
+      document.querySelector(".product-grid") ||
+      document.querySelector(".grid");
+    if (!grid) return; // no storefront in this view
+
+    grid.innerHTML = "";
+    if (!items?.length) {
+      grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
+      return;
+    }
+    for (const p of items) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+      <div class="thumb" style="height:160px;border-radius:12px;overflow:hidden;background:#111;">
+        <img src="${p.thumb || ""}" alt="${
+        p.title || ""
+      }" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="strong">${p.title || ""}</div>
+        <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
+      </div>
+      <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+    `;
+      grid.appendChild(card);
+    }
+
+    // Add to cart delegation
+    grid.addEventListener(
+      "click",
+      (e) => {
+        const add = e.target.closest?.("[data-add]");
+        if (!add) return;
+        const id = add.dataset.add;
+        const prod = (items || []).find((x) => x.id === id);
+        if (!prod) return;
+        // your existing addToCart logic; fallback:
+        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        const i = cart.findIndex((x) => x.id === id);
+        if (i >= 0) cart[i].qty += 1;
+        else
+          cart.push({
+            id,
+            title: prod.title,
+            price: +prod.price,
+            img: prod.thumb,
+            qty: 1,
+          });
+        localStorage.setItem("cart", JSON.stringify(cart));
+        if (typeof updateCartCount === "function") updateCartCount();
+      },
+      { once: true }
+    ); // attach once per render
   }
 
   // ---------- Form / Modal wires ----------
@@ -3495,62 +3574,78 @@ document.addEventListener("visibilitychange", () => {
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
 
+  // top-level (IIFE အတွင်း)
+  let _savingProduct = false;
+
+  // ... your existing elForm?.addEventListener("submit", async (e) => { ... }) ကို အစားထိုး
   elForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    // Prepare id early to upload under stable path
-    let id =
-      document.getElementById("pId")?.value.trim() ||
-      fdb.collection(PRODUCTS_COL).doc().id;
+    if (_savingProduct) return; // ✅ guard
+    _savingProduct = true;
 
-    const title = document.getElementById("pTitle")?.value.trim();
-    const category = document.getElementById("pCategory")?.value.trim();
-    const price = parseFloat(document.getElementById("pPrice")?.value);
-    const barcode = document.getElementById("pBarcode")?.value.trim();
-    const file = document.getElementById("pImgFile")?.files?.[0] || null;
-
-    if (!title || !category || isNaN(price) || !barcode) {
-      alert("Please fill Title, Category, Price, Barcode");
-      return;
+    const btnSave = elForm.querySelector('button[type="submit"]');
+    const prevTxt = btnSave?.textContent;
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.textContent = "Saving…";
     }
 
-    // Preview already set on change; ensure present for UX
-    if (file && elThumbPrev && !elThumbPrev.src) {
-      elThumbPrev.src = await fileToPreviewURL(file);
-    }
-
-    // Upload image if any → get downloadURL
-    let thumbURL = elThumbPrev?.src || "";
-    if (file) {
-      try {
-        thumbURL = await uploadProductThumb(file, id);
-      } catch (err) {
-        console.error("upload error:", err);
-        alert("Image upload failed (permission or network).");
-      }
-    }
-
-    const prod = {
-      id,
-      title,
-      category,
-      price: +price,
-      barcode,
-      thumb: thumbURL,
-    };
     try {
-      id = await upsertProduct(prod);
+      // Prepare id early to upload under stable path
+      let id =
+        document.getElementById("pId")?.value.trim() ||
+        fdb.collection(PRODUCTS_COL).doc().id;
+
+      const title = document.getElementById("pTitle")?.value.trim();
+      const category = document.getElementById("pCategory")?.value.trim();
+      const price = parseFloat(document.getElementById("pPrice")?.value);
+      const barcode = document.getElementById("pBarcode")?.value.trim();
+      const file = document.getElementById("pImgFile")?.files?.[0] || null;
+
+      if (!title || !category || isNaN(price) || !barcode) {
+        alert("Please fill Title, Category, Price, Barcode");
+        return;
+      }
+
+      // Upload image (compressed) → downloadURL
+      let thumbURL = "";
+      if (file) {
+        try {
+          thumbURL = await uploadProductThumb(file, id); // function ကို အောက်မှာ update ပေးထားပါတယ်
+        } catch (err) {
+          console.error("upload error:", err);
+          alert("Image upload failed (permission/CORS/network).");
+          return;
+        }
+      }
+
+      const prod = {
+        id,
+        title,
+        category,
+        price: +price,
+        barcode,
+        thumb: thumbURL,
+      };
+      await upsertProduct(prod);
+
+      // hydrate BARCODE_MAP for scanner/cart
+      window.BARCODE_MAP = window.BARCODE_MAP || {};
+      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
+
+      alert("Product saved.");
+      closeDialog("productModal");
+      resetProductForm();
     } catch (err) {
       console.error("save error:", err);
       alert("Save failed. You may not have permission to add/edit products.");
-      return;
+    } finally {
+      _savingProduct = false;
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.textContent = prevTxt || "Save";
+      }
     }
-
-    // Keep BARCODE_MAP fresh for scanner usage
-    window.BARCODE_MAP = window.BARCODE_MAP || {};
-    window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
-
-    alert("Product saved.");
-    closeDialog("productModal");
   });
 
   // ---------- Products Manager (list/search/filter/sort) ----------
@@ -3588,6 +3683,7 @@ document.addEventListener("visibilitychange", () => {
             };
         }
         renderProductList?.();
+        renderStorefrontFromCloud?.(_productsCache);
       },
       (err) => console.error("realtime error:", err)
     );
