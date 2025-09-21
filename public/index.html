@@ -34,21 +34,28 @@
       </div>
 
       <!-- Desktop center search -->
-       <div class="top-search"></div>
+      <div class="top-search"></div>
       <!-- <div class="top-search">
         <input id="searchInput" class="input" placeholder="Search products…" />
       </div> -->
 
       <div class="top-actions">
-  <button id="btnCart" class="icon-btn badge" aria-label="Cart">
-    🛒 <span id="cartCount" class="badge-dot">0</span>
-  </button>
-  <!-- Login/Logout toggle -->
-  <button id="btnAuth" class="icon-btn" title="Sign in">👤</button>
-  <button id="btnLogout" class="icon-btn" title="Sign out" style="display:none">🚪</button>
+        <button id="btnCart" class="icon-btn badge" aria-label="Cart">
+          🛒 <span id="cartCount" class="badge-dot">0</span>
+        </button>
+        <!-- Login/Logout toggle -->
+        <button id="btnAuth" class="icon-btn" title="Sign in">👤</button>
+        <button
+          id="btnLogout"
+          class="icon-btn"
+          title="Sign out"
+          style="display: none"
+        >
+          🚪
+        </button>
 
-  <!-- Theme/Fontsize dropdowns -->
-  <!-- <div class="quick-prefs">
+        <!-- Theme/Fontsize dropdowns -->
+        <!-- <div class="quick-prefs">
     <label class="sr-only" for="themeSelect">Theme</label>
     <select id="themeSelect" class="input compact" title="Theme">
       <option value="dark">Dark</option>
@@ -73,41 +80,52 @@
       <option value="1.60">3XL</option>
     </select>
   </div> -->
-</div>
-</header>
+      </div>
+    </header>
 
     <!-- Mobile second-line search -->
-     <!-- Unified second-line (search + theme/fonts) -->
-<div class="top-search-row" style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
-  <input id="searchInput" class="input" placeholder="Search products…" style="flex:1 1 240px;" />
+    <!-- Unified second-line (search + theme/fonts) -->
+    <div
+      class="top-search-row"
+      style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap"
+    >
+      <input
+        id="searchInput"
+        class="input"
+        placeholder="Search products…"
+        style="flex: 1 1 240px"
+      />
 
-  <div class="quick-prefs" style="display:flex; gap:.4rem; align-items:center;">
-    <label class="sr-only" for="themeSelect">Theme</label>
-    <select id="themeSelect" class="input compact" title="Theme">
-      <option value="dark">Dark</option>
-      <option value="light">Light</option>
-      <option value="midnight">Midnight</option>
-      <option value="ocean">Ocean</option>
-      <option value="forest">Forest</option>
-      <option value="purple">Purple</option>
-      <option value="rose">Rose</option>
-      <option value="solar-light">Solarized Light</option>
-      <option value="solar-dark">Solarized Dark</option>
-      <option value="contrast">High Contrast</option>
-    </select>
+      <div
+        class="quick-prefs"
+        style="display: flex; gap: 0.4rem; align-items: center"
+      >
+        <label class="sr-only" for="themeSelect">Theme</label>
+        <select id="themeSelect" class="input compact" title="Theme">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="midnight">Midnight</option>
+          <option value="ocean">Ocean</option>
+          <option value="forest">Forest</option>
+          <option value="purple">Purple</option>
+          <option value="rose">Rose</option>
+          <option value="solar-light">Solarized Light</option>
+          <option value="solar-dark">Solarized Dark</option>
+          <option value="contrast">High Contrast</option>
+        </select>
 
-    <label class="sr-only" for="fsSelect">Font size</label>
-    <select id="fsSelect" class="input compact" title="Font size">
-      <option value="0.90">XS</option>
-      <option value="1.00" selected>SM</option>
-      <option value="1.10">MD</option>
-      <option value="1.20">LG</option>
-      <option value="1.30">XL</option>
-      <option value="1.40">2XL</option>
-      <option value="1.60">3XL</option>
-    </select>
-  </div>
-</div>
+        <label class="sr-only" for="fsSelect">Font size</label>
+        <select id="fsSelect" class="input compact" title="Font size">
+          <option value="0.90">XS</option>
+          <option value="1.00" selected>SM</option>
+          <option value="1.10">MD</option>
+          <option value="1.20">LG</option>
+          <option value="1.30">XL</option>
+          <option value="1.40">2XL</option>
+          <option value="1.60">3XL</option>
+        </select>
+      </div>
+    </div>
     <!-- <div class="top-search-row">
       <input
         id="searchInputMobile"
@@ -304,49 +322,77 @@
       </div>
     </dialog>
 
-    <!-- Membership Modal -->
-    <dialog id="memberModal" class="modal">
-      <div class="modal-body">
-        <button class="close" data-close="memberModal" aria-label="Close">
-          ✕
-        </button>
-        <h3 class="card-title">Membership</h3>
-        <p class="modal-desc">
-          Create an account and choose a plan. Cashback applies to every order
-          for one year.
-        </p>
-
-        <div class="stack" style="margin: 1rem 0">
-          <label class="radio"
-            ><input type="radio" name="mplan" value="basic" checked />
-            <span>Basic — <b>2% cashback</b> — <i>$9/year</i></span></label
-          >
-          <label class="radio"
-            ><input type="radio" name="mplan" value="plus" />
-            <span>Plus — <b>3% cashback</b> — <i>$19/year</i></span></label
-          >
-          <label class="radio"
-            ><input type="radio" name="mplan" value="pro" />
-            <span>Pro — <b>5% cashback</b> — <i>$39/year</i></span></label
-          >
+    <!-- === Membership Login / Join Modal === -->
+    <dialog
+      id="memberModal"
+      class="m-modal"
+      aria-labelledby="mTitle"
+      aria-modal="true"
+    >
+      <div class="m-wrap">
+        <div class="m-head">
+          <div id="mTitle" class="m-title">Join Membership</div>
+          <button id="mClose" class="m-btn m-outline" aria-label="Close">
+            ✕
+          </button>
         </div>
 
-        <div class="row between" style="margin: 0.6rem 0">
-          <label class="row" style="gap: 0.4rem; align-items: center">
-            <input type="checkbox" id="autoRenew" />
-            <span>Auto-renew yearly</span>
+        <!-- Level chooser -->
+        <div class="m-levels">
+          <label class="m-tier m-gold">
+            <input type="radio" name="mTier" value="gold" checked />
+            <div class="m-tier-body">
+              <div class="m-tier-name">Gold Member</div>
+              <div class="m-tier-fee">$29 / year</div>
+              <ul class="m-benefits">
+                <li>5% storewide discount</li>
+                <li>1% cashback points</li>
+                <li>Member-only promos</li>
+              </ul>
+            </div>
           </label>
-          <select id="payMethod" class="input" style="max-width: 180px">
-            <option value="paypal">PayPal</option>
-            <option value="kbz">KBZ Pay</option>
-            <option value="cbpay">CB Pay</option>
-            <option value="ayar">Ayar Pay</option>
-          </select>
+
+          <label class="m-tier m-plat">
+            <input type="radio" name="mTier" value="platinum" />
+            <div class="m-tier-body">
+              <div class="m-tier-name">Platinum Member</div>
+              <div class="m-tier-fee">$59 / year</div>
+              <ul class="m-benefits">
+                <li>10% storewide discount</li>
+                <li>2% cashback points</li>
+                <li>Priority support</li>
+              </ul>
+            </div>
+          </label>
+
+          <label class="m-tier m-diamond">
+            <input type="radio" name="mTier" value="diamond" />
+            <div class="m-tier-body">
+              <div class="m-tier-name">Diamond Member</div>
+              <div class="m-tier-fee">$99 / year</div>
+              <ul class="m-benefits">
+                <li>15% storewide discount</li>
+                <li>3% cashback points</li>
+                <li>Free expedited shipping</li>
+              </ul>
+            </div>
+          </label>
         </div>
 
-        <button id="buyMembership" class="btn" style="width: 100%">
-          Continue
-        </button>
+        <!-- Profile fields (for card shipping) -->
+        <div class="m-grid">
+          <input id="mName" class="input" placeholder="Full name" />
+          <input id="mPhone" class="input" placeholder="Phone" />
+          <input id="mAddr" class="input" placeholder="Address line" />
+          <input id="mCity" class="input" placeholder="City" />
+        </div>
+
+        <div class="m-foot">
+          <div class="m-note">
+            Membership renews yearly. Discount/Cashback apply after joining.
+          </div>
+          <button id="mJoin" class="m-btn">Join Now</button>
+        </div>
       </div>
     </dialog>
 

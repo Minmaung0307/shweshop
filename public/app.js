@@ -265,6 +265,69 @@ function openQrPay(method) {
   loadQR(); // start loading QR
 }
 
+// === MEMBERSHIP: mapping & state helpers ===
+const MEMBERSHIP_PLANS = {
+  gold:    { label:"Gold Member",    fee:29, rate:0.05, cashback:0.01, color:"#ffda7a" },
+  platinum:{ label:"Platinum Member",fee:59, rate:0.10, cashback:0.02, color:"#b6f5ff" },
+  diamond: { label:"Diamond Member", fee:99, rate:0.15, cashback:0.03, color:"#bfa1ff" },
+};
+
+// persist membership (optional)
+function loadMembership() {
+  try { const raw = localStorage.getItem("membership"); if (raw) state.membership = JSON.parse(raw); } catch {}
+}
+function saveMembership() {
+  try { localStorage.setItem("membership", JSON.stringify(state.membership||{})); } catch {}
+}
+
+// Open/close modal
+(function wireMembershipModal(){
+  const open = () => document.getElementById("memberModal")?.showModal();
+  const close = () => document.getElementById("memberModal")?.close();
+
+  // Topbar/wherever: #btnMembership should open
+  document.getElementById("btnMembership")?.addEventListener("click", open);
+  document.getElementById("mClose")?.addEventListener("click", close);
+
+  // Join handler
+  document.getElementById("mJoin")?.addEventListener("click", () => {
+    const tier = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
+    const plan = MEMBERSHIP_PLANS[tier] || MEMBERSHIP_PLANS.gold;
+
+    const name  = document.getElementById("mName")?.value?.trim();
+    const phone = document.getElementById("mPhone")?.value?.trim();
+    const addr  = document.getElementById("mAddr")?.value?.trim();
+    const city  = document.getElementById("mCity")?.value?.trim();
+
+    if (!name || !phone || !addr || !city) {
+      alert("Please fill Name, Phone, Address, City."); return;
+    }
+
+    // save to state (active membership)
+    state.membership = {
+      active: true,
+      level: tier,
+      label: plan.label,
+      fee: plan.fee,
+      rate: plan.rate,             // used by computeTotals() for discount
+      cashback: plan.cashback,     // you can show this elsewhere if needed
+      name, phone, addr, city,
+      joinedAt: Date.now(),
+      memberId: "MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
+    };
+    saveMembership();
+
+    alert(`${plan.label} joined! Annual fee $${plan.fee}. Discount ${(plan.rate*100)|0}% applied.`);
+    document.getElementById("memberModal")?.close();
+
+    // If your cart UI shows member toggle, force totals refresh
+    try { renderCartPage?.(); } catch {}
+  });
+})();
+
+// load persisted membership at boot
+loadMembership();
+
 // -- utils --
 function fmt(n) {
   try { return n.toLocaleString(undefined, { style: "currency", currency: "USD" }); }
