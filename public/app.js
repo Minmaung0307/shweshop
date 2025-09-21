@@ -3485,7 +3485,7 @@ document.addEventListener("visibilitychange", () => {
       document.getElementById("grid") ||
       document.querySelector(".product-grid") ||
       document.querySelector(".grid");
-    if (!grid) return; // no storefront in this view
+    if (!grid) return;
 
     grid.innerHTML = "";
     if (!items?.length) {
@@ -3496,12 +3496,10 @@ document.addEventListener("visibilitychange", () => {
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
-      <div class="thumb" style="height:160px;border-radius:12px;overflow:hidden;background:#111;">
-        <img src="${p.thumb || ""}" alt="${
-        p.title || ""
-      }" style="width:100%;height:100%;object-fit:cover;">
+      <div class="thumb">
+        <img src="${p.thumb || ""}" alt="${p.title || ""}">
       </div>
-      <div class="row" style="margin-top:8px;">
+      <div class="row">
         <div class="strong">${p.title || ""}</div>
         <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
       </div>
@@ -3510,32 +3508,27 @@ document.addEventListener("visibilitychange", () => {
       grid.appendChild(card);
     }
 
-    // Add to cart delegation
-    grid.addEventListener(
-      "click",
-      (e) => {
-        const add = e.target.closest?.("[data-add]");
-        if (!add) return;
-        const id = add.dataset.add;
-        const prod = (items || []).find((x) => x.id === id);
-        if (!prod) return;
-        // your existing addToCart logic; fallback:
-        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-        const i = cart.findIndex((x) => x.id === id);
-        if (i >= 0) cart[i].qty += 1;
-        else
-          cart.push({
-            id,
-            title: prod.title,
-            price: +prod.price,
-            img: prod.thumb,
-            qty: 1,
-          });
-        localStorage.setItem("cart", JSON.stringify(cart));
-        if (typeof updateCartCount === "function") updateCartCount();
-      },
-      { once: true }
-    ); // attach once per render
+    // Add-to-cart (simple local version; if you already have addToCart(), call that instead)
+    grid.onclick = (e) => {
+      const btn = e.target.closest?.("[data-add]");
+      if (!btn) return;
+      const id = btn.dataset.add;
+      const prod = (items || []).find((x) => x.id === id);
+      if (!prod) return;
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const i = cart.findIndex((x) => x.id === id);
+      if (i >= 0) cart[i].qty += 1;
+      else
+        cart.push({
+          id,
+          title: prod.title,
+          price: +prod.price,
+          img: prod.thumb,
+          qty: 1,
+        });
+      localStorage.setItem("cart", JSON.stringify(cart));
+      if (typeof updateCartCount === "function") updateCartCount();
+    };
   }
 
   // ---------- Form / Modal wires ----------
@@ -3690,7 +3683,22 @@ document.addEventListener("visibilitychange", () => {
   }
 
   // Listen for fb-ready (fired after auth state known + compat instances set)
-  document.addEventListener("fb-ready", () => {
+  document.addEventListener("fb-ready", async () => {
+    try {
+      const items = await (async () => {
+        if (typeof fdb?.collection === "function") {
+          const snap = await fdb
+            .collection("products")
+            .orderBy("updatedAt", "desc")
+            .get();
+          return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        }
+        return [];
+      })();
+      renderStorefrontFromCloud?.(items);
+    } catch (e) {
+      console.warn("initial load failed:", e);
+    }
     ensureProductsRealtime();
   });
 

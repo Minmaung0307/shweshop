@@ -1157,3 +1157,16 @@ body { font-size: calc(16px * var(--fs)); }
 .pm-card .row { display:flex; justify-content:space-between; align-items:center; gap:.4rem; }
 .pm-card img { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:10px; background:#111; border:1px solid rgba(255,255,255,.06); }
 .tag { font-size:.78rem; opacity:.85; padding:.08rem .4rem; border:1px solid rgba(255,255,255,.15); border-radius:999px; background:rgba(255,255,255,.06); }
+
+.product-grid { 
+  display:grid; gap:12px; 
+  grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
+}
+.product-grid .card{
+  background:#0f1217; border:1px solid rgba(255,255,255,.12);
+  border-radius:12px; padding:10px;
+}
+.product-grid .card .thumb{height:160px;border-radius:10px;overflow:hidden;background:#111;}
+.product-grid .card img{width:100%;height:100%;object-fit:cover;}
+.product-grid .tag{background:rgba(255,255,255,.1);padding:2px 8px;border-radius:999px;font-size:12px;}
+.product-grid .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;}
