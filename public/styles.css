@@ -1128,3 +1128,14 @@ body { font-size: calc(16px * var(--fs)); }
 
 .m-foot { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-top:.8rem; }
 .m-note { color:#a8b3c7; font-size:.92rem; }
+
+/* membership icon button */
+.icon-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:10px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  color:#e9f1ff; cursor:pointer;
+}
+.icon-btn:hover{ background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.18); }
+.icon-btn:focus{ outline:2px solid #4cc2ff; outline-offset:2px; }

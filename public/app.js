@@ -2790,3 +2790,62 @@ onAuthStateChanged(auth, async (user) => {
   }
 })();
 
+
+// === MEMBERSHIP TOPBAR ICON → OPEN MODAL (block nav/router) ===
+(function(){
+  // ensure the button exists in topbar; if not, try to append next to btnCart
+  if (!document.getElementById("btnMembership")) {
+    const cartBtn = document.getElementById("btnCart");
+    if (cartBtn && cartBtn.parentElement) {
+      const btn = document.createElement("button");
+      btn.id = "btnMembership";
+      btn.className = "icon-btn";
+      btn.title = "Membership";
+      btn.setAttribute("aria-label","Membership");
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M3 7l4.5 3 3.5-5 3.5 5L19 7l2 10H3L3 7zm2.8 12h12.4c.4 0 .8-.3.9-.7l.7-3.8-3.6 1.6a1 1 0 0 1-1.1-.2L12 11.8 8.9 16a1 1 0 0 1-1.1.2L4.2 14.5l.7 3.8c.1.4.5.7.9.7z" fill="currentColor"/></svg>`;
+      cartBtn.parentElement.insertBefore(btn, cartBtn); // put before cart; or use .appendChild(btn)
+    }
+  }
+
+  function openMemberModal(e){
+    if (e){ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation?.(); }
+    const dlg = document.getElementById("memberModal");
+    if (!dlg){ console.warn("memberModal not found"); return; }
+    if (typeof dlg.showModal === "function") dlg.showModal();
+    else { dlg.setAttribute("open",""); dlg.style.display = "block"; }
+    return false;
+  }
+
+  function closeMemberModal(){
+    const dlg = document.getElementById("memberModal");
+    if (!dlg) return;
+    if (typeof dlg.close === "function") dlg.close();
+    else { dlg.removeAttribute("open"); dlg.style.display = "none"; }
+  }
+
+  // bind (capture phase to beat routers like data-view / SPA handlers)
+  document.addEventListener("click", (e) => {
+    const hit = e.target.closest?.('#btnMembership, [data-action="membership"], a[href="#membership"]');
+    if (hit) openMemberModal(e);
+    if (e.target?.id === "mClose") closeMemberModal();
+  }, true); // capture=true
+
+  // Esc/backdrop (fallback for non-native dialog)
+  const dlg = document.getElementById("memberModal");
+  if (dlg && typeof dlg.showModal !== "function") {
+    dlg.addEventListener("click", (ev) => {
+      const box = dlg.querySelector(".m-wrap");
+      if (box && !box.contains(ev.target)) closeMemberModal();
+    });
+  }
+
+  // safety: remove router attrs from the button if any
+  const b = document.getElementById("btnMembership");
+  if (b){
+    b.removeAttribute?.("data-view"); // avoid switchView('shop') etc
+    if (b.tagName === "A") b.setAttribute("href",""); // neutralize hash nav
+    b.setAttribute("role","button");
+  }
+})();
+
