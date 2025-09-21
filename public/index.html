@@ -288,53 +288,6 @@
       </section>
     </main>
 
-    <!-- Product Detail Modal -->
-    <dialog id="productModal" class="modal">
-      <div class="modal-body">
-        <button class="icon-btn modal-close" data-close="productModal">
-          ✕
-        </button>
-
-        <div class="product-detail">
-          <div class="pd-media">
-            <button id="pdPrev" class="icon-btn pd-nav">⟨</button>
-            <img id="pdImg" alt="" />
-            <button id="pdNext" class="icon-btn pd-nav">⟩</button>
-            <div id="pdThumbs" class="thumbs"></div>
-          </div>
-
-          <div class="pd-info">
-            <h3 id="pdTitle"></h3>
-            <p id="pdPrice" class="price"></p>
-            <p id="pdDesc" class="desc"></p>
-            <ul id="pdSpecs" class="disc small"></ul>
-
-            <div class="info-box small">
-              <div>🚚 Shipping: 2–5 days (standard)</div>
-              <div>↩️ Returns: 30-day return policy</div>
-              <div>💬 Questions? support@shweshop.example</div>
-            </div>
-
-            <div class="row">
-              <label class="lbl">Qty</label>
-              <input id="pdQty" class="input" type="number" min="1" value="1" />
-            </div>
-            <div class="row">
-              <button id="pdAdd" class="btn">Add to Cart</button>
-              <button class="btn btn-soft" data-close="productModal">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="related">
-          <h4>Customers also viewed</h4>
-          <div id="relatedGrid" class="related-grid"></div>
-        </div>
-      </div>
-    </dialog>
-
     <!-- === Membership Login / Join Modal === -->
     <dialog
       id="memberModal"
@@ -719,7 +672,9 @@
       <div class="pm-wrap">
         <div class="pm-head">
           <div class="pm-title">Products Manager</div>
-          <button id="plClose" class="btn-mini btn-outline">✕</button>
+          <button id="plClose" class="btn-mini btn-outline" type="button">
+            ✕
+          </button>
         </div>
 
         <div class="pm-toolbar">
@@ -752,36 +707,36 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
     <script>
-  // ---- Firebase config (make sure storageBucket is appspot.com) ----
-  const firebaseConfig = {
-    apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
-    authDomain: "shweshop-mm.firebaseapp.com",
-    projectId: "shweshop-mm",
-    storageBucket: "shweshop-mm.appspot.com",
-    messagingSenderId: "361216212375",
-    appId: "1:361216212375:web:fed19b7fe4072000c298d2",
-    measurementId: "G-WBJJZZNLX6",
-  };
-  firebase.initializeApp(firebaseConfig);
+      // ---- Firebase config (make sure storageBucket is appspot.com) ----
+      const firebaseConfig = {
+        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+        authDomain: "shweshop-mm.firebaseapp.com",
+        projectId: "shweshop-mm",
+        storageBucket: "shweshop-mm.appspot.com",
+        messagingSenderId: "361216212375",
+        appId: "1:361216212375:web:fed19b7fe4072000c298d2",
+        measurementId: "G-WBJJZZNLX6",
+      };
+      firebase.initializeApp(firebaseConfig);
 
-  // ---- Expose compat instances BEFORE 'fb-ready' ----
-  window.db = firebase.firestore();
-  window.storage = firebase.storage();
+      // ---- Expose compat instances BEFORE 'fb-ready' ----
+      window.db = firebase.firestore();
+      window.storage = firebase.storage();
 
-  // ---- Only try anonymous sign-in if needed ----
-  // (If Anonymous provider is disabled in Console, calling this throws 'admin-restricted-operation')
-  firebase.auth().onAuthStateChanged((user) => {
-    console.log("auth state:", !!user, user?.uid || "");
-    if (!user) {
-      // OPTIONAL: uncomment only if Anonymous provider is ENABLED in console
-      // firebase.auth().signInAnonymously().catch((e) => {
-      //   console.warn("anon signin:", e.code, e.message);
-      // });
-    }
-    // Fire 'fb-ready' AFTER window.db/window.storage exist
-    document.dispatchEvent(new Event("fb-ready"));
-  });
-</script>
+      // ---- Only try anonymous sign-in if needed ----
+      // (If Anonymous provider is disabled in Console, calling this throws 'admin-restricted-operation')
+      firebase.auth().onAuthStateChanged((user) => {
+        console.log("auth state:", !!user, user?.uid || "");
+        if (!user) {
+          // OPTIONAL: uncomment only if Anonymous provider is ENABLED in console
+          // firebase.auth().signInAnonymously().catch((e) => {
+          //   console.warn("anon signin:", e.code, e.message);
+          // });
+        }
+        // Fire 'fb-ready' AFTER window.db/window.storage exist
+        document.dispatchEvent(new Event("fb-ready"));
+      });
+    </script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
