@@ -386,34 +386,10 @@
           ✕
         </button>
       </div>
+
       <div id="cartItems" class="drawer-body"></div>
       <div class="drawer-foot">
-        <!-- <div class="row between strong">
-          <div>Subtotal</div>
-          <div id="subtotal">$0.00</div>
-        </div> -->
-        <!-- <div class="row between small">
-          <div>Promo</div>
-          <div id="promoAmount">-$0.00</div>
-        </div>
-        <div class="row between small">
-          <div>Member Discount</div>
-          <div id="memberDisc">-$0.00</div>
-        </div>
-        <hr /> -->
-        <!-- <div class="row between total">
-          <div>Total</div>
-          <div id="grandTotal">$0.00</div>
-        </div> -->
-
         <div class="stack pay-stack">
-          <!-- <div class="pay-tabs">
-            <button data-paytab="paypal" class="chip active">PayPal</button>
-            <button data-paytab="kbz" class="chip">KBZPay</button>
-            <button data-paytab="cb" class="chip">CBPay</button>
-            <button data-paytab="aya" class="chip">AyaPay</button>
-          </div> -->
-
           <div id="payPanel-paypal" class="pay-panel active">
             <div id="paypal-button-container"></div>
           </div>
@@ -671,6 +647,25 @@
             />
           </div>
 
+          <!-- ▶ Additional gallery (multi) — place AFTER the thumbnail preview row and BEFORE .pm-foot -->
+          <div class="pm-thumbrow">
+            <div class="small" style="opacity: 0.8">
+              Gallery images (up to 6)
+            </div>
+            <input
+              id="pGallery"
+              class="input"
+              type="file"
+              accept="image/*"
+              multiple
+            />
+          </div>
+          <div
+            id="pGalleryPreview"
+            class="row"
+            style="gap: 8px; flex-wrap: wrap"
+          ></div>
+
           <div class="pm-foot">
             <button type="submit" class="btn-mini">Save</button>
             <button type="button" id="pmReset" class="btn-mini btn-outline">
@@ -713,6 +708,78 @@
       </div>
     </dialog>
 
+    <!-- ▶ Product Detail Modal (Gallery + Add to cart) -->
+    <dialog id="productDetailModal" class="pm-modal" aria-modal="true">
+      <div class="pm-wrap">
+        <div class="pm-head">
+          <div class="pm-title" id="pdTitle">Product</div>
+          <button id="pdClose" class="btn-mini btn-outline" type="button">
+            ✕
+          </button>
+        </div>
+
+        <div
+          class="pd-body"
+          style="
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 14px;
+            align-items: start;
+          "
+        >
+          <!-- Gallery -->
+          <div>
+            <div
+              class="pd-hero"
+              style="
+                height: 320px;
+                border-radius: 12px;
+                overflow: hidden;
+                background: #111;
+              "
+            >
+              <img
+                id="pdHero"
+                alt="hero"
+                style="width: 100%; height: 100%; object-fit: cover"
+              />
+            </div>
+            <div
+              id="pdThumbs"
+              class="row"
+              style="gap: 8px; flex-wrap: wrap; margin-top: 10px"
+            ></div>
+          </div>
+
+          <!-- Info -->
+          <div>
+            <div class="row" style="align-items: baseline">
+              <div id="pdPrice" class="strong" style="font-size: 20px"></div>
+              <div id="pdCategory" class="tag"></div>
+            </div>
+            <div
+              class="small"
+              id="pdBarcode"
+              style="opacity: 0.85; margin: 6px 0"
+            ></div>
+
+            <div class="row" style="gap: 10px; margin: 12px 0">
+              <button id="pdDec" class="btn-mini btn-outline">−</button>
+              <span id="pdQty" class="strong">1</span>
+              <button id="pdInc" class="btn-mini">＋</button>
+            </div>
+
+            <div class="row" style="gap: 10px">
+              <button id="pdAdd" class="btn-mini" data-id="">
+                Add to Cart
+              </button>
+              <button id="pdBuy" class="btn-mini btn-outline">Buy now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
     <!-- App -->
     <!-- Firebase (Compat CDN) — place these BEFORE app.js -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -721,35 +788,37 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
     <script>
-      // ---- Firebase config (make sure storageBucket is appspot.com) ----
+      // ---- Firebase init (compat) ----
       const firebaseConfig = {
-        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+        apiKey: "…",
         authDomain: "shweshop-mm.firebaseapp.com",
         projectId: "shweshop-mm",
-        storageBucket: "shweshop-mm.firebasestorage.app",
+        storageBucket: "shweshop-mm.firebasestorage.app", // ✅ your actual bucket
         messagingSenderId: "361216212375",
         appId: "1:361216212375:web:fed19b7fe4072000c298d2",
         measurementId: "G-WBJJZZNLX6",
       };
       firebase.initializeApp(firebaseConfig);
 
-      // ---- Expose compat instances BEFORE 'fb-ready' ----
-      window.db = firebase.firestore();
-      window.storage = firebase.storage();
+      // ---- Expose compat instances (ONE Firestore instance only) ----
+      const _fdb = firebase.firestore();
+      const _storage = firebase.storage();
 
-      // ---- Only try anonymous sign-in if needed ----
-      // (If Anonymous provider is disabled in Console, calling this throws 'admin-restricted-operation')
-      firebase.auth().onAuthStateChanged((user) => {
-        console.log("auth state:", !!user, user?.uid || "");
-        if (!user) {
-          // OPTIONAL: uncomment only if Anonymous provider is ENABLED in console
-          // firebase.auth().signInAnonymously().catch((e) => {
-          //   console.warn("anon signin:", e.code, e.message);
-          // });
-        }
-        // Fire 'fb-ready' AFTER window.db/window.storage exist
-        document.dispatchEvent(new Event("fb-ready"));
-      });
+      // Prefer fdb/storage in new code
+      window.fdb = _fdb;
+      window.storage = _storage;
+
+      // Back-compat alias for old code that still calls `db`
+      window.db = _fdb;
+
+      // Optional: allow writes that require auth (e.g., Storage put)
+      firebase
+        .auth()
+        .signInAnonymously()
+        .catch((err) => console.warn("anon signin:", err?.message || err));
+
+      // Let app.js know Firebase is ready
+      document.dispatchEvent(new Event("fb-ready"));
     </script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>

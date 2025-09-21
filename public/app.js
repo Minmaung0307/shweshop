@@ -1374,6 +1374,65 @@ const pdPrice = $("#pdPrice");
 const pdDesc = $("#pdDesc");
 const pdSpecs = $("#pdSpecs");
 
+// Upload multiple gallery files -> returns array of downloadURLs
+async function uploadGalleryFiles(files, productId) {
+  const out = [];
+  const fs = Array.from(files || []).slice(0, 6);
+  let i = 0;
+
+  for (const f of fs) {
+    // resize to JPEG (optional)
+    let blob = f;
+    if (typeof createImageBitmap === "function") {
+      try {
+        const bmp = await createImageBitmap(f);
+        const max = 1600;
+        const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+        const w = Math.max(1, Math.round(bmp.width * scale));
+        const h = Math.max(1, Math.round(bmp.height * scale));
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+        blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", 0.85));
+        try {
+          bmp.close();
+        } catch {}
+      } catch {
+        /* fallback to original file */
+      }
+    }
+
+    const ref = storage.ref(
+      `products/${productId}/gallery/${String(i++).padStart(2, "0")}.jpg`
+    );
+    await ref.put(blob, { contentType: "image/jpeg" });
+    out.push(await ref.getDownloadURL());
+  }
+  return out;
+}
+
+// --- after thumbURL is ready ---
+let images = [];
+try {
+  const gfiles = document.getElementById("pGallery")?.files || [];
+  if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+} catch (e) {
+  console.warn("gallery upload error:", e);
+}
+
+// product doc
+const prod = {
+  id,
+  title,
+  category,
+  price: +price,
+  barcode,
+  thumb: thumbURL,
+  images,
+};
+await upsertProduct(prod);
+
 // === Part 4: Nav chips & admin UI toggle ===
 function buildNavChips() {
   if (!navScroll) return;
@@ -3488,47 +3547,66 @@ document.addEventListener("visibilitychange", () => {
     if (!grid) return;
 
     grid.innerHTML = "";
-    if (!items?.length) {
+    if (!items || !items.length) {
       grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
       return;
     }
+
+    // build cards
     for (const p of items) {
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
-      <div class="thumb" style="height:160px;border-radius:12px;overflow:hidden;background:#111;">
-        <img src="${p.thumb || ""}" alt="${
-        p.title || ""
-      }" style="width:100%;height:100%;object-fit:cover;">
+      <div class="thumb" data-open="${p.id}">
+        <img src="${p.thumb || ""}" alt="${p.title || ""}">
       </div>
-      <div class="row" style="margin-top:8px;">
+      <div class="row">
         <div class="strong">${p.title || ""}</div>
         <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
       </div>
-      <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+      <div class="row" style="margin-top:6px;">
+        <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+        <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
+      </div>
     `;
       grid.appendChild(card);
-    }
-
+    } // ✅ SINGLE delegation (each render sets once)
     grid.onclick = (e) => {
-      const btn = e.target.closest?.("[data-add]");
-      if (!btn) return;
-      const id = btn.dataset.add;
-      const prod = (items || []).find((x) => x.id === id);
-      if (!prod) return;
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const i = cart.findIndex((x) => x.id === id);
-      if (i >= 0) cart[i].qty += 1;
-      else
-        cart.push({
-          id,
-          title: prod.title,
-          price: +prod.price,
-          img: prod.thumb,
-          qty: 1,
-        });
-      localStorage.setItem("cart", JSON.stringify(cart));
-      if (typeof updateCartCount === "function") updateCartCount();
+      // open detail (click on View button OR on the hero thumb)
+      const openEl = e.target.closest?.("[data-detail],[data-open]");
+      if (openEl) {
+        const id =
+          openEl.dataset.detail ||
+          openEl.dataset.open ||
+          openEl.closest(".card")?.querySelector("[data-add]")?.dataset.add;
+        if (!id) return;
+        const prod = (items || []).find((x) => x.id === id);
+        if (prod) window.openProductDetail?.(prod); // <- use the detail modal opener you defined
+        return;
+      }
+
+      // add to cart
+      const add = e.target.closest?.("[data-add]");
+      if (add) {
+        const id = add.dataset.add;
+        const prod = (items || []).find((x) => x.id === id);
+        if (!prod) return;
+
+        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        const i = cart.findIndex((x) => x.id === id);
+        if (i >= 0) cart[i].qty += 1;
+        else
+          cart.push({
+            id,
+            title: prod.title,
+            price: +prod.price,
+            img: prod.thumb,
+            qty: 1,
+          });
+        localStorage.setItem("cart", JSON.stringify(cart));
+        if (typeof updateCartCount === "function") updateCartCount();
+        return;
+      }
     };
   }
 
@@ -3568,13 +3646,12 @@ document.addEventListener("visibilitychange", () => {
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
 
-  // top-level (IIFE အတွင်း)
+  // top-level guard
   let _savingProduct = false;
 
-  // ... your existing elForm?.addEventListener("submit", async (e) => { ... }) ကို အစားထိုး
   elForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (_savingProduct) return; // ✅ guard
+    if (_savingProduct) return;
     _savingProduct = true;
 
     const btnSave = elForm.querySelector('button[type="submit"]');
@@ -3585,7 +3662,7 @@ document.addEventListener("visibilitychange", () => {
     }
 
     try {
-      // Prepare id early to upload under stable path
+      // Prepare id early
       let id =
         document.getElementById("pId")?.value.trim() ||
         fdb.collection(PRODUCTS_COL).doc().id;
@@ -3601,16 +3678,25 @@ document.addEventListener("visibilitychange", () => {
         return;
       }
 
-      // Upload image (compressed) → downloadURL
+      // upload thumb (recommend: your uploadProductThumb sets contentType)
       let thumbURL = "";
       if (file) {
         try {
-          thumbURL = await uploadProductThumb(file, id); // function ကို အောက်မှာ update ပေးထားပါတယ်
+          thumbURL = await uploadProductThumb(file, id);
         } catch (err) {
           console.error("upload error:", err);
           alert("Image upload failed (permission/CORS/network).");
           return;
         }
+      }
+
+      // gallery files
+      let images = [];
+      try {
+        const gfiles = document.getElementById("pGallery")?.files || [];
+        if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+      } catch (e) {
+        console.warn("gallery upload error:", e);
       }
 
       const prod = {
@@ -3620,10 +3706,19 @@ document.addEventListener("visibilitychange", () => {
         price: +price,
         barcode,
         thumb: thumbURL,
+        images,
       };
-      await upsertProduct(prod);
 
-      // hydrate BARCODE_MAP for scanner/cart
+      // ✅ save ONCE
+      try {
+        id = await upsertProduct(prod);
+      } catch (err) {
+        console.error("save error:", err);
+        alert("Save failed. You may not have permission to add/edit products.");
+        return;
+      }
+
+      // update barcode map
       window.BARCODE_MAP = window.BARCODE_MAP || {};
       window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
 
@@ -3639,6 +3734,31 @@ document.addEventListener("visibilitychange", () => {
         btnSave.disabled = false;
         btnSave.textContent = prevTxt || "Save";
       }
+    }
+  });
+
+  // refs (near other refs)
+  const elGalleryFiles = document.getElementById("pGallery");
+  const elGalleryPreview = document.getElementById("pGalleryPreview");
+
+  // small helper for mini preview thumbs
+  function _thumbEl(url) {
+    const im = document.createElement("img");
+    im.src = url;
+    im.alt = "thumb";
+    im.style.cssText =
+      "width:64px;height:64px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12)";
+    return im;
+  }
+
+  // preview selected gallery files
+  elGalleryFiles?.addEventListener("change", (e) => {
+    if (!elGalleryPreview) return;
+    elGalleryPreview.innerHTML = "";
+    const files = Array.from(e.target.files || []).slice(0, 6);
+    for (const f of files) {
+      const u = URL.createObjectURL(f);
+      elGalleryPreview.appendChild(_thumbEl(u));
     }
   });
 
@@ -3965,4 +4085,200 @@ document.addEventListener("visibilitychange", () => {
   document
     .getElementById("plClose")
     ?.addEventListener("click", () => closeDialog("productListModal"));
+})();
+
+(function setupProductDetail() {
+  const dlg = document.getElementById("productDetailModal");
+  if (!dlg) return;
+
+  const elTitle = document.getElementById("pdTitle");
+  const elHero = document.getElementById("pdHero");
+  const elThumbs = document.getElementById("pdThumbs");
+  const elPrice = document.getElementById("pdPrice");
+  const elCat = document.getElementById("pdCategory");
+  const elBar = document.getElementById("pdBarcode");
+  const elQty = document.getElementById("pdQty");
+  const elAdd = document.getElementById("pdAdd");
+  const elPrev = document.getElementById("pdPrev");
+  const elNext = document.getElementById("pdNext");
+
+  let cur = null; // current product {id,title,price,category,barcode,thumb, images?}
+  let idx = 0; // current hero index
+  let imgs = []; // current gallery array
+
+  function collectImages(p) {
+    // accept various field names; fallback to thumb
+    const arr = (p.images || p.imgs || p.gallery || []).filter(Boolean);
+    if (p.thumb) arr.unshift(p.thumb);
+    // dedupe while preserving order
+    const seen = new Set();
+    const out = [];
+    for (const u of arr)
+      if (u && !seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+      }
+    return out.length ? out : [""];
+  }
+
+  function setHero(i) {
+    if (!imgs.length) return;
+    idx = Math.max(0, Math.min(i, imgs.length - 1));
+    if (elHero) {
+      elHero.src = imgs[idx] || "";
+      elHero.alt = (cur?.title || "") + " - " + (idx + 1);
+    }
+    // highlight active thumb
+    if (elThumbs) {
+      [...elThumbs.querySelectorAll("[data-idx]")].forEach((btn) => {
+        btn.classList.toggle("active", +btn.dataset.idx === idx);
+      });
+    }
+  }
+
+  function buildThumbs() {
+    if (!elThumbs) return;
+    elThumbs.innerHTML = "";
+    imgs.forEach((u, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pd-thumb";
+      b.dataset.idx = String(i);
+      b.innerHTML = `<img src="${u}" alt="thumb ${i + 1}">`;
+      b.addEventListener("click", () => setHero(i));
+      elThumbs.appendChild(b);
+    });
+  }
+
+  function fmtUSD(n) {
+    try {
+      return n.toLocaleString(undefined, {
+        style: "currency",
+        currency: "USD",
+      });
+    } catch {
+      return `$${(+n || 0).toFixed(2)}`;
+    }
+  }
+
+  function sanitizeQty() {
+    let q = parseInt(elQty?.value || "1", 10);
+    if (isNaN(q) || q < 1) q = 1;
+    if (q > 99) q = 99;
+    if (elQty) elQty.value = String(q);
+    return q;
+  }
+
+  // public: open with a product object
+  function openProductDetail(p) {
+    cur = p || null;
+    if (!cur) return;
+
+    imgs = collectImages(cur);
+    buildThumbs();
+    setHero(0);
+
+    if (elTitle) elTitle.textContent = cur.title || "";
+    if (elPrice) elPrice.textContent = fmtUSD(+cur.price || 0);
+    if (elCat) elCat.textContent = cur.category || "-";
+    if (elBar) elBar.textContent = cur.barcode || cur.id || "-";
+    if (elQty) elQty.value = "1";
+
+    // show modal/dialog
+    if (dlg.showModal) dlg.showModal();
+    else dlg.setAttribute("open", "");
+
+    // focus for key nav
+    dlg.focus?.();
+  }
+
+  // expose globally so card click can call it
+  window.openProductDetail = openProductDetail;
+
+  // gallery nav
+  elPrev?.addEventListener("click", () =>
+    setHero((idx - 1 + imgs.length) % imgs.length)
+  );
+  elNext?.addEventListener("click", () => setHero((idx + 1) % imgs.length));
+
+  // keyboard support (←/→, Esc)
+  dlg.addEventListener?.("keydown", (e) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setHero((idx - 1 + imgs.length) % imgs.length);
+    }
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setHero((idx + 1) % imgs.length);
+    }
+    if (e.key === "Escape") {
+      dlg.close?.();
+    }
+  });
+
+  // qty change
+  elQty?.addEventListener("input", sanitizeQty);
+  elQty?.addEventListener("blur", sanitizeQty);
+
+  // add to cart (keep modal open)
+  elAdd?.addEventListener("click", () => {
+    if (!cur) return;
+    const q = sanitizeQty();
+    // prefer app’s existing addToCart(product, qty)
+    if (typeof window.addToCart === "function") {
+      window.addToCart(
+        {
+          id: cur.id,
+          title: cur.title,
+          price: +cur.price,
+          img: imgs[0] || cur.thumb,
+        },
+        q
+      );
+    } else {
+      // minimal fallback → localStorage cart
+      const key = "cart";
+      let cart = [];
+      try {
+        cart = JSON.parse(localStorage.getItem(key) || "[]");
+      } catch {}
+      const i = cart.findIndex((x) => x.id === cur.id);
+      if (i >= 0) cart[i].qty += q;
+      else
+        cart.push({
+          id: cur.id,
+          title: cur.title,
+          price: +cur.price,
+          img: imgs[0] || cur.thumb,
+          qty: q,
+        });
+      try {
+        localStorage.setItem(key, JSON.stringify(cart));
+      } catch {}
+      if (typeof window.updateCartCount === "function")
+        window.updateCartCount();
+    }
+
+    // small feedback
+    const btn = elAdd;
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Added ✓";
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = old;
+    }, 900);
+  });
+
+  // click outside to close (for <dialog>)
+  dlg.addEventListener?.("click", (e) => {
+    const rect = dlg.querySelector?.(".pd-wrap")?.getBoundingClientRect?.();
+    if (!rect) return;
+    const inside =
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom;
+    if (!inside) dlg.close?.();
+  });
 })();
