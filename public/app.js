@@ -3496,10 +3496,12 @@ document.addEventListener("visibilitychange", () => {
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
-      <div class="thumb">
-        <img src="${p.thumb || ""}" alt="${p.title || ""}">
+      <div class="thumb" style="height:160px;border-radius:12px;overflow:hidden;background:#111;">
+        <img src="${p.thumb || ""}" alt="${
+        p.title || ""
+      }" style="width:100%;height:100%;object-fit:cover;">
       </div>
-      <div class="row">
+      <div class="row" style="margin-top:8px;">
         <div class="strong">${p.title || ""}</div>
         <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
       </div>
@@ -3508,7 +3510,6 @@ document.addEventListener("visibilitychange", () => {
       grid.appendChild(card);
     }
 
-    // Add-to-cart (simple local version; if you already have addToCart(), call that instead)
     grid.onclick = (e) => {
       const btn = e.target.closest?.("[data-add]");
       if (!btn) return;
@@ -3677,6 +3678,9 @@ document.addEventListener("visibilitychange", () => {
         }
         renderProductList?.();
         renderStorefrontFromCloud?.(_productsCache);
+        renderNewArrivals?.(_productsCache);
+        buildCategoryNav?.(_productsCache);
+        attachStorefrontSearch?.(_productsCache);
       },
       (err) => console.error("realtime error:", err)
     );
@@ -3717,6 +3721,137 @@ document.addEventListener("visibilitychange", () => {
       `<option value="">All categories</option>` +
       cats.map((c) => `<option value="${c}">${c}</option>`).join("");
     if (cats.includes(cur)) elPlCategory.value = cur;
+  }
+
+  function renderNewArrivals(items, limit = 8) {
+    const box =
+      document.getElementById("newArrivalGrid") ||
+      document.getElementById("newArrivals") ||
+      document.querySelector(".new-arrivals-grid");
+    if (!box) return;
+
+    const arr = (items || [])
+      .slice()
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .slice(0, limit);
+
+    box.innerHTML = "";
+    if (!arr.length) {
+      box.innerHTML = `<div class="small" style="opacity:.8;">No new arrivals.</div>`;
+      return;
+    }
+    for (const p of arr) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+      <div class="thumb" style="height:160px;border-radius:12px;overflow:hidden;background:#111;">
+        <img src="${p.thumb || ""}" alt="${
+        p.title || ""
+      }" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="strong">${p.title || ""}</div>
+        <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
+      </div>
+      <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+    `;
+      box.appendChild(card);
+    }
+
+    // add-to-cart (simple)
+    box.onclick = (e) => {
+      const btn = e.target.closest?.("[data-add]");
+      if (!btn) return;
+      const id = btn.dataset.add;
+      const prod = arr.find((x) => x.id === id);
+      if (!prod) return;
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const i = cart.findIndex((x) => x.id === id);
+      if (i >= 0) cart[i].qty += 1;
+      else
+        cart.push({
+          id,
+          title: prod.title,
+          price: +prod.price,
+          img: prod.thumb,
+          qty: 1,
+        });
+      localStorage.setItem("cart", JSON.stringify(cart));
+      if (typeof updateCartCount === "function") updateCartCount();
+    };
+  }
+
+  function buildCategoryNav(items) {
+    const host =
+      document.getElementById("categoryNav") ||
+      document.querySelector(".category-chips") ||
+      document.getElementById("categoryChips");
+    if (!host) return;
+
+    const cats = Array.from(
+      new Set(
+        (items || []).map((x) => (x.category || "").trim()).filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+    host.innerHTML = "";
+
+    // "All" chip
+    const all = document.createElement("button");
+    all.className = "btn-mini";
+    all.dataset.cat = "";
+    all.textContent = "All";
+    host.appendChild(all);
+
+    // each cat
+    for (const c of cats) {
+      const b = document.createElement("button");
+      b.className = "btn-mini btn-outline";
+      b.dataset.cat = c;
+      b.textContent = c;
+      host.appendChild(b);
+    }
+
+    // click → filter main storefront grid (#productGrid)
+    host.onclick = (e) => {
+      const btn = e.target.closest?.("button[data-cat]");
+      if (!btn) return;
+      const cat = btn.dataset.cat || "";
+      const filtered = cat
+        ? (items || []).filter(
+            (x) => (x.category || "").trim().toLowerCase() === cat.toLowerCase()
+          )
+        : items;
+      renderStorefrontFromCloud?.(filtered);
+    };
+  }
+
+  function attachStorefrontSearch(items) {
+    // try to find an input for search
+    const input =
+      document.getElementById("search") ||
+      document.getElementById("searchInput") ||
+      document.querySelector(".top-search input") ||
+      document.querySelector('input[type="search"]');
+    if (!input) return;
+
+    const doSearch = () => {
+      const q = (input.value || "").trim().toLowerCase();
+      if (!q) {
+        renderStorefrontFromCloud?.(items);
+        return;
+      }
+      const res = (items || []).filter((p) => {
+        const t = (p.title || "").toLowerCase();
+        const c = (p.category || "").toLowerCase();
+        const b = (p.barcode || "").toLowerCase();
+        return t.includes(q) || c.includes(q) || b.includes(q);
+      });
+      renderStorefrontFromCloud?.(res);
+    };
+
+    input.oninput = doSearch;
+    // if page loaded with text already
+    if (input.value) doSearch();
   }
 
   function filteredSortedProducts() {
