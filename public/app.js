@@ -3121,6 +3121,7 @@ onAuthStateChanged(auth, async (user) => {
 // ================= BARCODE SCAN → ADD TO CART =================
 
 // 3.1 Map barcode → product (သင့်ရဲ့ SKU/ID အတိုင်း ပြင်ပါ)
+const codeReader = new ZXing.BrowserMultiFormatReader();
 const BARCODE_MAP = {
   // "EAN_13 or CODE128 text": product object (id/title/price/img)
   "5901234123457": { id:"m101", title:"Men Graphic Tee",   price:14.50, img:"images/products/men/m101/thumb.jpg" },
