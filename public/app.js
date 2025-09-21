@@ -2696,69 +2696,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === Send member welcome + admin notify via EmailJS ===
   async function sendMembershipEmail(member) {
-    // sanity checks
-    if (!window.emailjs) {
-      console.error("EmailJS SDK not loaded");
-      return false;
-    }
-    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
-      console.error("EmailJS config missing");
-      return false;
-    }
-
-    // payload variables must MATCH your EmailJS template variable names
-    const vars = {
-      // recipient
-      to_email: member.email, // <-- your template must use {{to_email}}
-      to_name: member.name, // <-- {{to_name}}
-      // content
-      subject: `Welcome ${member.label} — ${member.name}`,
-      level: member.label, // <-- {{level}}
-      discount: `${(member.rate * 100) | 0}%`, // <-- {{discount}}
-      cashback: `${Math.round((member.cashback || 0) * 100)}%`, // <-- {{cashback}}
-      member_id: member.memberId, // <-- {{member_id}}
-      // address
-      addr: member.addr,
-      city: member.city,
-      phone: member.phone,
-      // total (optional)
-      fee: `$${member.fee}`,
-      // admin copy (optional)
-      admin_email: ADMIN_EMAIL,
-    };
-
-    try {
-      // main email to member
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, vars);
-
-      // optional: second mail to admin (if you prefer a separate template)
-      // await emailjs.send(EMAILJS_SERVICE_ID, "template_admin_notify", vars);
-
-      console.log("EmailJS: sent to member");
-      return true;
-    } catch (e) {
-      console.error("EmailJS failed:", e);
-      // last-resort fallback opens user mail client (optional)
-      try {
-        const subject = vars.subject;
-        const body = `Hi ${member.name},
-
-Thanks for joining ${member.label}!
-Discount: ${vars.discount}
-Cashback: ${vars.cashback}
-Member ID: ${vars.member_id}
-
-Address: ${member.addr}, ${member.city}
-Phone: ${member.phone}`;
-        window.location.href = `mailto:${encodeURIComponent(
-          member.email
-        )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-          body
-        )}`;
-      } catch {}
-      return false;
-    }
+  if (!window.emailjs) { console.error("EmailJS SDK not loaded"); return false; }
+  if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+    console.error("EmailJS config missing"); return false;
   }
+
+  const vars = {
+    to_email: member.email,     // ← Template “To email” must be {{to_email}}
+    to_name:  member.name,
+    subject:  `Welcome ${member.label} — ${member.name}`,
+    level:    member.label,
+    discount: `${(member.rate*100)|0}%`,
+    cashback: `${Math.round((member.cashback||0)*100)}%`,
+    member_id: member.memberId,
+    addr:     member.addr,
+    city:     member.city,
+    phone:    member.phone,
+    fee:      `$${member.fee}`,
+    admin_email: ADMIN_EMAIL
+  };
+
+  try {
+    const res = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, vars);
+    console.log("EmailJS response:", res.status, res.text, vars);
+    return true;
+  } catch (e) {
+    console.error("EmailJS failed:", e, vars);
+    return false;
+  }
+}
 
   joinBtn.addEventListener("click", async () => {
     // 1) တန်ဖိုးတွေယူပြီး validation လုပ်
