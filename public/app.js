@@ -2678,3 +2678,56 @@ onAuthStateChanged(auth, async (user) => {
   setTimeout(()=>updateAuthUI(window.state?.user||null), 0);
 })();
 
+// === MEMBERSHIP MODAL WIRES (robust) ===
+(function () {
+  function getDlg() { return document.getElementById("memberModal"); }
+
+  function openMemberModal() {
+    const dlg = getDlg();
+    if (!dlg) { console.warn("memberModal not found"); return; }
+    // If <dialog> is supported use showModal; else fallback to [open] attribute
+    if (typeof dlg.showModal === "function") {
+      dlg.showModal();
+    } else {
+      dlg.setAttribute("open", "");
+      dlg.style.display = "block";
+    }
+  }
+
+  function closeMemberModal() {
+    const dlg = getDlg();
+    if (!dlg) return;
+    if (typeof dlg.close === "function") {
+      dlg.close();
+    } else {
+      dlg.removeAttribute("open");
+      dlg.style.display = "none";
+    }
+  }
+
+  // 1) Direct binding (if button exists now)
+  document.getElementById("btnMembership")?.addEventListener("click", openMemberModal);
+
+  // 2) Delegated binding (if the button is rendered later)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("#btnMembership");
+    if (btn) { openMemberModal(); e.preventDefault(); }
+    if (e.target?.id === "mClose") { closeMemberModal(); }
+  });
+
+  // 3) ESC key closes (fallback)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && getDlg()?.hasAttribute("open")) closeMemberModal();
+  });
+
+  // 4) Click backdrop to close (native dialog already handles; fallback for polyfill)
+  const dlg = getDlg();
+  if (dlg && typeof dlg.showModal !== "function") {
+    dlg.addEventListener("click", (ev) => {
+      // click outside .m-wrap closes
+      const box = dlg.querySelector(".m-wrap");
+      if (box && !box.contains(ev.target)) closeMemberModal();
+    });
+  }
+})();
+

@@ -863,6 +863,19 @@ dialog::backdrop {
   font-size: 1.2rem;
 }
 
+/* === <dialog> fallback visibility & layering === */
+#memberModal[open] { display: block; }
+#memberModal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  z-index: 9999;
+}
+#memberModal::backdrop {
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+
 /* Ad slot */
 .ad-slot {
   display: flex;
