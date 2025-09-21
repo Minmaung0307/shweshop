@@ -285,45 +285,53 @@ function saveMembership() {
   const open = () => document.getElementById("memberModal")?.showModal();
   const close = () => document.getElementById("memberModal")?.close();
 
-  // Topbar/wherever: #btnMembership should open
   document.getElementById("btnMembership")?.addEventListener("click", open);
   document.getElementById("mClose")?.addEventListener("click", close);
-
-  // Join handler
-  document.getElementById("mJoin")?.addEventListener("click", () => {
-    const tier = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
-    const plan = MEMBERSHIP_PLANS[tier] || MEMBERSHIP_PLANS.gold;
-
-    const name  = document.getElementById("mName")?.value?.trim();
-    const phone = document.getElementById("mPhone")?.value?.trim();
-    const addr  = document.getElementById("mAddr")?.value?.trim();
-    const city  = document.getElementById("mCity")?.value?.trim();
-
-    if (!name || !phone || !addr || !city) {
-      alert("Please fill Name, Phone, Address, City."); return;
-    }
-
-    // save to state (active membership)
-    state.membership = {
-      active: true,
-      level: tier,
-      label: plan.label,
-      fee: plan.fee,
-      rate: plan.rate,             // used by computeTotals() for discount
-      cashback: plan.cashback,     // you can show this elsewhere if needed
-      name, phone, addr, city,
-      joinedAt: Date.now(),
-      memberId: "MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
-    };
-    saveMembership();
-
-    alert(`${plan.label} joined! Annual fee $${plan.fee}. Discount ${(plan.rate*100)|0}% applied.`);
-    document.getElementById("memberModal")?.close();
-
-    // If your cart UI shows member toggle, force totals refresh
-    try { renderCartPage?.(); } catch {}
-  });
+  // ...
 })();
+// (function wireMembershipModal(){
+//   const open = () => document.getElementById("memberModal")?.showModal();
+//   const close = () => document.getElementById("memberModal")?.close();
+
+//   // Topbar/wherever: #btnMembership should open
+//   document.getElementById("btnMembership")?.addEventListener("click", open);
+//   document.getElementById("mClose")?.addEventListener("click", close);
+
+//   // Join handler
+//   document.getElementById("mJoin")?.addEventListener("click", () => {
+//     const tier = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
+//     const plan = MEMBERSHIP_PLANS[tier] || MEMBERSHIP_PLANS.gold;
+
+//     const name  = document.getElementById("mName")?.value?.trim();
+//     const phone = document.getElementById("mPhone")?.value?.trim();
+//     const addr  = document.getElementById("mAddr")?.value?.trim();
+//     const city  = document.getElementById("mCity")?.value?.trim();
+
+//     if (!name || !phone || !addr || !city) {
+//       alert("Please fill Name, Phone, Address, City."); return;
+//     }
+
+//     // save to state (active membership)
+//     state.membership = {
+//       active: true,
+//       level: tier,
+//       label: plan.label,
+//       fee: plan.fee,
+//       rate: plan.rate,             // used by computeTotals() for discount
+//       cashback: plan.cashback,     // you can show this elsewhere if needed
+//       name, phone, addr, city,
+//       joinedAt: Date.now(),
+//       memberId: "MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
+//     };
+//     saveMembership();
+
+//     alert(`${plan.label} joined! Annual fee $${plan.fee}. Discount ${(plan.rate*100)|0}% applied.`);
+//     document.getElementById("memberModal")?.close();
+
+//     // If your cart UI shows member toggle, force totals refresh
+//     try { renderCartPage?.(); } catch {}
+//   });
+// })();
 
 // load persisted membership at boot
 loadMembership();
