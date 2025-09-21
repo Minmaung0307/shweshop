@@ -2591,48 +2591,108 @@ document.getElementById("btnMembership")?.addEventListener("click", () => {
 // ✅ Only run init after DOM is ready
 document.addEventListener("DOMContentLoaded", init);
 
-// === MEMBERSHIP: Join Now handler ===
+// === MEMBERSHIP: Join Now + email capture + send email ===
 document.addEventListener("DOMContentLoaded", () => {
   const joinBtn = document.getElementById("mJoin");
   if (!joinBtn) return;
 
-  joinBtn.addEventListener("click", () => {
-    const tier = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
+  // helper: crude email check
+  const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
+
+  async function sendMembershipEmail(member) {
+    // Prefer EmailJS if available & initialized
+    const subject = `[ShweShop] Welcome ${member.label} — ${member.name}`;
+    const body =
+`Hi ${member.name},
+
+Thanks for joining ${member.label}!
+
+Your membership details:
+- Level: ${member.label}
+- Annual fee: $${member.fee}
+- Discount: ${(member.rate * 100)|0}% off
+- Cashback: ${Math.round((member.cashback||0)*100)}%
+- Member ID: ${member.memberId}
+
+Saved address for card shipping:
+${member.addr}, ${member.city}
+Phone: ${member.phone}
+
+We’re glad to have you with us!
+— ShweShop Team`;
+
+    // EMAILJS path (configure your IDs below)
+    if (window.emailjs && emailjs.send) {
+      const SERVICE_ID = "YOUR_SERVICE_ID";   // e.g. "service_xxxx"
+      const TEMPLATE_ID = "YOUR_TEMPLATE_ID"; // e.g. "template_membership"
+      try {
+        await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
+          to_email: member.email,
+          to_name: member.name,
+          subject,
+          message: body
+        });
+        console.log("EmailJS: sent");
+        return true;
+      } catch (e) {
+        console.warn("EmailJS failed, fallback to mailto:", e);
+      }
+    }
+
+    // Fallback: mailto (opens client)
+    const mailtoHref =
+      `mailto:${encodeURIComponent(member.email)}?` +
+      `subject=${encodeURIComponent(subject)}&` +
+      `body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoHref;
+    return true;
+  }
+
+  joinBtn.addEventListener("click", async () => {
+    const tier  = (document.querySelector('input[name="mTier"]:checked')?.value || "gold");
     const name  = document.getElementById("mName")?.value.trim();
+    const email = document.getElementById("mEmail")?.value.trim();    // 🆕
     const phone = document.getElementById("mPhone")?.value.trim();
     const addr  = document.getElementById("mAddr")?.value.trim();
     const city  = document.getElementById("mCity")?.value.trim();
 
-    if (!name || !phone || !addr || !city) {
-      alert("❗ Please fill Name, Phone, Address and City");
+    if (!name || !email || !phone || !addr || !city) {
+      alert("❗ Please fill Name, Email, Phone, Address, and City");
+      return;
+    }
+    if (!isEmail(email)) {
+      alert("❗ Please enter a valid email address");
       return;
     }
 
-    // membership plans
     const plans = {
-      gold:    { label:"Gold Member", fee:29, rate:0.05 },
-      platinum:{ label:"Platinum Member", fee:59, rate:0.10 },
-      diamond: { label:"Diamond Member", fee:99, rate:0.15 }
+      gold:    { label:"Gold Member",    fee:29, rate:0.05, cashback:0.01 },
+      platinum:{ label:"Platinum Member",fee:59, rate:0.10, cashback:0.02 },
+      diamond: { label:"Diamond Member", fee:99, rate:0.15, cashback:0.03 }
     };
-    const plan = plans[tier];
+    const plan = plans[tier] || plans.gold;
 
-    // Save to state
+    // Save to state/localStorage
     state.membership = {
       active:true,
       level:tier,
       label:plan.label,
       fee:plan.fee,
       rate:plan.rate,
-      name, phone, addr, city,
+      cashback:plan.cashback,
+      name, email, phone, addr, city,
       joinedAt:Date.now(),
-      memberId:"MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
+      memberId: "MBR-" + Math.random().toString(36).slice(2,8).toUpperCase()
     };
     try { localStorage.setItem("membership", JSON.stringify(state.membership)); } catch {}
+
+    // Email the member about discount
+    await sendMembershipEmail(state.membership);
 
     alert(`🎉 ${plan.label} joined!\nAnnual fee $${plan.fee}.\n${plan.rate*100}% discount will apply.`);
     document.getElementById("memberModal")?.close();
 
-    // Refresh cart totals if needed
+    // Totals refresh (cart discount)
     try { renderCartPage?.(); } catch {}
   });
 });

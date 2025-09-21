@@ -23,6 +23,10 @@
       src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
       defer
     ></script>
+    <script>
+    // အောက်က "YOUR_PUBLIC_KEY" ကို သင့် EmailJS Dashboard ထဲက Public Key နဲ့ အစားထိုးပါ
+    emailjs.init("WT0GOYrL9HnDKvLUf");
+  </script>
     <script type="module" src="./config.js"></script>
   </head>
   <body>
@@ -382,6 +386,8 @@
         <!-- Profile fields (for card shipping) -->
         <div class="m-grid">
           <input id="mName" class="input" placeholder="Full name" />
+          <input id="mEmail" class="input" placeholder="Email address" />
+          <!-- 🆕 -->
           <input id="mPhone" class="input" placeholder="Phone" />
           <input id="mAddr" class="input" placeholder="Address line" />
           <input id="mCity" class="input" placeholder="City" />
