@@ -144,59 +144,125 @@ async function renderPayPalButtons() {
   }
 }
 
-// Lightweight QR (Google Charts API) – builds an <img> with encoded payload
-function generateQrImgSrc(payload) {
+// Build QR img URL (primary + fallback providers)
+function generateQrImgSrc(payload, provider = "google") {
   const txt = typeof payload === "string" ? payload : JSON.stringify(payload);
   const enc = encodeURIComponent(txt);
-  return `https://chart.googleapis.com/chart?cht=qr&chs=260x260&chl=${enc}`;
+  if (provider === "google") {
+    // Primary: Google Charts
+    return `https://chart.googleapis.com/chart?cht=qr&chs=360x360&chl=${enc}`;
+  }
+  // Fallback: qrserver
+  return `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${enc}`;
 }
 
-// Open a minimal QR modal for KBZ/CB/Aya
+// Bigger, prettier modal with robust QR loading & fallback
 function openQrPay(method) {
   const drawer = document.getElementById("cartDrawer");
   const body = drawer?.querySelector(".drawer-body");
   if (!body) return;
+
   const memo = buildPaymentMemo(method);
-  // Simple payload example (replace with your scheme if you have official format)
   const merchant =
     method === "KBZPay" ? PAY_MERCHANT.kbz :
     method === "CBPay"  ? PAY_MERCHANT.cb  :
     method === "AyaPay" ? PAY_MERCHANT.aya : "STORE";
+
   const payload = {
-    method, merchant, amount: memo.amount.toFixed(2), currency: memo.currency, note: memo.note, ts: memo.ts
+    method, merchant, amount: memo.amount.toFixed(2),
+    currency: memo.currency, note: memo.note, ts: memo.ts
   };
+
   // Create (or reuse) modal
   let modal = body.querySelector("#qrPayModal");
   if (!modal) {
     modal = document.createElement("dialog");
     modal.id = "qrPayModal";
-    modal.style.padding = "0";
     modal.innerHTML = `
-      <div class="pad" style="min-width:320px; background:#0f131a; color:#e9f1ff; border:1px solid rgba(255,255,255,.12); border-radius:12px;">
-        <div class="row between" style="margin-bottom:.5rem;">
-          <div class="strong">Scan to Pay</div>
-          <button id="qrClose" class="btn-mini btn-outline">✕</button>
+      <div class="qr-wrap">
+        <div class="qr-head">
+          <div class="qr-title">Scan to Pay — <span id="qrBrand"></span></div>
+          <button id="qrClose" class="btn-mini btn-outline" aria-label="Close">✕</button>
         </div>
-        <div id="qrWrap" class="col" style="gap:.5rem; align-items:center; text-align:center;"></div>
-        <div class="small" style="opacity:.8; margin-top:.5rem;">Amount will be matched on confirmation.</div>
+
+        <div class="qr-body">
+          <div id="qrImgWrap" class="qr-imgwrap">
+            <div class="qr-loading" id="qrLoading">Loading QR…</div>
+            <img id="qrImg" alt="Payment QR" />
+          </div>
+
+          <div class="qr-meta">
+            <div class="row between"><div>Amount</div><div class="price" id="qrAmt">$0.00</div></div>
+            <div class="row between"><div>Merchant</div><div id="qrMerchant">—</div></div>
+          </div>
+
+          <div class="qr-actions">
+            <button id="qrRefresh" class="btn-mini">Reload</button>
+            <button id="qrDownload" class="btn-mini">Download</button>
+            <button id="qrCopy" class="btn-mini">Copy Payload</button>
+          </div>
+        </div>
       </div>
     `;
     body.appendChild(modal);
+    // Close button
     modal.querySelector("#qrClose")?.addEventListener("click", () => modal.close());
   }
-  const wrap = modal.querySelector("#qrWrap");
-  wrap.innerHTML = `
-    <div>${method}</div>
-    <img id="qrImg" alt="QR ${method}" style="width:260px;height:260px;border-radius:8px; background:#fff;" />
-    <div class="row between" style="width:100%;max-width:320px;">
-      <div>Amount</div><div class="price">$${memo.amount.toFixed(2)}</div>
-    </div>
-    <div class="row between" style="width:100%;max-width:320px;">
-      <div>Merchant</div><div>${merchant}</div>
-    </div>
-  `;
-  wrap.querySelector("#qrImg").src = generateQrImgSrc(payload);
+
+  // Fill brand, amount, merchant
+  modal.querySelector("#qrBrand").textContent = method;
+  modal.querySelector("#qrAmt").textContent = `$${memo.amount.toFixed(2)}`;
+  modal.querySelector("#qrMerchant").textContent = merchant;
+
+  const img = modal.querySelector("#qrImg");
+  const loading = modal.querySelector("#qrLoading");
+
+  // Load with primary → fallback
+  const loadQR = async () => {
+    loading.style.display = "flex";
+    img.style.display = "none";
+
+    // try primary
+    const primary = generateQrImgSrc(payload, "google");
+    // prepare fallback
+    const fallback = generateQrImgSrc(payload, "qrserver");
+
+    const tryLoad = (src) => new Promise((resolve, reject) => {
+      const test = new Image();
+      test.onload = () => resolve(src);
+      test.onerror = reject;
+      test.src = src;
+    });
+
+    try {
+      const good = await tryLoad(primary).catch(() => tryLoad(fallback));
+      img.src = good;
+      loading.style.display = "none";
+      img.style.display = "block";
+    } catch {
+      loading.textContent = "QR unavailable. Check network.";
+    }
+  };
+
+  // Actions
+  modal.querySelector("#qrRefresh")?.addEventListener("click", loadQR);
+  modal.querySelector("#qrCopy")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload));
+      alert("Payload copied.");
+    } catch { alert("Copy failed."); }
+  });
+  modal.querySelector("#qrDownload")?.addEventListener("click", async () => {
+    try {
+      const a = document.createElement("a");
+      a.href = img.src;
+      a.download = `${method}-qr.png`;
+      a.click();
+    } catch { alert("Download failed."); }
+  });
+
   modal.showModal();
+  loadQR(); // start loading QR
 }
 
 // -- utils --

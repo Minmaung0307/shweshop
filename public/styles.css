@@ -1022,3 +1022,63 @@ body { font-size: calc(16px * var(--fs)); }
 #cartDrawer .btn-close:hover {
   color: var(--cart-fg);
 }
+
+/* === QR Payment Modal Polish === */
+#qrPayModal::backdrop {
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+#qrPayModal {
+  border: none;
+  padding: 0;
+  width: min(96vw, 520px);
+  max-width: 520px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #10151d, #0b0f14);
+  color: #e9f1ff;
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+}
+#qrPayModal .qr-wrap { padding: 16px 16px 18px; }
+#qrPayModal .qr-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+#qrPayModal .qr-title { font-weight: 700; letter-spacing: .2px; }
+#qrPayModal .qr-body { display: grid; gap: 12px; }
+#qrPayModal .qr-imgwrap {
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  padding: 12px;
+}
+#qrPayModal #qrImg {
+  width: 360px; height: 360px; max-width: 82vw; max-height: 82vw;
+  border-radius: 10px; background: #fff;
+  display: none; /* will show when loaded */
+}
+#qrPayModal .qr-loading {
+  width: 360px; height: 360px; max-width: 82vw; max-height: 82vw;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: #a8b3c7; font-size: .95rem;
+}
+#qrPayModal .qr-meta {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+#qrPayModal .qr-actions { display: flex; gap: .5rem; justify-content: flex-end; }
+#qrPayModal .btn-mini {
+  min-width: 34px; height: 32px; padding: 0 .6rem; border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #e9f1ff; cursor: pointer;
+}
+#qrPayModal .btn-mini:hover { background: rgba(255,255,255,.1); }
+#qrPayModal .btn-mini.btn-outline {
+  background: transparent; color: #a8b3c7;
+}
+#qrPayModal .btn-mini.btn-outline:hover { color: #e9f1ff; }
