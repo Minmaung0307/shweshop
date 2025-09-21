@@ -3377,11 +3377,18 @@ document.addEventListener("visibilitychange", () => {
      - Manager:   #plSearch #plCategory #plSort #plList
    =========================================================== */
 (function () {
+  // ---------- Bind compat instances safely (avoid modular shadowing) ----------
+  const fdb = (window.db && typeof window.db.collection === "function")
+    ? window.db
+    : (window.firebase && firebase.firestore ? firebase.firestore() : null);
+
+  const fstorage = (window.storage && typeof window.storage.ref === "function")
+    ? window.storage
+    : (window.firebase && firebase.storage ? firebase.storage() : null);
+
   // ---------- Guards ----------
-  if (!window.db || !window.storage) {
-    console.error(
-      "[ProductManager] Firebase not initialized. Include compat SDKs and set window.db/window.storage before this script."
-    );
+  if (!fdb || !fstorage) {
+    console.error("[ProductManager] Firebase compat not ready. Ensure compat SDKs are loaded and firebase.initializeApp(...) ran before app.js.");
   }
 
   // ---------- Small UI helpers ----------
@@ -3400,7 +3407,7 @@ document.addEventListener("visibilitychange", () => {
   const PRODUCTS_COL = "products";
 
   async function loadProducts() {
-    const snap = await db
+    const snap = await fdb
       .collection(PRODUCTS_COL)
       .orderBy("updatedAt", "desc")
       .get();
@@ -3408,21 +3415,21 @@ document.addEventListener("visibilitychange", () => {
   }
 
   async function upsertProduct(p) {
-    const id = p.id || db.collection(PRODUCTS_COL).doc().id;
+    const id = p.id || fdb.collection(PRODUCTS_COL).doc().id;
     const now = Date.now();
     const data = { ...p, updatedAt: now, createdAt: p.createdAt || now };
-    await db.collection(PRODUCTS_COL).doc(id).set(data, { merge: true });
+    await fdb.collection(PRODUCTS_COL).doc(id).set(data, { merge: true });
     return id;
   }
 
   async function deleteProduct(id) {
     try {
-      await db.collection(PRODUCTS_COL).doc(id).delete();
+      await fdb.collection(PRODUCTS_COL).doc(id).delete();
     } catch (e) {
       console.warn("delete doc:", e);
     }
     try {
-      await storage.ref(`products/${id}/thumb.jpg`).delete();
+      await fstorage.ref(`products/${id}/thumb.jpg`).delete();
     } catch (e) {
       /* file may not exist */
     }
@@ -3438,7 +3445,7 @@ document.addEventListener("visibilitychange", () => {
   }
   async function uploadProductThumb(file, productId) {
     if (!file) return "";
-    const ref = storage.ref(`products/${productId}/thumb.jpg`);
+    const ref = fstorage.ref(`products/${productId}/thumb.jpg`);
     await ref.put(file);
     return await ref.getDownloadURL();
   }
@@ -3458,17 +3465,13 @@ document.addEventListener("visibilitychange", () => {
   }
 
   // Reset button listener
-  document
-    .getElementById("pmReset")
-    ?.addEventListener("click", resetProductForm);
+  document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
 
   document.getElementById("btnAddProduct")?.addEventListener("click", () => {
     resetProductForm();
     openDialog("productModal");
   });
-  document
-    .getElementById("pmClose")
-    ?.addEventListener("click", () => closeDialog("productModal"));
+  document.getElementById("pmClose")?.addEventListener("click", () => closeDialog("productModal"));
 
   elImgFile?.addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
@@ -3482,9 +3485,7 @@ document.addEventListener("visibilitychange", () => {
   elForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     // Prepare id early to upload under stable path
-    let id =
-      document.getElementById("pId")?.value.trim() ||
-      db.collection(PRODUCTS_COL).doc().id;
+    let id = document.getElementById("pId")?.value.trim() || fdb.collection(PRODUCTS_COL).doc().id;
 
     const title = document.getElementById("pTitle")?.value.trim();
     const category = document.getElementById("pCategory")?.value.trim();
@@ -3513,15 +3514,7 @@ document.addEventListener("visibilitychange", () => {
       }
     }
 
-    const prod = {
-      id,
-      title,
-      category,
-      price: +price,
-      barcode,
-      thumb: thumbURL,
-    };
-    // id = await upsertProduct(prod);
+    const prod = { id, title, category, price: +price, barcode, thumb: thumbURL };
     try {
       id = await upsertProduct(prod);
     } catch (err) {
@@ -3552,15 +3545,16 @@ document.addEventListener("visibilitychange", () => {
     if (_unsubProducts) return;
 
     // Guard: wait until Firestore compat is ready
-    if (!window.db || typeof window.db.collection !== "function") {
+    if (!fdb || typeof fdb.collection !== "function") {
       console.warn("Firestore not ready yet. Retrying in 300ms…");
       setTimeout(ensureProductsRealtime, 300);
       return;
     }
 
-    _unsubProducts = db.collection(PRODUCTS_COL).onSnapshot(
+    _unsubProducts = fdb.collection(PRODUCTS_COL).onSnapshot(
       (snap) => {
         _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // hydrate scanner map
         window.BARCODE_MAP = {};
         for (const p of _productsCache) {
           if (p.barcode)
@@ -3577,7 +3571,7 @@ document.addEventListener("visibilitychange", () => {
     );
   }
 
-  // Listen for fb-ready (fired after auth state known + window.db set)
+  // Listen for fb-ready (fired after auth state known + compat instances set)
   document.addEventListener("fb-ready", () => {
     ensureProductsRealtime();
   });
@@ -3645,20 +3639,12 @@ document.addEventListener("visibilitychange", () => {
       card.className = "pm-card";
       card.innerHTML = `
         <img alt="${p.title ?? ""}" src="${p.thumb || ""}">
-        <div class="row"><div class="strong">${
-          p.title ?? ""
-        }</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
-        <div class="row"><div class="small" style="opacity:.85;">${
-          p.category || "-"
-        }</div><div class="small">#${p.id}</div></div>
-        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${
-          p.barcode || "-"
-        }</div></div>
+        <div class="row"><div class="strong">${p.title ?? ""}</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="small" style="opacity:.85;">${p.category || "-"}</div><div class="small">#${p.id}</div></div>
+        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${p.barcode || "-"}</div></div>
         <div class="row" style="gap:.4rem; justify-content:flex-end;">
           <button class="btn-mini" data-edit="${p.id}">Edit</button>
-          <button class="btn-mini btn-outline" data-del="${
-            p.id
-          }">Delete</button>
+          <button class="btn-mini btn-outline" data-del="${p.id}">Delete</button>
         </div>
       `;
       elPlList.appendChild(card);
@@ -3701,13 +3687,9 @@ document.addEventListener("visibilitychange", () => {
   });
 
   // Manager modal open
-  document
-    .getElementById("btnProductManager")
-    ?.addEventListener("click", () => {
-      ensureProductsRealtime();
-      openDialog("productListModal");
-    });
-  document
-    .getElementById("plClose")
-    ?.addEventListener("click", () => closeDialog("productListModal"));
+  document.getElementById("btnProductManager")?.addEventListener("click", () => {
+    ensureProductsRealtime();
+    openDialog("productListModal");
+  });
+  document.getElementById("plClose")?.addEventListener("click", () => closeDialog("productListModal"));
 })();
