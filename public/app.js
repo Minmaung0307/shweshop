@@ -3711,7 +3711,7 @@ document.addEventListener("visibilitychange", () => {
 
       // ✅ save ONCE
       try {
-        id = await upsertProduct(prod);
+        let id = await upsertProduct(prod);
       } catch (err) {
         console.error("save error:", err);
         alert("Save failed. You may not have permission to add/edit products.");
