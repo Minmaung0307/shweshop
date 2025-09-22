@@ -1448,23 +1448,26 @@ function updateAdminUI() {
 }
 
 // === Part 5: Nav actions ===
-// ✅ SINGLE click-delegation nav handler
-function onNavClick(e){
-  // find a clickable element with any of these data attributes
-  const target = e.target.closest?.("[data-view],[data-type],[data-key]");
+// ✅ Single, defensive nav handler
+function onNavClick(e) {
+  // normalize event/source
+  const src = (e && (e.target || e.currentTarget)) || this;
+  if (!src) return;
+
+  // find nearest actionable element
+  const target = src.closest ? src.closest("[data-view],[data-type],[data-key]") : null;
   if (!target) return;
 
-  // Active UI state (optional)
+  // highlight active
   document.querySelectorAll(".nav-chip").forEach(c => c.classList.remove("active"));
   target.classList.add("active");
 
-  // 1) Direct view switcher (data-view="..."): e.g. analytics, orders, shop
+  // direct view switching
   const view = target.dataset.view;
   if (view) {
     if (typeof switchView === "function") switchView(view);
 
     if (view === "analytics") {
-      // use the new analytics entry point
       openAdminAnalytics();
       return;
     }
@@ -1472,17 +1475,15 @@ function onNavClick(e){
       renderOrders?.();
       return;
     }
-    // other views just return
-    return;
+    return; // other views handled by switchView
   }
 
-  // 2) Structured nav (aud/cat/tag) via data-* attributes
+  // structured nav via data-*
   const type  = target.dataset.type;   // 'aud' | 'cat' | 'tag'
-  const key   = target.dataset.key;    // e.g. 'new', 'orders', 'analytics'
+  const key   = target.dataset.key;    // e.g. 'new'
   const value = target.dataset.value || "";
   const label = target.dataset.label || target.textContent?.trim() || "Shop";
 
-  // audience: forAll/men/women/kids/pets
   if (type === "aud") {
     window.currentAudience = value || "all";
     window.currentCategory = "";
@@ -1490,7 +1491,6 @@ function onNavClick(e){
     return;
   }
 
-  // categories: electronics/fashion/beauty/home/auto/baby/…
   if (type === "cat") {
     window.currentAudience = "all";
     window.currentCategory = value || "";
@@ -1498,7 +1498,6 @@ function onNavClick(e){
     return;
   }
 
-  // tag: new-arrivals
   if (type === "tag" && key === "new") {
     window.currentAudience = "all";
     window.currentCategory = "";
@@ -1506,12 +1505,12 @@ function onNavClick(e){
     return;
   }
 
-  // key shortcuts
   if (key === "orders") {
     if (typeof switchView === "function") switchView("orders");
     renderOrders?.();
     return;
   }
+
   if (key === "analytics") {
     openAdminAnalytics();
     return;
@@ -1520,9 +1519,13 @@ function onNavClick(e){
   // default
   showShopGrid(label);
 }
-
-// ✅ attach once
+// container delegation (ရှိရင်)
 document.getElementById("nav")?.addEventListener("click", onNavClick);
+
+// or individual chips/buttons
+document.querySelectorAll(".nav-chip").forEach(el => {
+  el.addEventListener("click", onNavClick);
+});
 
 // --- SWITCH VIEW (class-based) ---
 function switchView(name) {
