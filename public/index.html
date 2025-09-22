@@ -701,66 +701,55 @@
       </div>
     </dialog>
 
-    <!-- ========== Product Detail Modal ========== -->
+    <!-- ================= Product Detail Modal ================= -->
     <dialog id="productDetailModal" class="pd-modal" aria-modal="true">
       <div class="pd-wrap">
-        <button
-          id="pdClose"
-          class="btn-mini btn-outline pd-close"
-          aria-label="Close"
-        >
-          ✕
-        </button>
+        <button class="pd-close" id="pdClose" aria-label="Close">✕</button>
 
         <div class="pd-grid">
-          <!-- Left: images -->
-          <div class="pd-media">
+          <!-- Left: hero + thumbs -->
+          <div class="pd-left">
             <div class="pd-hero">
-              <img id="pdHero" alt="hero" />
+              <img id="pdHero" alt="product" />
             </div>
-            <div class="pd-thumbs" id="pdThumbs" aria-label="More images"></div>
+            <div class="pd-thumbs">
+              <button class="pd-nav" id="pdPrev">‹</button>
+              <div id="pdThumbs" class="pd-thumbs-strip"></div>
+              <button class="pd-nav" id="pdNext">›</button>
+            </div>
           </div>
 
           <!-- Right: info -->
-          <div class="pd-info">
-            <h3 id="pdTitle" class="pd-title">Product</h3>
+          <div class="pd-right">
+            <h2 id="pdTitle" class="pd-title">Product title</h2>
             <div class="pd-meta">
               <div class="pd-price" id="pdPrice">$0.00</div>
-              <div class="pd-cat" id="pdCategory">Category</div>
-              <div class="pd-bar" id="pdBarcode">SKU</div>
+              <div class="pd-cat" id="pdCategory"></div>
+              <div class="pd-bar" id="pdBarcode"></div>
             </div>
 
-            <p id="pdDesc" class="pd-desc"></p>
-
-            <div class="pd-qtyrow">
-              <button class="btn-mini" id="pdDec" aria-label="Decrease">
-                −
-              </button>
-              <input
-                id="pdQty"
-                class="pd-qty"
-                type="number"
-                min="1"
-                value="1"
-                inputmode="numeric"
-              />
-              <button class="btn-mini" id="pdInc" aria-label="Increase">
-                ＋
-              </button>
-            </div>
+            <div class="pd-desc" id="pdDesc"></div>
 
             <div class="pd-actions">
-              <button class="btn-mini" id="pdAdd">Add to Cart</button>
-              <button class="btn-mini btn-outline" id="pdBuy">Buy Now</button>
-            </div>
+              <div class="pd-qty">
+                <button id="pdDec" class="btn-mini">−</button>
+                <input id="pdQty" type="number" min="1" value="1" />
+                <button id="pdInc" class="btn-mini">＋</button>
+              </div>
 
-            <div class="pd-promos">
-              <button class="btn-mini btn-outline" id="pdPromoBtn">
-                Apply Promo
-              </button>
-              <button class="btn-mini btn-outline" id="pdMemberBtn">
-                Membership Discount
-              </button>
+              <div class="pd-promos">
+                <button class="btn-mini btn-outline" id="pdPromoBtn">
+                  Apply Promo
+                </button>
+                <button class="btn-mini btn-outline" id="pdMemberBtn">
+                  Membership Discount
+                </button>
+              </div>
+
+              <div class="pd-cta">
+                <button class="btn-mini" id="pdAdd">Add to Cart</button>
+                <button class="btn-mini btn-primary" id="pdBuy">Buy Now</button>
+              </div>
             </div>
           </div>
         </div>

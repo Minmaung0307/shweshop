@@ -1331,17 +1331,16 @@ const PROMO_MAP = {
 
 // === Part 3: Nav items & element refs ===
 const NAV_ITEMS = [
-  { key: "allCategories", label: "All Categories", type: "nav" },
-  { key: "aud_all", label: "For All", type: "aud", value: "all" },
-  { key: "aud_men", label: "Men", type: "aud", value: "men" },
-  { key: "aud_women", label: "Women", type: "aud", value: "women" },
-  { key: "aud_kids", label: "Kids", type: "aud", value: "kids" },
-  { key: "aud_pets", label: "Pets", type: "aud", value: "pets" },
+  { key: "aud", label: "For All", type: "aud", value: "all" },
+  { key: "aud", label: "Men", type: "aud", value: "men" },
+  { key: "aud", label: "Women", type: "aud", value: "women" },
+  { key: "aud", label: "Kids", type: "aud", value: "kids" },
+  { key: "aud", label: "Pets", type: "aud", value: "pets" },
   { key: "new", label: "New Arrivals", type: "tag" },
-  { key: "cat_baby", label: "Baby", type: "cat", value: "Baby" },
-  { key: "cat_home", label: "Home", type: "cat", value: "Home" },
-  { key: "cat_auto", label: "Auto", type: "cat", value: "Auto" },
-  { key: "cat_beauty", label: "Beauty", type: "cat", value: "Beauty" },
+  { key: "cat", label: "Baby", type: "cat", value: "Baby" },
+  { key: "cat", label: "Home", type: "cat", value: "Home" },
+  { key: "cat", label: "Auto", type: "cat", value: "Auto" },
+  { key: "cat", label: "Beauty", type: "cat", value: "Beauty" },
   { key: "orders", label: "Orders", type: "view", value: "orders" },
   { key: "member", label: "Membership", type: "view", value: "member" },
   {
@@ -1419,45 +1418,19 @@ const id =
 
 // === Part 4: Nav chips & admin UI toggle ===
 function buildNavChips() {
-  if (!navScroll) return;
-  navScroll.innerHTML = "";
+  const host = document.getElementById("navScroll");
+  if (!host) return;
 
-  // 'All Categories' ကို မထည့်ချင်ရင် filter
-  const items = NAV_ITEMS.filter((it) => it.key !== "allCategories");
-
-  items.forEach((item) => {
-    const b = h("button");
+  host.innerHTML = "";
+  for (const item of NAV_ITEMS) {
+    const b = document.createElement("button");
     b.className = "nav-chip";
-    b.type = "button";
-    b.textContent = item.label || item.key;
-
-    // dataset mapping only (central handler သာသုံးမယ်)
-    if (item.type === "aud") {
-      b.dataset.type = "aud";
-      b.dataset.value = item.value || item.key || "all";
-      b.dataset.label = item.label || "Shop";
-    } else if (item.type === "cat") {
-      b.dataset.type = "cat";
-      b.dataset.value = item.value || item.key || "";
-      b.dataset.label = item.label || item.value || "Shop";
-    } else if (item.key === "new") {
-      b.dataset.type = "tag";
-      b.dataset.key = "new";
-    } else if (item.key === "analytics") {
-      b.dataset.view = "analytics";
-    } else if (item.key === "orders") {
-      b.dataset.view = "orders";
-    } else {
-      b.dataset.view = "shop";
-    }
-
-    // ❌ per-button handler မတပ်တော့ပါ
-    // b.addEventListener("click", () => onNavClick(item, b));
-
-    navScroll.appendChild(b);
-  });
-
-  updateAdminUI?.();
+    b.textContent = item.label;
+    if (item.type) b.dataset.type = item.type;
+    if (item.value) b.dataset.value = item.value;
+    if (item.key) b.dataset.key = item.key;
+    host.appendChild(b);
+  }
 }
 
 function updateAdminUI() {
@@ -1553,18 +1526,26 @@ function setShopTitle(txt) {
   if (h) h.textContent = txt || "Shop";
 }
 
+// Unified renderer for any filter/search/new-arrivals
 function renderFilteredStore(label, opts = {}) {
-  const all = (window._productsCache || []).slice();
+  // always go to Shop view/container
+  if (typeof switchView === "function") switchView("shop");
 
-  let items = all;
+  let items = getAllProducts();
+
+  // audience
   const aud = (window.currentAudience || "all").toLowerCase();
-  if (aud !== "all")
+  if (aud && aud !== "all") {
     items = items.filter((p) => (p.audience || "all").toLowerCase() === aud);
+  }
 
+  // category
   const cat = (window.currentCategory || "").toLowerCase();
-  if (cat)
+  if (cat) {
     items = items.filter((p) => (p.category || "").toLowerCase() === cat);
+  }
 
+  // new arrivals tag
   if (opts.tag === "new") {
     items = items
       .slice()
@@ -1572,9 +1553,20 @@ function renderFilteredStore(label, opts = {}) {
       .slice(0, 16);
   }
 
+  // text query
+  if (opts.query) {
+    const q = String(opts.query).toLowerCase();
+    items = items.filter((p) => {
+      const t = (p.title || "").toLowerCase();
+      const c = (p.category || "").toLowerCase();
+      const b = (p.barcode || "").toLowerCase();
+      const d = (p.description || p.desc || "").toLowerCase();
+      return t.includes(q) || c.includes(q) || b.includes(q) || d.includes(q);
+    });
+  }
+
   setShopTitle(label);
-  // renderStorefrontFromCloud?.(items);
-  window.renderStorefrontFromCloud?.(items);
+  renderStorefrontFromCloud(items);
 }
 
 // --- SWITCH VIEW (class-based) ---
@@ -3723,26 +3715,20 @@ document.addEventListener("visibilitychange", () => {
   // ===== Reusable product card =====
   /* ---------- A) Card HTML helper (wide, readable) ---------- */
   function productCardHTML(p) {
-    const price = `$${(+p.price || 0).toFixed(2)}`;
-    const img = p.thumb || "";
-    // card: image on top, price centered, actions bottom row
     return `
-    <div class="thumb" data-open="${p.id}" title="${p.title || ""}">
-      <img src="${img}" alt="${p.title || ""}">
+    <div class="thumb" data-detail="${p.id}">
+      <img src="${p.thumb || ""}" alt="${p.title || ""}">
     </div>
-    <div class="row" style="margin-top:6px; justify-content:space-between; align-items:flex-start;">
-      <div class="strong" style="max-width:60%; line-height:1.2;">${
-        p.title || ""
-      }</div>
-      <div class="tag">${price}</div>
+
+    <div class="row" style="gap:8px; align-items:flex-start; margin-top:8px;">
+      <div class="strong" style="flex:1; line-height:1.3">${p.title || ""}</div>
     </div>
-    <div class="small" style="opacity:.8; margin-top:4px; min-height:34px;">
-      ${(p.description || p.desc || "").slice(0, 80)}
+
+    <div class="row center-price">
+      <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
     </div>
-    <div class="row" style="margin-top:8px; justify-content:center;">
-      <div class="tag" style="font-weight:600;">${price}</div>
-    </div>
-    <div class="row" style="margin-top:8px; justify-content:space-between;">
+
+    <div class="row actions">
       <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
       <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
     </div>
@@ -3764,30 +3750,43 @@ document.addEventListener("visibilitychange", () => {
       return;
     }
 
-    for (const p of items) {
+    const adHTML = `
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="background:#1a1a1a; border-radius:12px; border:1px solid rgba(255,255,255,.08);">
+        <img src="images/ads/sample-wide.jpg" alt="Ad" style="width:100%; height:160px; object-fit:cover; display:block;">
+        <div style="padding:10px 12px; display:flex; justify-content:space-between; align-items:center;">
+          <div class="small" style="opacity:.8;">Sponsored</div>
+          <button class="btn-mini btn-outline">Learn more</button>
+        </div>
+      </div>
+    </div>`;
+
+    items.forEach((p, i) => {
       const card = document.createElement("div");
-      card.className = "card card-wide";
+      card.className = "card";
       card.style.cursor = "default";
       card.innerHTML = productCardHTML(p);
       grid.appendChild(card);
-    }
 
+      // insert ad after every 6 cards
+      if ((i + 1) % 6 === 0) {
+        const ad = document.createElement("div");
+        ad.innerHTML = adHTML;
+        grid.appendChild(ad.firstElementChild);
+      }
+    });
+
+    // one handler for all cards
     grid.onclick = (e) => {
-      const open = e.target.closest?.("[data-detail],[data-open]");
       const add = e.target.closest?.("[data-add]");
-      if (!open && !add) return;
+      const detEl = e.target.closest?.("[data-detail]");
+      if (!add && !detEl) return;
 
-      const id = open?.dataset.detail || open?.dataset.open || add?.dataset.add;
+      const id = add?.dataset.add || detEl?.dataset.detail;
       const prod = (items || []).find((x) => x.id === id);
       if (!prod) return;
 
-      if (open) {
-        window.openProductDetail?.(prod);
-        return;
-      }
-
       if (add) {
-        // simple cart add
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
@@ -3800,8 +3799,12 @@ document.addEventListener("visibilitychange", () => {
             qty: 1,
           });
         localStorage.setItem("cart", JSON.stringify(cart));
-        typeof updateCartCount === "function" && updateCartCount();
+        updateCartCount?.();
+        return;
       }
+
+      // detail:
+      window.openProductDetail?.(prod);
     };
   }
 
@@ -4138,64 +4141,8 @@ document.addEventListener("visibilitychange", () => {
     if (cats.includes(cur)) elPlCategory.value = cur;
   }
 
-  function renderNewArrivals(items, limit = 8) {
-    const box =
-      document.getElementById("newArrivalGrid") ||
-      document.getElementById("newArrivals") ||
-      document.querySelector(".new-arrivals-grid");
-    if (!box) return;
-
-    const arr = (items || [])
-      .slice()
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-      .slice(0, limit);
-
-    box.innerHTML = "";
-    if (!arr.length) {
-      box.innerHTML = `<div class="small" style="opacity:.8;">No new arrivals.</div>`;
-      return;
-    }
-
-    for (const p of arr) {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = productCardHTML(p);
-      box.appendChild(card);
-    }
-
-    // same handler pattern
-    box.onclick = (e) => {
-      const add = e.target.closest?.("[data-add]");
-      const view = e.target.closest?.("[data-view]");
-      if (!add && !view) return;
-
-      const id = add?.dataset.add || view?.dataset.view;
-      const prod = arr.find((x) => x.id === id);
-      if (!prod) return;
-
-      if (add) {
-        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-        const i = cart.findIndex((x) => x.id === id);
-        if (i >= 0) cart[i].qty += 1;
-        else
-          cart.push({
-            id,
-            title: prod.title,
-            price: +prod.price,
-            img: prod.thumb,
-            qty: 1,
-          });
-        localStorage.setItem("cart", JSON.stringify(cart));
-        if (typeof updateCartCount === "function") updateCartCount();
-        return;
-      }
-
-      if (view) {
-        if (typeof window.openProductDetail === "function") {
-          window.openProductDetail(prod);
-        }
-      }
-    };
+  function renderNewArrivals() {
+    renderFilteredStore("New Arrivals", { tag: "new" });
   }
 
   function buildCategoryNav(items) {
@@ -4232,13 +4179,10 @@ document.addEventListener("visibilitychange", () => {
     host.onclick = (e) => {
       const btn = e.target.closest?.("button[data-cat]");
       if (!btn) return;
-      const cat = btn.dataset.cat || "";
-      const filtered = cat
-        ? (items || []).filter(
-            (x) => (x.category || "").trim().toLowerCase() === cat.toLowerCase()
-          )
-        : items;
-      renderStorefrontFromCloud?.(filtered);
+      window.currentAudience = "all";
+      window.currentCategory = btn.dataset.cat || "";
+      const label = btn.textContent.trim() || "Shop";
+      renderFilteredStore(label);
     };
   }
 
@@ -4248,28 +4192,19 @@ document.addEventListener("visibilitychange", () => {
       document.getElementById("searchInput") ||
       document.querySelector(".top-search input") ||
       document.querySelector('input[type="search"]');
-
     if (!input) return;
 
-    input.oninput = () => {
-      const q = (input.value || "").trim().toLowerCase();
-      const all = window._productsCache || [];
+    input.addEventListener("input", () => {
+      const q = (input.value || "").trim();
       if (!q) {
-        renderFilteredStore("Shop");
+        // q မရှိရင် လက်ရှိ audience/category filter နဲ့ ပြန်ပြ
+        const label =
+          window.currentCategory || window.currentAudience || "Shop";
+        renderFilteredStore(String(label));
         return;
       }
-
-      const res = all.filter((p) => {
-        const t = (p.title || "").toLowerCase();
-        const c = (p.category || "").toLowerCase();
-        const b = (p.barcode || "").toLowerCase();
-        return t.includes(q) || c.includes(q) || b.includes(q);
-      });
-      setShopTitle?.(`Results for “${input.value}”`);
-      window.renderStorefrontFromCloud?.(res);
-    };
-
-    if (input.value) input.oninput();
+      renderFilteredStore(`Results for "${q}"`, { query: q });
+    });
   }
 
   function filteredSortedProducts() {
@@ -4387,125 +4322,132 @@ document.addEventListener("visibilitychange", () => {
 
 // ===== Product Detail Modal (View) =====
 /* ---------- C) Detail modal logic (gallery + qty + actions) ---------- */
-(function setupProductDetail(){
-  const dlg  = document.getElementById("productDetailModal");
+(function setupProductDetail() {
+  const dlg = document.getElementById("productDetailModal");
   if (!dlg) return;
 
   const elTitle = document.getElementById("pdTitle");
-  const elHero  = document.getElementById("pdHero");
-  const elThumbs= document.getElementById("pdThumbs");
+  const elHero = document.getElementById("pdHero");
+  const elThumbs = document.getElementById("pdThumbs");
   const elPrice = document.getElementById("pdPrice");
-  const elCat   = document.getElementById("pdCategory");
-  const elBar   = document.getElementById("pdBarcode");
-  const elDesc  = document.getElementById("pdDesc");
-  const elQty   = document.getElementById("pdQty");
-  const elAdd   = document.getElementById("pdAdd");
-  const elBuy   = document.getElementById("pdBuy");
-  const elInc   = document.getElementById("pdInc");
-  const elDec   = document.getElementById("pdDec");
-  const elClose = document.getElementById("pdClose");
-  const elPromo = document.getElementById("pdPromoBtn");
-  const elMem   = document.getElementById("pdMemberBtn");
+  const elCat = document.getElementById("pdCategory");
+  const elBar = document.getElementById("pdBarcode");
+  const elDesc = document.getElementById("pdDesc");
+  const elQty = document.getElementById("pdQty");
+  const elAdd = document.getElementById("pdAdd");
+  const elBuy = document.getElementById("pdBuy");
 
-  let cur = null, imgs = [], idx = 0;
+  let cur = null;
+  let imgs = [];
+  let idx = 0;
 
-  function setHero(i){
-    if (!imgs.length) { elHero.src = ""; return; }
-    idx = Math.max(0, Math.min(i, imgs.length-1));
+  function setHero(i) {
+    if (!imgs.length) return;
+    idx = (i + imgs.length) % imgs.length;
     elHero.src = imgs[idx];
-    // active state
-    elThumbs.querySelectorAll("img").forEach((im, j) => {
-      im.classList.toggle("active", j === idx);
-    });
   }
 
-  function renderThumbs(list){
+  function renderThumbs() {
     elThumbs.innerHTML = "";
-    list.forEach((u, i) => {
+    imgs.forEach((u, i) => {
       const im = document.createElement("img");
-      im.alt = "thumb";
       im.src = u;
+      im.alt = "thumb";
       im.addEventListener("click", () => setHero(i));
       elThumbs.appendChild(im);
     });
   }
 
-  function open(prod){
-    cur = prod;
+  window.openProductDetail = function (p) {
+    cur = p || null;
     imgs = [];
-    if (Array.isArray(prod.images) && prod.images.length) imgs = prod.images.slice(0, 6);
-    if (!imgs.length && prod.thumb) imgs = [prod.thumb];
+    if (!cur) return;
 
-    elTitle.textContent = prod.title || "";
-    elPrice.textContent = `$${(+prod.price||0).toFixed(2)}`;
-    elCat.textContent   = prod.category || "-";
-    elBar.textContent   = prod.barcode  || "-";
-    elDesc.textContent  = prod.description || prod.desc || "";
-    elQty.value = "1";
-
-    renderThumbs(imgs);
+    // images: hero + gallery (6)
+    if (cur.thumb) imgs.push(cur.thumb);
+    if (Array.isArray(cur.images)) imgs.push(...cur.images.filter(Boolean));
+    if (!imgs.length) imgs = ["images/placeholder.png"];
     setHero(0);
+    renderThumbs();
 
-    // open dialog
-    dlg.showModal ? dlg.showModal() : dlg.setAttribute("open","");
+    // text
+    elTitle.textContent = cur.title || "";
+    elPrice.textContent = `$${(+cur.price || 0).toFixed(2)}`;
+    elCat.textContent = cur.category ? `Category: ${cur.category}` : "";
+    elBar.textContent = cur.barcode ? `SKU: ${cur.barcode}` : "";
+    elDesc.textContent = cur.description || cur.desc || "";
 
-    // focus for keyboard inc/dec
-    elQty.focus({preventScroll:true});
-  }
+    // qty reset
+    elQty.value = 1;
 
-  // expose
-  window.openProductDetail = open;
+    // show
+    dlg.showModal?.() || dlg.setAttribute("open", "");
+  };
 
-  // qty
-  elInc?.addEventListener("click", () => {
-    elQty.value = String(Math.max(1, (+elQty.value||1)+1));
+  // qty buttons
+  document.getElementById("pdInc")?.addEventListener("click", () => {
+    elQty.value = parseInt(elQty.value || "1", 10) + 1;
   });
-  elDec?.addEventListener("click", () => {
-    elQty.value = String(Math.max(1, (+elQty.value||1)-1));
+  document.getElementById("pdDec")?.addEventListener("click", () => {
+    const n = Math.max(1, parseInt(elQty.value || "1", 10) - 1);
+    elQty.value = n;
   });
 
-  // add to cart
+  // prev/next gallery
+  document
+    .getElementById("pdPrev")
+    ?.addEventListener("click", () => setHero(idx - 1));
+  document
+    .getElementById("pdNext")
+    ?.addEventListener("click", () => setHero(idx + 1));
+
+  // close
+  document.getElementById("pdClose")?.addEventListener("click", () => {
+    dlg.close?.();
+    dlg.removeAttribute("open");
+  });
+
+  // CTA
   elAdd?.addEventListener("click", () => {
     if (!cur) return;
-    const n = Math.max(1, (+elQty.value||1));
+    const qty = Math.max(1, parseInt(elQty.value || "1", 10));
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const i = cart.findIndex(x => x.id === cur.id);
-    if (i >= 0) cart[i].qty += n;
-    else cart.push({ id: cur.id, title: cur.title, price:+cur.price, img: cur.thumb, qty:n });
+    const i = cart.findIndex((x) => x.id === cur.id);
+    if (i >= 0) cart[i].qty += qty;
+    else
+      cart.push({
+        id: cur.id,
+        title: cur.title,
+        price: +cur.price,
+        img: cur.thumb,
+        qty,
+      });
     localStorage.setItem("cart", JSON.stringify(cart));
-    typeof updateCartCount === "function" && updateCartCount();
-    // drawer မပိတ်ပါဘူး (modal ကိုလည်း မပိတ်)
+    updateCartCount?.();
   });
 
-  // buy now → cart view
   elBuy?.addEventListener("click", () => {
-    if (!cur) return;
-    const n = Math.max(1, (+elQty.value||1));
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const i = cart.findIndex(x => x.id === cur.id);
-    if (i >= 0) cart[i].qty += n;
-    else cart.push({ id: cur.id, title: cur.title, price:+cur.price, img: cur.thumb, qty:n });
-    localStorage.setItem("cart", JSON.stringify(cart));
-    typeof updateCartCount === "function" && updateCartCount();
-
-    // modal ပိတ်ပြီး cart drawer/page သို့
-    if (dlg.close) dlg.close(); else dlg.removeAttribute("open");
+    // add then open cart drawer/page
+    elAdd.click();
     document.getElementById("btnCart")?.click();
   });
 
-  // close
-  elClose?.addEventListener("click", () => {
-    if (dlg.close) dlg.close(); else dlg.removeAttribute("open");
+  // Promo & Membership
+  document.getElementById("pdPromoBtn")?.addEventListener("click", () => {
+    window.openPromoModal?.();
   });
-  dlg?.addEventListener("click", (e) => {
-    // click backdrop to close
-    if (e.target === dlg) { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); }
+  document.getElementById("pdMemberBtn")?.addEventListener("click", () => {
+    window.openMembershipModal?.();
   });
 
-  // promo / membership
-  elPromo?.addEventListener("click", () => window.openPromoModal?.());
-  elMem?.addEventListener("click",   () => window.openMembershipModal?.());
+  // safety: avoid accidental form submit inside dialog
+  dlg.addEventListener("cancel", (e) => e.preventDefault());
 })();
+
+// Always read products from realtime cache
+function getAllProducts() {
+  return (window._productsCache || []).slice();
+}
 
 // ... other functions
 // e.g. renderStorefrontFromCloud, setupProductDetail, etc.
