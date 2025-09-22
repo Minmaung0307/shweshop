@@ -1519,54 +1519,28 @@ function updateAdminUI() {
 })();
 
 // === helpers (keep these once, not duplicated) ===
-function setShopTitle(txt) {
-  const h =
-    document.getElementById("shopTitle") ||
-    document.querySelector("[data-shop-title]");
+function setShopTitle(txt){
+  const h = document.getElementById("shopTitle") || document.querySelector("[data-shop-title]");
   if (h) h.textContent = txt || "Shop";
 }
+function renderFilteredStore(label, opts = {}){
+  const all = (window._productsCache || []).slice();
+  let items = all;
 
-// Unified renderer for any filter/search/new-arrivals
-function renderFilteredStore(label, opts = {}) {
-  // always go to Shop view/container
-  if (typeof switchView === "function") switchView("shop");
-
-  let items = getAllProducts();
-
-  // audience
   const aud = (window.currentAudience || "all").toLowerCase();
-  if (aud && aud !== "all") {
-    items = items.filter((p) => (p.audience || "all").toLowerCase() === aud);
-  }
+  if (aud !== "all") items = items.filter(p => (p.audience||"all").toLowerCase() === aud);
 
-  // category
   const cat = (window.currentCategory || "").toLowerCase();
-  if (cat) {
-    items = items.filter((p) => (p.category || "").toLowerCase() === cat);
-  }
+  if (cat) items = items.filter(p => (p.category||"").toLowerCase() === cat);
 
-  // new arrivals tag
-  if (opts.tag === "new") {
-    items = items
-      .slice()
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-      .slice(0, 16);
-  }
-
-  // text query
-  if (opts.query) {
-    const q = String(opts.query).toLowerCase();
-    items = items.filter((p) => {
-      const t = (p.title || "").toLowerCase();
-      const c = (p.category || "").toLowerCase();
-      const b = (p.barcode || "").toLowerCase();
-      const d = (p.description || p.desc || "").toLowerCase();
-      return t.includes(q) || c.includes(q) || b.includes(q) || d.includes(q);
-    });
+  if (opts.tag === "new") items = items.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,16);
+  if (opts.query){
+    const q = opts.query.toLowerCase();
+    items = items.filter(p => (p.title||"").toLowerCase().includes(q) || (p.category||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q));
   }
 
   setShopTitle(label);
-  renderStorefrontFromCloud(items);
+  window.renderStorefrontFromCloud?.(items);
 }
 
 // --- SWITCH VIEW (class-based) ---
@@ -3609,7 +3583,7 @@ document.addEventListener("visibilitychange", () => {
      - Manager:   #plSearch #plCategory #plSort #plList
    =========================================================== */
 (function () {
-  // ---------- Bind compat instances safely (avoid modular shadowing) ----------
+  // ---------- Bind compat instances safely ----------
   const fdb =
     window.db && typeof window.db.collection === "function"
       ? window.db
@@ -3624,35 +3598,15 @@ document.addEventListener("visibilitychange", () => {
       ? firebase.storage()
       : null;
 
-  // ---------- Guards ----------
   if (!fdb || !fstorage) {
-    console.error(
-      "[ProductManager] Firebase compat not ready. Ensure compat SDKs are loaded and firebase.initializeApp(...) ran before app.js."
-    );
+    console.error("[ProductManager] Firebase compat not ready.");
   }
 
-  // ---------- Small UI helpers ----------
-  function openDialog(id) {
-    const d = document.getElementById(id);
-    if (!d) return;
-    d.showModal ? d.showModal() : d.setAttribute("open", "");
-  }
-  function closeDialog(id) {
-    const d = document.getElementById(id);
-    if (!d) return;
-    d.close ? d.close() : d.removeAttribute("open");
-  }
+  function openDialog(id){ const d=document.getElementById(id); if(!d) return; d.showModal?.() ?? d.setAttribute("open",""); }
+  function closeDialog(id){ const d=document.getElementById(id); if(!d) return; d.close?.() ?? d.removeAttribute("open"); }
 
   // ---------- Cloud Store ----------
   const PRODUCTS_COL = "products";
-
-  async function loadProducts() {
-    const snap = await fdb
-      .collection(PRODUCTS_COL)
-      .orderBy("updatedAt", "desc")
-      .get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  }
 
   async function upsertProduct(p) {
     const id = p.id || fdb.collection(PRODUCTS_COL).doc().id;
@@ -3663,78 +3617,39 @@ document.addEventListener("visibilitychange", () => {
   }
 
   async function deleteProduct(id) {
-    try {
-      await fdb.collection(PRODUCTS_COL).doc(id).delete();
-    } catch (e) {
-      console.warn("delete doc:", e);
-    }
-    try {
-      await fstorage.ref(`products/${id}/thumb.jpg`).delete();
-    } catch (e) {
-      /* file may not exist */
-    }
+    try { await fdb.collection(PRODUCTS_COL).doc(id).delete(); } catch(e){ console.warn("delete doc:", e); }
+    try { await fstorage.ref(`products/${id}/thumb.jpg`).delete(); } catch(e){}
   }
 
-  // ---------- Image helpers ----------
-  async function fileToPreviewURL(file) {
-    return new Promise((res) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.readAsDataURL(file);
-    });
-  }
-  // helper: File → resized JPEG Blob
-  async function fileToJpegBlob(file, max = 1024, quality = 0.85) {
-    const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
-    const w = Math.max(1, Math.round(bmp.width * scale));
-    const h = Math.max(1, Math.round(bmp.height * scale));
-    const cv = document.createElement("canvas");
-    cv.width = w;
-    cv.height = h;
-    const ctx = cv.getContext("2d");
-    ctx.drawImage(bmp, 0, 0, w, h);
-    const blob = await new Promise((res) =>
-      cv.toBlob(res, "image/jpeg", quality)
-    );
-    try {
-      bmp.close();
-    } catch {}
-    return blob;
+  async function fileToPreviewURL(file){
+    return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); });
   }
 
-  // === Upload one thumbnail to Storage → return downloadURL
   async function uploadProductThumb(file, productId) {
     if (!file) return "";
     const ref = fstorage.ref(`products/${productId}/thumb.jpg`);
-    // ✅ contentType ထည့်ပေး (บาง browser preflight/CORS နေပီးကယ်)
-    await ref.put(file, { contentType: file.type || "image/jpeg" });
+    await ref.put(file, { contentType: file.type || "image/jpeg" }); // ✅ important
     return await ref.getDownloadURL();
   }
 
   // ===== Reusable product card =====
-  /* ---------- A) Card HTML helper (wide, readable) ---------- */
   function productCardHTML(p) {
     return `
-    <div class="thumb" data-detail="${p.id}">
-      <img src="${p.thumb || ""}" alt="${
-      p.title || ""
-    }" style="width:100%;height:180px;object-fit:contain;background:#0b0b0b;border-radius:12px;">
-    </div>
-    <div class="row" style="margin-top:6px;justify-content:space-between;align-items:flex-start">
-      <div class="strong" style="max-width:65%;">${p.title || ""}</div>
-      <div class="tag" style="margin-left:6px;">$${(+p.price || 0).toFixed(
-        2
-      )}</div>
-    </div>
-    <div class="row" style="margin-top:6px;justify-content:space-between">
-      <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
-      <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
-    </div>
-  `;
+      <div class="thumb" data-detail="${p.id}">
+        <img src="${p.thumb || ""}" alt="${p.title || ""}"
+             style="width:100%;height:180px;object-fit:contain;background:#0b0b0b;border-radius:12px;">
+      </div>
+      <div class="row" style="margin-top:6px;justify-content:space-between;align-items:flex-start">
+        <div class="strong" style="max-width:65%;">${p.title || ""}</div>
+        <div class="tag" style="margin-left:6px;">$${(+p.price || 0).toFixed(2)}</div>
+      </div>
+      <div class="row" style="margin-top:6px;justify-content:space-between">
+        <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+        <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
+      </div>
+    `;
   }
 
-  /* ---------- B) Storefront renderer (buttons wired) ---------- */
   function renderStorefrontFromCloud(items) {
     const grid =
       document.getElementById("productGrid") ||
@@ -3755,7 +3670,6 @@ document.addEventListener("visibilitychange", () => {
       grid.appendChild(card);
     }
 
-    // Delegated click
     grid.onclick = (e) => {
       const add = e.target.closest?.("[data-add]");
       const det = e.target.closest?.("[data-detail]");
@@ -3769,41 +3683,29 @@ document.addEventListener("visibilitychange", () => {
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
-        else
-          cart.push({
-            id,
-            title: prod.title,
-            price: +prod.price,
-            img: prod.thumb,
-            qty: 1,
-          });
+        else cart.push({ id, title: prod.title, price: +prod.price, img: prod.thumb, qty: 1 });
         localStorage.setItem("cart", JSON.stringify(cart));
         updateCartCount?.();
         return;
       }
-      if (det) openProductDetail?.(prod);
+      if (det) window.openProductDetail?.(prod);
     };
   }
-
+  // 🔓 make it callable from other modules
   window.renderStorefrontFromCloud = renderStorefrontFromCloud;
 
   function buildCategoryChipsFromProducts() {
     const host = document.getElementById("navScroll");
     if (!host) return;
-
-    // Keep existing audience chips (For All/Men/Women/…) ကို မဖျက်ချင်ရင်, အဲဒီဟာတွေအောက်က
-    // category-only zone တစ်ခုစိတ်ချရအောင် data-slot="cats" ဖြင့် ထည့်နိုင်.
-    // ဒီကောင်ကတော့ host အကုန် refresh လုပ်ပြီး တင်ပါတယ်:
     host.innerHTML = "";
 
-    // Optional: audience first
     const audience = [
-      { label: "For All", key: "aud", value: "all" },
-      { label: "Men", key: "aud", value: "men" },
-      { label: "Women", key: "aud", value: "women" },
-      { label: "Kids", key: "aud", value: "kids" },
+      { label: "For All", value: "all" },
+      { label: "Men",     value: "men" },
+      { label: "Women",   value: "women" },
+      { label: "Kids",    value: "kids" },
     ];
-    for (const a of audience) {
+    for (const a of audience){
       const b = document.createElement("button");
       b.className = "nav-chip";
       b.dataset.type = "aud";
@@ -3811,19 +3713,13 @@ document.addEventListener("visibilitychange", () => {
       b.textContent = a.label;
       host.appendChild(b);
     }
-
-    // Divider
     const div = document.createElement("span");
-    div.style.cssText =
-      "display:inline-block;width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 6px;vertical-align:middle;";
+    div.style.cssText="display:inline-block;width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 6px;vertical-align:middle;";
     host.appendChild(div);
 
-    // categories from products
     const items = window._productsCache || [];
-    const cats = Array.from(
-      new Set(items.map((x) => (x.category || "").trim()).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-    for (const c of cats) {
+    const cats = Array.from(new Set(items.map(x => (x.category||"").trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+    for (const c of cats){
       const b = document.createElement("button");
       b.className = "nav-chip btn-outline";
       b.dataset.type = "cat";
@@ -3831,8 +3727,6 @@ document.addEventListener("visibilitychange", () => {
       b.textContent = c;
       host.appendChild(b);
     }
-
-    // New Arrivals chip
     const newB = document.createElement("button");
     newB.className = "nav-chip";
     newB.dataset.type = "tag";
@@ -3840,496 +3734,264 @@ document.addEventListener("visibilitychange", () => {
     newB.textContent = "New Arrivals";
     host.appendChild(newB);
 
-    // reattach handler (from your attachNavHandler)
-    // အကယ်၍ handler တင်ပြီးသားဆို attach ပြန်မလို
-    // ဒါပေမယ့် အတည်အပြုအောင် click ကို scroll up လုပ်ပေးမယ်:
-    host.addEventListener(
-      "click",
-      (e) => {
-        const el = e.target.closest?.(".nav-chip");
-        if (!el) return;
-
-        // nav handler ကို run ချပေး (attachNavHandler ရှိပြီးသားဆို အကူညီ)
-        // attachNavHandler ထဲက listener ရှိပြီးသားဖြစ်ရင် ဒီခေါ်စရာ မလိုပါ — duplication မဖြစ်အောင်ကြည့်ပါ
-
-        // pull up to product grid
-        const grid =
-          document.getElementById("productGrid") ||
-          document.getElementById("grid") ||
-          document.querySelector(".product-grid") ||
-          document.querySelector(".grid");
-        grid?.scrollIntoView({ behavior: "smooth", block: "start" });
-      },
-      { once: true }
-    ); // once: true => စတင်ချိန်တစ်ကြိမ်ထည့်ရုံ
+    // smooth scroll to grid when any chip clicked
+    host.addEventListener("click", (e)=>{
+      const el = e.target.closest?.(".nav-chip"); if(!el) return;
+      (document.getElementById("productGrid") || document.querySelector(".product-grid"))?.scrollIntoView({behavior:"smooth", block:"start"});
+    });
   }
-
-  // call after realtime refreshed
-  // onSnapshot(...) ပြီးလျှင်:
-  buildCategoryChipsFromProducts?.();
 
   // ---------- Form / Modal wires ----------
   const elForm = document.getElementById("productForm");
   const elThumbPrev = document.getElementById("pThumbPreview");
   const elImgFile = document.getElementById("pImgFile");
 
-  function resetProductForm() {
-    const mode = document.getElementById("pmMode");
-    if (mode) mode.textContent = "Add";
-    elForm?.reset();
-    const idEl = document.getElementById("pId");
-    if (idEl) idEl.value = "";
-    if (elThumbPrev) elThumbPrev.src = "";
-  }
-
-  // Reset button listener
-  document
-    .getElementById("pmReset")
-    ?.addEventListener("click", resetProductForm);
-
-  document.getElementById("btnAddProduct")?.addEventListener("click", () => {
-    resetProductForm();
-    openDialog("productModal");
-  });
-  document
-    .getElementById("pmClose")
-    ?.addEventListener("click", () => closeDialog("productModal"));
-
-  elImgFile?.addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) {
-      if (elThumbPrev) elThumbPrev.src = "";
-      return;
-    }
-    if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
-  });
-
-  // === Product form submit (no reassign; no global leak) ===
-  // == Add / Edit Product: Submit ==
-let _savingProduct = false;
-
-elForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (_savingProduct) return;
-  _savingProduct = true;
-
-  const btnSave = elForm.querySelector('button[type="submit"]');
-  const prevTxt = btnSave?.textContent;
-  if (btnSave) {
-    btnSave.disabled = true;
-    btnSave.textContent = "Saving…";
-  }
-
-  try {
-    // --- Stable id (create early for upload path) ---
-    let id = document.getElementById("pId")?.value.trim();
-    if (!id) id = fdb.collection("products").doc().id; // fdb = firebase.firestore()
-
-    // --- Read fields ---
-    const title    = document.getElementById("pTitle")?.value.trim() || "";
-    const category = document.getElementById("pCategory")?.value.trim() || "";
-    const priceVal = document.getElementById("pPrice")?.value;
-    const price    = Number.parseFloat(priceVal);
-    const barcode  = document.getElementById("pBarcode")?.value.trim() || "";
-    const file     = document.getElementById("pImgFile")?.files?.[0] || null;
-    const desc     = document.getElementById("pDesc")?.value.trim() || "";
-
-    if (!title || !category || Number.isNaN(price) || !barcode) {
-      alert("Please fill Title, Category, Price, Barcode");
-      throw new Error("validation_failed");
-    }
-
-    // --- Upload main thumb (optional) ---
-    let thumbURL = "";
-    if (file) {
-      try {
-        thumbURL = await uploadProductThumb(file, id);
-      } catch (err) {
-        console.error("[upload thumb] error:", err);
-        alert("Image upload failed (permission/CORS/network).");
-        throw err;
-      }
-    }
-
-    // --- Upload gallery (optional) ---
-    let images = [];
-    try {
-      const gfiles = document.getElementById("pGallery")?.files || [];
-      if (gfiles.length) {
-        // make sure helper exists (no-op fallback)
-        if (typeof uploadGalleryFiles !== "function") {
-          window.uploadGalleryFiles = async () => [];
-        }
-        images = await uploadGalleryFiles(gfiles, id);
-      }
-    } catch (err) {
-      console.warn("gallery upload error:", err);
-      // gallery ပိုင်းမအောင်မြင်လည်း main flow ကို ပိတ်မထားဘူး
-    }
-
-    // --- Build product doc ---
-    const now = Date.now();
-    const isNew = !document.getElementById("pId")?.value.trim();
-
-    const prod = {
-      id,
-      title,
-      category,
-      price: +price,
-      barcode,
-      thumb: thumbURL,          // '' အဖြစ်တင်နိုင် (optional)
-      images,                   // [] အဖြစ်တင်နိုင် (optional)
-      description: desc,        // '' လည်းရ
-      updatedAt: now,
-      // createdAt ကို item အသစ်တင်ချင်တဲ့အခါတွင်ပဲ ထည့်
-      ...(isNew ? { createdAt: now } : {})
-    };
-
-    // --- Save to Firestore (admin only per rules) ---
-    await fdb.collection("products").doc(id).set(prod, { merge: true });
-
-    // --- Update in-memory BARCODE map (scanner/cart uses it) ---
-    window.BARCODE_MAP = window.BARCODE_MAP || {};
-    window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
-
-    // --- Done UI ---
-    alert("Product saved.");
-    closeDialog("productModal");
-
-    // Reset form/preview safely
-    document.getElementById("pmMode")?.textContent = "Add";
+  function resetProductForm(){
+    document.getElementById("pmMode") && (document.getElementById("pmMode").textContent="Add");
     elForm?.reset?.();
-    const idEl = document.getElementById("pId");
-    if (idEl) idEl.value = "";
-    const prevEl = document.getElementById("pThumbPreview");
-    if (prevEl) prevEl.src = "";
-    const galPrev = document.getElementById("pGalleryPreview");
-    if (galPrev) galPrev.innerHTML = "";
-
-  } catch (err) {
-    // show helpful message
-    const msg = String(err?.message || err || "");
-    if (msg.includes("validation_failed")) {
-      // already alerted; no-op
-    } else if (msg.includes("Missing or insufficient permissions") || msg.includes("PERMISSION_DENIED")) {
-      alert("Save failed: permission denied.\n\nTip: Only admins can write products. Create users/{yourUid} with { role: 'admin' } and re-auth.");
-    } else {
-      alert("Save failed. " + msg);
-    }
-  } finally {
-    _savingProduct = false;
-    if (btnSave) {
-      btnSave.disabled = false;
-      btnSave.textContent = prevTxt || "Save";
-    }
+    document.getElementById("pId") && (document.getElementById("pId").value="");
+    elThumbPrev && (elThumbPrev.src="");
+    const galPrev = document.getElementById("pGalleryPreview"); if(galPrev) galPrev.innerHTML = "";
   }
-});
 
-  // refs (near other refs)
-  const elGalleryFiles = document.getElementById("pGallery");
+  document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
+  document.getElementById("btnAddProduct")?.addEventListener("click", ()=>{ resetProductForm(); openDialog("productModal"); });
+  document.getElementById("pmClose")?.addEventListener("click", ()=> closeDialog("productModal"));
+
+  elImgFile?.addEventListener("change", async (e)=>{
+    const f = e.target.files?.[0];
+    elThumbPrev && (elThumbPrev.src = f ? await fileToPreviewURL(f) : "");
+  });
+
+  // Gallery preview (optional)
+  const elGalleryFiles   = document.getElementById("pGallery");
   const elGalleryPreview = document.getElementById("pGalleryPreview");
-
-  // small helper for mini preview thumbs
-  function _thumbEl(url) {
+  function miniThumb(url){
     const im = document.createElement("img");
-    im.src = url;
-    im.alt = "thumb";
-    im.style.cssText =
-      "width:64px;height:64px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12)";
+    im.src=url; im.alt="thumb";
+    im.style.cssText="width:64px;height:64px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12)";
     return im;
   }
-
-  // preview selected gallery files
-  elGalleryFiles?.addEventListener("change", (e) => {
-    if (!elGalleryPreview) return;
-    elGalleryPreview.innerHTML = "";
-    const files = Array.from(e.target.files || []).slice(0, 6);
-    for (const f of files) {
+  elGalleryFiles?.addEventListener("change", (e)=>{
+    if(!elGalleryPreview) return;
+    elGalleryPreview.innerHTML="";
+    const files = Array.from(e.target.files||[]).slice(0,6);
+    for(const f of files){
       const u = URL.createObjectURL(f);
-      elGalleryPreview.appendChild(_thumbEl(u));
+      elGalleryPreview.appendChild(miniThumb(u));
     }
   });
 
-  // ---------- Products Manager (list/search/filter/sort) ----------
+  // Submit
+  let _savingProduct = false;
+  elForm?.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    if (_savingProduct) return;
+    _savingProduct = true;
+
+    const btnSave = elForm.querySelector('button[type="submit"]');
+    const prevTxt = btnSave?.textContent;
+    if (btnSave){ btnSave.disabled = true; btnSave.textContent = "Saving…"; }
+
+    try{
+      let id = document.getElementById("pId")?.value.trim();
+      if (!id) id = fdb.collection("products").doc().id;
+
+      const title    = document.getElementById("pTitle")?.value.trim() || "";
+      const category = document.getElementById("pCategory")?.value.trim() || "";
+      const priceVal = document.getElementById("pPrice")?.value;
+      const price    = Number.parseFloat(priceVal);
+      const barcode  = document.getElementById("pBarcode")?.value.trim() || "";
+      const file     = document.getElementById("pImgFile")?.files?.[0] || null;
+      const desc     = document.getElementById("pDesc")?.value.trim() || "";
+
+      if (!title || !category || Number.isNaN(price) || !barcode) {
+        alert("Please fill Title, Category, Price, Barcode");
+        throw new Error("validation_failed");
+      }
+
+      let thumbURL = "";
+      if (file){
+        try { thumbURL = await uploadProductThumb(file, id); }
+        catch(err){ console.error("[upload thumb] error:", err); alert("Image upload failed (permission/CORS/network)."); throw err; }
+      }
+
+      // gallery upload (optional). Provide a no-op fallback if function not defined elsewhere
+      if (typeof window.uploadGalleryFiles !== "function"){
+        window.uploadGalleryFiles = async ()=>[];
+      }
+      let images = [];
+      try{
+        const gfiles = document.getElementById("pGallery")?.files || [];
+        if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+      }catch(err){ console.warn("gallery upload error:", err); }
+
+      const now = Date.now();
+      const isNew = !document.getElementById("pId")?.value.trim();
+
+      const prod = {
+        id, title, category, price:+price, barcode,
+        thumb: thumbURL, images, description: desc,
+        updatedAt: now, ...(isNew ? { createdAt: now } : {})
+      };
+
+      // ✅ Save (no invalid assignment)
+      await fdb.collection("products").doc(id).set(prod, { merge: true });
+
+      // update in-memory map
+      window.BARCODE_MAP = window.BARCODE_MAP || {};
+      window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
+
+      alert("Product saved.");
+      closeDialog("productModal");
+      resetProductForm();
+    } catch(err){
+      const msg = String(err?.message || err || "");
+      if (msg.includes("validation_failed")) { /* already alerted */ }
+      else if (msg.includes("PERMISSION_DENIED") || msg.includes("insufficient permissions")){
+        alert("Save failed: permission denied.\n\nTip: Only admins can write products. Create users/{yourUid} with { role: 'admin' }.");
+      } else {
+        alert("Save failed. " + msg);
+      }
+    } finally {
+      _savingProduct = false;
+      if (btnSave){ btnSave.disabled = false; btnSave.textContent = prevTxt || "Save"; }
+    }
+  });
+
+  // ---------- Products Manager realtime ----------
   const elPlList = document.getElementById("plList");
   const elPlSearch = document.getElementById("plSearch");
   const elPlCategory = document.getElementById("plCategory");
   const elPlSort = document.getElementById("plSort");
 
   let _productsCache = [];
-  // Realtime boot with guard + retry
   let _unsubProducts = null;
-
-  function ensureProductsRealtime() {
-    if (_unsubProducts) return;
-
-    // Guard: wait until Firestore compat is ready
-    if (!fdb || typeof fdb.collection !== "function") {
-      console.warn("Firestore not ready yet. Retrying in 300ms…");
-      setTimeout(ensureProductsRealtime, 300);
-      return;
-    }
-
-    _unsubProducts = fdb.collection(PRODUCTS_COL).onSnapshot(
-      (snap) => {
-        // 1) cache & globals
-        _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        window._productsCache = _productsCache;
-
-        // 2) nav chips (categories from products)
-        buildCategoryChipsFromProducts?.();
-
-        // 3) scanner barcode map
-        window.BARCODE_MAP = {};
-        for (const p of _productsCache) {
-          if (p.barcode) {
-            window.BARCODE_MAP[p.barcode] = {
-              id: p.id,
-              title: p.title,
-              price: p.price,
-              img: p.thumb,
-            };
-          }
-        }
-
-        // 4) product manager list (modal) refresh
-        renderProductList?.();
-
-        // 5) storefront re-render — respect current filters/title
-        if (typeof renderFilteredStore === "function") {
-          const titleEl =
-            document.getElementById("shopTitle") ||
-            document.querySelector("[data-shop-title]");
-          const curTitle = titleEl?.textContent?.trim() || "Shop";
-          renderFilteredStore(curTitle); // << filters (audience/category/new) stay intact
-        } else {
-          window.renderStorefrontFromCloud?.(_productsCache);
-        }
-
-        // 6) new arrivals strip
-        renderNewArrivals?.(_productsCache);
-
-        // 7) search box wiring (no args; it will read window._productsCache)
-        attachStorefrontSearch?.();
-      },
-      (err) => console.error("realtime error:", err)
-    );
-  }
-
-  // Listen for fb-ready (fired after auth state known + compat instances set)
-  document.addEventListener("fb-ready", async () => {
-    try {
-      const items = await (async () => {
-        if (typeof fdb?.collection === "function") {
-          const snap = await fdb
-            .collection("products")
-            .orderBy("updatedAt", "desc")
-            .get();
-          return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        }
-        return [];
-      })();
-      renderStorefrontFromCloud?.(items);
-    } catch (e) {
-      console.warn("initial load failed:", e);
-    }
-    ensureProductsRealtime();
-  });
-
-  // Fallback: DOM ready → in case fb-ready fired before app.js attached listener
-  document.addEventListener("DOMContentLoaded", () => {
-    if (!_unsubProducts) ensureProductsRealtime();
-  });
 
   function populateCategoriesDropdown() {
     if (!elPlCategory) return;
-    const cats = Array.from(
-      new Set(_productsCache.map((x) => x.category).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
+    const cats = Array.from(new Set(_productsCache.map(x=>x.category).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
     const cur = elPlCategory.value;
-    elPlCategory.innerHTML =
-      `<option value="">All categories</option>` +
-      cats.map((c) => `<option value="${c}">${c}</option>`).join("");
+    elPlCategory.innerHTML = `<option value="">All categories</option>` + cats.map(c=>`<option value="${c}">${c}</option>`).join("");
     if (cats.includes(cur)) elPlCategory.value = cur;
   }
 
-  function renderNewArrivals() {
-    renderFilteredStore("New Arrivals", { tag: "new" });
-  }
-
-  function buildCategoryNav(items) {
-    const host =
-      document.getElementById("categoryNav") ||
-      document.querySelector(".category-chips") ||
-      document.getElementById("categoryChips");
-    if (!host) return;
-
-    const cats = Array.from(
-      new Set(
-        (items || []).map((x) => (x.category || "").trim()).filter(Boolean)
-      )
-    ).sort((a, b) => a.localeCompare(b));
-    host.innerHTML = "";
-
-    // "All" chip
-    const all = document.createElement("button");
-    all.className = "btn-mini";
-    all.dataset.cat = "";
-    all.textContent = "All";
-    host.appendChild(all);
-
-    // each cat
-    for (const c of cats) {
-      const catBtn = document.createElement("button"); // btn → catBtn
-      catBtn.className = "btn-mini btn-outline";
-      catBtn.dataset.cat = c;
-      catBtn.textContent = c;
-      host.appendChild(catBtn);
-    }
-
-    // click → filter main storefront grid (#productGrid)
-    host.onclick = (e) => {
-      const btn = e.target.closest?.("button[data-cat]");
-      if (!btn) return;
-      window.currentAudience = "all";
-      window.currentCategory = btn.dataset.cat || "";
-      const label = btn.textContent.trim() || "Shop";
-      renderFilteredStore(label);
-    };
-  }
-
-  function attachStorefrontSearch() {
-    const input =
-      document.getElementById("search") ||
-      document.getElementById("searchInput") ||
-      document.querySelector(".top-search input") ||
-      document.querySelector('input[type="search"]');
-    if (!input) return;
-
-    input.addEventListener("input", () => {
-      const q = (input.value || "").trim();
-      if (!q) {
-        // q မရှိရင် လက်ရှိ audience/category filter နဲ့ ပြန်ပြ
-        const label =
-          window.currentCategory || window.currentAudience || "Shop";
-        renderFilteredStore(String(label));
-        return;
-      }
-      renderFilteredStore(`Results for "${q}"`, { query: q });
-    });
-  }
-
-  function filteredSortedProducts() {
+  function filteredSortedProducts(){
     const q = (elPlSearch?.value || "").trim().toLowerCase();
     const cat = elPlCategory?.value || "";
-    const sort = elPlSort?.value || "new";
-
+    const sort= elPlSort?.value || "new";
     let items = _productsCache.slice();
-
-    if (q)
-      items = items.filter(
-        (x) =>
-          (x.title || "").toLowerCase().includes(q) ||
-          (x.barcode || "").toLowerCase().includes(q) ||
-          (x.id || "").toLowerCase().includes(q)
-      );
-    if (cat) items = items.filter((x) => (x.category || "") === cat);
-
-    const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-    if (sort === "title_az")
-      items.sort((a, b) => collator.compare(a.title, b.title));
-    if (sort === "title_za")
-      items.sort((a, b) => collator.compare(b.title, a.title));
-    if (sort === "price_low")
-      items.sort((a, b) => (a.price || 0) - (b.price || 0));
-    if (sort === "price_high")
-      items.sort((a, b) => (b.price || 0) - (a.price || 0));
-    if (sort === "new")
-      items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-
+    if (q) items = items.filter(x =>
+      (x.title||"").toLowerCase().includes(q) ||
+      (x.barcode||"").toLowerCase().includes(q) ||
+      (x.id||"").toLowerCase().includes(q)
+    );
+    if (cat) items = items.filter(x=>(x.category||"")===cat);
+    const coll = new Intl.Collator(undefined,{sensitivity:"base"});
+    if (sort==="title_az")   items.sort((a,b)=>coll.compare(a.title,b.title));
+    if (sort==="title_za")   items.sort((a,b)=>coll.compare(b.title,a.title));
+    if (sort==="price_low")  items.sort((a,b)=>(a.price||0)-(b.price||0));
+    if (sort==="price_high") items.sort((a,b)=>(b.price||0)-(a.price||0));
+    if (sort==="new")        items.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
     return items;
   }
 
-  function renderProductList() {
+  function renderProductList(){
     if (!elPlList) return;
     populateCategoriesDropdown();
-
     const items = filteredSortedProducts();
-    elPlList.innerHTML = "";
-    if (!items.length) {
-      elPlList.innerHTML = `<div class="small" style="opacity:.8;">No products yet.</div>`;
-      return;
-    }
-    for (const p of items) {
+    elPlList.innerHTML = items.length ? "" : `<div class="small" style="opacity:.8;">No products yet.</div>`;
+    for (const p of items){
       const card = document.createElement("div");
       card.className = "pm-card";
       card.innerHTML = `
         <img alt="${p.title ?? ""}" src="${p.thumb || ""}">
-        <div class="row"><div class="strong">${
-          p.title ?? ""
-        }</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
-        <div class="row"><div class="small" style="opacity:.85;">${
-          p.category || "-"
-        }</div><div class="small">#${p.id}</div></div>
-        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${
-          p.barcode || "-"
-        }</div></div>
+        <div class="row"><div class="strong">${p.title ?? ""}</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="small" style="opacity:.85;">${p.category || "-"}</div><div class="small">#${p.id}</div></div>
+        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${p.barcode || "-"}</div></div>
         <div class="row" style="gap:.4rem; justify-content:flex-end;">
           <button class="btn-mini" data-edit="${p.id}">Edit</button>
-          <button class="btn-mini btn-outline" data-del="${
-            p.id
-          }">Delete</button>
+          <button class="btn-mini btn-outline" data-del="${p.id}">Delete</button>
         </div>
       `;
       elPlList.appendChild(card);
     }
   }
 
-  // Search/filter/sort events
   elPlSearch?.addEventListener("input", renderProductList);
   elPlCategory?.addEventListener("change", renderProductList);
   elPlSort?.addEventListener("change", renderProductList);
 
-  // Edit/Delete delegation
-  elPlList?.addEventListener("click", async (e) => {
+  elPlList?.addEventListener("click", async (e)=>{
     const edit = e.target.closest?.("[data-edit]");
-    const del = e.target.closest?.("[data-del]");
+    const del  = e.target.closest?.("[data-del]");
     if (!edit && !del) return;
 
     const id = edit?.dataset.edit || del?.dataset.del;
-    const p = _productsCache.find((x) => x.id === id);
+    const p = _productsCache.find(x=>x.id===id);
     if (!p) return;
 
-    if (del) {
-      if (confirm(`Delete "${p.title}"?`)) {
-        await deleteProduct(id);
-        // Snapshot will refresh UI & BARCODE_MAP
-      }
+    if (del){
+      if (confirm(`Delete "${p.title}"?`)) await deleteProduct(id);
       return;
     }
 
-    // Edit flow
-    const mode = document.getElementById("pmMode");
-    if (mode) mode.textContent = "Edit";
+    // edit
+    document.getElementById("pmMode") && (document.getElementById("pmMode").textContent="Edit");
     document.getElementById("pId").value = p.id;
     document.getElementById("pTitle").value = p.title || "";
     document.getElementById("pCategory").value = p.category || "";
     document.getElementById("pPrice").value = p.price || 0;
     document.getElementById("pBarcode").value = p.barcode || "";
     document.getElementById("pThumbPreview").src = p.thumb || "";
+    document.getElementById("pDesc") && (document.getElementById("pDesc").value = p.description || "");
     openDialog("productModal");
   });
 
-  // Manager modal open
-  document
-    .getElementById("btnProductManager")
-    ?.addEventListener("click", () => {
-      ensureProductsRealtime();
-      openDialog("productListModal");
-    });
-  document
-    .getElementById("plClose")
-    ?.addEventListener("click", () => closeDialog("productListModal"));
+  function ensureProductsRealtime() {
+    if (_unsubProducts) return;
+    if (!fdb || typeof fdb.collection !== "function") {
+      console.warn("Firestore not ready yet. Retrying in 300ms…");
+      setTimeout(ensureProductsRealtime, 300);
+      return;
+    }
+    _unsubProducts = fdb.collection(PRODUCTS_COL).onSnapshot((snap)=>{
+      _productsCache = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+      window._productsCache = _productsCache;
+      buildCategoryChipsFromProducts?.();
+
+      window.BARCODE_MAP = {};
+      for (const p of _productsCache){
+        if (p.barcode) window.BARCODE_MAP[p.barcode] = { id: p.id, title: p.title, price: p.price, img: p.thumb };
+      }
+
+      renderProductList?.();
+
+      if (typeof renderFilteredStore === "function") {
+        const titleEl = document.getElementById("shopTitle") || document.querySelector("[data-shop-title]");
+        const curTitle = titleEl?.textContent?.trim() || "Shop";
+        renderFilteredStore(curTitle);
+      } else {
+        window.renderStorefrontFromCloud?.(_productsCache);
+      }
+
+      renderNewArrivals?.(_productsCache);
+      attachStorefrontSearch?.();
+    }, (err)=> console.error("realtime error:", err));
+  }
+
+  document.addEventListener("fb-ready", async ()=>{
+    try {
+      const snap = await fdb.collection("products").orderBy("updatedAt","desc").get();
+      const items = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      renderStorefrontFromCloud?.(items);
+    } catch(e){ console.warn("initial load failed:", e); }
+    ensureProductsRealtime();
+  });
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    if (!_unsubProducts) ensureProductsRealtime();
+  });
 })();
 
 // ===== Product Detail Modal (View) =====
