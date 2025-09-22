@@ -1448,61 +1448,80 @@ function updateAdminUI() {
 }
 
 // === Part 5: Nav actions ===
-function onNavClick(item, btn) {
-  const btn = e.target.closest?.("[data-view]");
-  if (!btn) return;
-  const view = btn.dataset.view;
+// ✅ SINGLE click-delegation nav handler
+function onNavClick(e){
+  // find a clickable element with any of these data attributes
+  const target = e.target.closest?.("[data-view],[data-type],[data-key]");
+  if (!target) return;
 
-  if (typeof switchView === "function") switchView(view);
+  // Active UI state (optional)
+  document.querySelectorAll(".nav-chip").forEach(c => c.classList.remove("active"));
+  target.classList.add("active");
 
-  if (view === "analytics") {
-    openAdminAnalytics(); // <-- NEW
-    return;
-  }
-  // active UI
-  document
-    .querySelectorAll(".nav-chip")
-    .forEach((c) => c.classList.remove("active"));
-  btn?.classList.add("active");
+  // 1) Direct view switcher (data-view="..."): e.g. analytics, orders, shop
+  const view = target.dataset.view;
+  if (view) {
+    if (typeof switchView === "function") switchView(view);
 
-  // audience keys: forAll/men/women/kids/pets
-  if (item.type === "aud") {
-    currentAudience = item.value; // 'all'|'men'|'women'|'kids'|'pets'
-    currentCategory = ""; // clear cat filter
-    showShopGrid(item.label || "Shop");
-    return;
-  }
-
-  // categories: electronics/fashion/beauty/home/auto/baby
-  if (item.type === "cat") {
-    currentAudience = "all";
-    currentCategory = item.value; // cat slug
-    showShopGrid(item.label || item.value);
+    if (view === "analytics") {
+      // use the new analytics entry point
+      openAdminAnalytics();
+      return;
+    }
+    if (view === "orders") {
+      renderOrders?.();
+      return;
+    }
+    // other views just return
     return;
   }
 
-  // new arrivals
-  if (item.type === "tag" && item.key === "new") {
-    currentAudience = "all";
-    currentCategory = "";
+  // 2) Structured nav (aud/cat/tag) via data-* attributes
+  const type  = target.dataset.type;   // 'aud' | 'cat' | 'tag'
+  const key   = target.dataset.key;    // e.g. 'new', 'orders', 'analytics'
+  const value = target.dataset.value || "";
+  const label = target.dataset.label || target.textContent?.trim() || "Shop";
+
+  // audience: forAll/men/women/kids/pets
+  if (type === "aud") {
+    window.currentAudience = value || "all";
+    window.currentCategory = "";
+    showShopGrid(label);
+    return;
+  }
+
+  // categories: electronics/fashion/beauty/home/auto/baby/…
+  if (type === "cat") {
+    window.currentAudience = "all";
+    window.currentCategory = value || "";
+    showShopGrid(label || value || "Shop");
+    return;
+  }
+
+  // tag: new-arrivals
+  if (type === "tag" && key === "new") {
+    window.currentAudience = "all";
+    window.currentCategory = "";
     showShopGrid("New Arrivals", { tag: "new" });
     return;
   }
 
-  if (item.key === "orders") {
-    switchView("orders");
+  // key shortcuts
+  if (key === "orders") {
+    if (typeof switchView === "function") switchView("orders");
     renderOrders?.();
     return;
   }
-  if (item.key === "analytics") {
-    switchView("analytics");
-    renderAnalytics?.();
+  if (key === "analytics") {
+    openAdminAnalytics();
     return;
   }
 
   // default
-  showShopGrid(item.label || "Shop");
+  showShopGrid(label);
 }
+
+// ✅ attach once
 document.getElementById("nav")?.addEventListener("click", onNavClick);
 
 // --- SWITCH VIEW (class-based) ---
@@ -3988,13 +4007,13 @@ document.addEventListener("visibilitychange", () => {
     host.appendChild(all);
 
     // each cat
-    for (const c of cats) {
-      const b = document.createElement("button");
-      b.className = "btn-mini btn-outline";
-      b.dataset.cat = c;
-      b.textContent = c;
-      host.appendChild(b);
-    }
+   for (const c of cats) {
+  const catBtn = document.createElement("button"); // btn → catBtn
+  catBtn.className = "btn-mini btn-outline";
+  catBtn.dataset.cat = c;
+  catBtn.textContent = c;
+  host.appendChild(catBtn);
+}
 
     // click → filter main storefront grid (#productGrid)
     host.onclick = (e) => {
