@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://shweshop-mm.web.app", "http://localhost:5000"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization", "x-goog-meta-*"],
+    "maxAgeSeconds": 3600
+  }
+]
