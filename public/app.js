@@ -1515,11 +1515,7 @@ function updateAdminUI() {
   nav.addEventListener("click", handleNavClick);
   window.__navHandler__ = handleNavClick;
 
-  // buttons outside #nav (optional)
-  document.getElementById("btnAnalytics")?.addEventListener("click", openAdminAnalytics);
-  document.getElementById("btnOrders")?.addEventListener("click", () => { switchView?.("orders"); renderOrders?.(); });
-
-  // back-compat (old code calling renderAnalytics)
+  // back-compat
   window.openAdminAnalytics = window.openAdminAnalytics || openAdminAnalytics;
   window.renderAnalytics = function () { openAdminAnalytics(); };
 })();
