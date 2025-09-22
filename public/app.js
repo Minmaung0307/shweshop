@@ -3745,69 +3745,263 @@ document.addEventListener("visibilitychange", () => {
   }
 
   function renderStorefrontFromCloud(items) {
-  const grid =
-    document.getElementById("productGrid") ||
-    document.getElementById("grid") ||
-    document.querySelector(".product-grid") ||
-    document.querySelector(".grid");
-  if (!grid) return;
+    const grid =
+      document.getElementById("productGrid") ||
+      document.getElementById("grid") ||
+      document.querySelector(".product-grid") ||
+      document.querySelector(".grid");
+    if (!grid) return;
 
-  grid.innerHTML = "";
-  if (!items?.length) {
-    grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
-    return;
-  }
-
-  for (const p of items) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.style.cursor = "default";
-    card.innerHTML = `
-      <div class="thumb" data-open="${p.id}" style="cursor:pointer">
-        <img src="${p.thumb || ""}" alt="${p.title || ""}">
-      </div>
-      <div class="row" style="margin-top:8px; justify-content:center;">
-        <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
-      </div>
-      <div class="row" style="margin-top:6px; justify-content:space-between;">
-        <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
-        <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
-      </div>
-    `;
-    grid.appendChild(card);
-  }
-
-  grid.onclick = (e) => {
-    const addBtn  = e.target.closest?.("[data-add]");
-    const openBtn = e.target.closest?.("[data-detail],[data-open]");
-    if (!addBtn && !openBtn) return;
-
-    const id =
-      addBtn?.dataset.add ||
-      openBtn?.dataset.detail ||
-      openBtn?.dataset.open;
-
-    const prod = (items || []).find((x) => x.id === id);
-    if (!prod) return;
-
-    if (addBtn) {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const i = cart.findIndex((x) => x.id === id);
-      if (i >= 0) cart[i].qty += 1;
-      else cart.push({ id, title: prod.title, price: +prod.price, img: prod.thumb, qty: 1 });
-      localStorage.setItem("cart", JSON.stringify(cart));
-      if (typeof updateCartCount === "function") updateCartCount();
+    grid.innerHTML = "";
+    if (!items?.length) {
+      grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
       return;
     }
 
-    if (openBtn && typeof window.openProductDetail === "function") {
-      window.openProductDetail(prod);
-    }
-  };
-}
+    for (const p of items) {
+      const card = document.createElement("div");
+      card.className = "card";
+      // --- Card layout: img (left) • info (right) ---
+      card.innerHTML = `
+      <div class="row" style="align-items:flex-start; gap:12px;">
+        <!-- LEFT: main image + thumbs -->
+        <div style="width:160px; min-width:160px;">
+          <div class="thumb" data-open="${
+            p.id
+          }" style="width:160px; height:160px; border-radius:12px; overflow:hidden; background:#111; cursor:pointer;">
+            <img src="${p.thumb || ""}" alt="${
+        p.title || ""
+      }" style="width:100%; height:100%; object-fit:cover;">
+          </div>
+          <!-- thumbs carousel -->
+          <div class="row" style="margin-top:8px; align-items:center; gap:6px;">
+            <button class="btn-mini btn-outline" data-thumbs-left="${
+              p.id
+            }" title="Prev">◀</button>
+            <div class="thumbs-wrap" data-thumbs="${
+              p.id
+            }" style="display:flex; gap:6px; overflow:hidden; max-width:136px;">
+              ${
+                Array.isArray(p.images) && p.images.length
+                  ? p.images
+                      .slice(0, 12)
+                      .map(
+                        (u, i) =>
+                          `<img data-thumb="${p.id}" data-index="${i}" src="${u}" alt="thumb"
+                         style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12);cursor:pointer;">`
+                      )
+                      .join("")
+                  : ""
+              }
+            </div>
+            <button class="btn-mini btn-outline" data-thumbs-right="${
+              p.id
+            }" title="Next">▶</button>
+          </div>
+        </div>
 
-// ✅ expose to global for module scripts
-window.renderStorefrontFromCloud = window.renderStorefrontFromCloud || renderStorefrontFromCloud;
+        <!-- RIGHT: title, price, desc, promo/member, bottom buttons -->
+        <div style="flex:1;">
+          <div class="row" style="justify-content:space-between; align-items:flex-start;">
+            <div class="strong" style="font-size:1rem; line-height:1.2;">${
+              p.title || ""
+            }</div>
+            <div class="tag" style="font-size:.95rem;">$${(
+              +p.price || 0
+            ).toFixed(2)}</div>
+          </div>
+          <div class="small" style="opacity:.9; text-align:right; margin-top:4px;">
+            ${(p.desc || p.description || "").toString().slice(0, 120) || ""}
+          </div>
+
+          <!-- promo & membership -->
+          <div class="row" style="justify-content:flex-end; gap:6px; margin-top:10px;">
+            <button class="btn-mini btn-outline" data-promo="${
+              p.id
+            }">Apply Promo</button>
+            <button class="btn-mini" data-member="${
+              p.id
+            }">Membership Discount</button>
+          </div>
+
+          <!-- bottom buttons -->
+          <div class="row" style="justify-content:space-between; margin-top:12px;">
+            <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+            <button class="btn-mini btn-outline" data-detail="${
+              p.id
+            }">View</button>
+          </div>
+        </div>
+      </div>
+    `;
+      grid.appendChild(card);
+    }
+
+    // single delegated handler
+    grid.onclick = (e) => {
+      const addBtn = e.target.closest?.("[data-add]");
+      const openBtn = e.target.closest?.("[data-detail],[data-open]");
+      const promoBtn = e.target.closest?.("[data-promo]");
+      const membBtn = e.target.closest?.("[data-member]");
+      const leftBtn = e.target.closest?.("[data-thumbs-left]");
+      const rightBtn = e.target.closest?.("[data-thumbs-right]");
+      const thumbImg = e.target.closest?.("img[data-thumb]");
+
+      // thumbs carousel scroll
+      if (leftBtn || rightBtn) {
+        const pid =
+          leftBtn?.dataset.thumbsLeft || rightBtn?.dataset.thumbsRight;
+        const rail = grid.querySelector(`[data-thumbs="${pid}"]`);
+        if (rail) {
+          rail.scrollBy({ left: leftBtn ? -100 : 100, behavior: "smooth" });
+        }
+        return;
+      }
+
+      // click on small thumb => set hero
+      if (thumbImg) {
+        const pid = thumbImg.dataset.thumb;
+        const idx = +thumbImg.dataset.index || 0;
+        const prod = (items || []).find((x) => x.id === pid);
+        const hero = grid.querySelector(`.thumb[data-open="${pid}"] img`);
+        if (prod && hero) {
+          const url =
+            (Array.isArray(prod.images) && prod.images[idx]) ||
+            prod.thumb ||
+            "";
+          if (url) hero.src = url;
+        }
+        return;
+      }
+
+      // promo button
+      if (promoBtn) {
+        if (typeof openPromoModal === "function") openPromoModal();
+        else alert("Promo modal not wired. Implement openPromoModal().");
+        return;
+      }
+
+      // membership button
+      if (membBtn) {
+        if (typeof openMembershipModal === "function") openMembershipModal();
+        else document.getElementById("membershipModal")?.showModal?.();
+        return;
+      }
+
+      // add to cart
+      if (addBtn) {
+        const id = addBtn.dataset.add;
+        const prod = (items || []).find((x) => x.id === id);
+        if (!prod) return;
+        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        const i = cart.findIndex((x) => x.id === id);
+        if (i >= 0) cart[i].qty += 1;
+        else
+          cart.push({
+            id,
+            title: prod.title,
+            price: +prod.price,
+            img: prod.thumb,
+            qty: 1,
+          });
+        localStorage.setItem("cart", JSON.stringify(cart));
+        updateCartCount?.();
+        return;
+      }
+
+      // open detail (NOT add-product modal)
+      if (openBtn) {
+        const id = openBtn.dataset.detail || openBtn.dataset.open;
+        const prod = (items || []).find((x) => x.id === id);
+        if (prod) window.openProductDetail?.(prod);
+      }
+    };
+  }
+
+  // expose globally (module-safe)
+  window.renderStorefrontFromCloud =
+    window.renderStorefrontFromCloud || renderStorefrontFromCloud;
+
+  function buildCategoryChipsFromProducts() {
+    const host = document.getElementById("navScroll");
+    if (!host) return;
+
+    // Keep existing audience chips (For All/Men/Women/…) ကို မဖျက်ချင်ရင်, အဲဒီဟာတွေအောက်က
+    // category-only zone တစ်ခုစိတ်ချရအောင် data-slot="cats" ဖြင့် ထည့်နိုင်.
+    // ဒီကောင်ကတော့ host အကုန် refresh လုပ်ပြီး တင်ပါတယ်:
+    host.innerHTML = "";
+
+    // Optional: audience first
+    const audience = [
+      { label: "For All", key: "aud", value: "all" },
+      { label: "Men", key: "aud", value: "men" },
+      { label: "Women", key: "aud", value: "women" },
+      { label: "Kids", key: "aud", value: "kids" },
+    ];
+    for (const a of audience) {
+      const b = document.createElement("button");
+      b.className = "nav-chip";
+      b.dataset.type = "aud";
+      b.dataset.value = a.value;
+      b.textContent = a.label;
+      host.appendChild(b);
+    }
+
+    // Divider
+    const div = document.createElement("span");
+    div.style.cssText =
+      "display:inline-block;width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 6px;vertical-align:middle;";
+    host.appendChild(div);
+
+    // categories from products
+    const items = window._productsCache || [];
+    const cats = Array.from(
+      new Set(items.map((x) => (x.category || "").trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    for (const c of cats) {
+      const b = document.createElement("button");
+      b.className = "nav-chip btn-outline";
+      b.dataset.type = "cat";
+      b.dataset.value = c;
+      b.textContent = c;
+      host.appendChild(b);
+    }
+
+    // New Arrivals chip
+    const newB = document.createElement("button");
+    newB.className = "nav-chip";
+    newB.dataset.type = "tag";
+    newB.dataset.key = "new";
+    newB.textContent = "New Arrivals";
+    host.appendChild(newB);
+
+    // reattach handler (from your attachNavHandler)
+    // အကယ်၍ handler တင်ပြီးသားဆို attach ပြန်မလို
+    // ဒါပေမယ့် အတည်အပြုအောင် click ကို scroll up လုပ်ပေးမယ်:
+    host.addEventListener(
+      "click",
+      (e) => {
+        const el = e.target.closest?.(".nav-chip");
+        if (!el) return;
+
+        // nav handler ကို run ချပေး (attachNavHandler ရှိပြီးသားဆို အကူညီ)
+        // attachNavHandler ထဲက listener ရှိပြီးသားဖြစ်ရင် ဒီခေါ်စရာ မလိုပါ — duplication မဖြစ်အောင်ကြည့်ပါ
+
+        // pull up to product grid
+        const grid =
+          document.getElementById("productGrid") ||
+          document.getElementById("grid") ||
+          document.querySelector(".product-grid") ||
+          document.querySelector(".grid");
+        grid?.scrollIntoView({ behavior: "smooth", block: "start" });
+      },
+      { once: true }
+    ); // once: true => စတင်ချိန်တစ်ကြိမ်ထည့်ရုံ
+  }
+
+  // call after realtime refreshed
+  // onSnapshot(...) ပြီးလျှင်:
+  buildCategoryChipsFromProducts?.();
 
   // ---------- Form / Modal wires ----------
   const elForm = document.getElementById("productForm");
@@ -3980,23 +4174,45 @@ window.renderStorefrontFromCloud = window.renderStorefrontFromCloud || renderSto
 
     _unsubProducts = fdb.collection(PRODUCTS_COL).onSnapshot(
       (snap) => {
+        // 1) cache & globals
         _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        // hydrate scanner map
+        window._productsCache = _productsCache;
+
+        // 2) nav chips (categories from products)
+        buildCategoryChipsFromProducts?.();
+
+        // 3) scanner barcode map
         window.BARCODE_MAP = {};
         for (const p of _productsCache) {
-          if (p.barcode)
+          if (p.barcode) {
             window.BARCODE_MAP[p.barcode] = {
               id: p.id,
               title: p.title,
               price: p.price,
               img: p.thumb,
             };
+          }
         }
+
+        // 4) product manager list (modal) refresh
         renderProductList?.();
-        renderStorefrontFromCloud?.(_productsCache);
+
+        // 5) storefront re-render — respect current filters/title
+        if (typeof renderFilteredStore === "function") {
+          const titleEl =
+            document.getElementById("shopTitle") ||
+            document.querySelector("[data-shop-title]");
+          const curTitle = titleEl?.textContent?.trim() || "Shop";
+          renderFilteredStore(curTitle); // << filters (audience/category/new) stay intact
+        } else {
+          window.renderStorefrontFromCloud?.(_productsCache);
+        }
+
+        // 6) new arrivals strip
         renderNewArrivals?.(_productsCache);
-        buildCategoryNav?.(_productsCache);
-        attachStorefrontSearch?.(_productsCache);
+
+        // 7) search box wiring (no args; it will read window._productsCache)
+        attachStorefrontSearch?.();
       },
       (err) => console.error("realtime error:", err)
     );
@@ -4152,12 +4368,10 @@ window.renderStorefrontFromCloud = window.renderStorefrontFromCloud || renderSto
 
     if (!input) return;
 
-    const doSearch = () => {
+    input.oninput = () => {
       const q = (input.value || "").trim().toLowerCase();
-      const all = (window._productsCache || []).slice();
-
+      const all = window._productsCache || [];
       if (!q) {
-        // when cleared, show current filters (All/Men/Women etc.)
         renderFilteredStore("Shop");
         return;
       }
@@ -4168,14 +4382,11 @@ window.renderStorefrontFromCloud = window.renderStorefrontFromCloud || renderSto
         const b = (p.barcode || "").toLowerCase();
         return t.includes(q) || c.includes(q) || b.includes(q);
       });
-
-      setShopTitle(`Results for “${input.value}”`);
-      renderStorefrontFromCloud?.(res);
+      setShopTitle?.(`Results for “${input.value}”`);
+      window.renderStorefrontFromCloud?.(res);
     };
 
-    input.oninput = doSearch;
-    // initial state
-    if (input.value) doSearch();
+    if (input.value) input.oninput();
   }
 
   function filteredSortedProducts() {
