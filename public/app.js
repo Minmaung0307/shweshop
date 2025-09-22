@@ -1421,18 +1421,50 @@ const id =
 function buildNavChips() {
   if (!navScroll) return;
   navScroll.innerHTML = "";
-  // 🔧 'All Categories' ကို ပြန်မထည့်
-  const items = NAV_ITEMS.filter((it) => it.key !== "allCategories");
+
+  // 'All Categories' ကို မထည့်ချင်ရင် filter ထားချက်က OK
+  const items = NAV_ITEMS.filter(it => it.key !== "allCategories");
 
   items.forEach((item) => {
     const b = h("button");
     b.className = "nav-chip";
-    b.textContent = item.label;
-    b.dataset.key = item.key;
-    b.addEventListener("click", () => onNavClick(item, b));
+    b.type = "button";
+    b.textContent = item.label || item.key;
+
+    // 🔗 dataset mapping only — NO per-button handler here
+    // audience chips (e.g. For All / Men / Women / Kids / Pets ...)
+    if (item.type === "aud") {
+      b.dataset.type  = "aud";
+      b.dataset.value = item.value || item.key || "all";
+      b.dataset.label = item.label || "Shop";
+    }
+    // category chips (e.g. Fashion / Beauty / Electronics ...)
+    else if (item.type === "cat") {
+      b.dataset.type  = "cat";
+      b.dataset.value = item.value || item.key || "";
+      b.dataset.label = item.label || item.value || "Shop";
+    }
+    // special keys
+    else if (item.key === "new") {
+      b.dataset.type = "tag";
+      b.dataset.key  = "new";
+    }
+    else if (item.key === "analytics") {
+      b.dataset.view = "analytics"; // handleNavClick ထဲက openAdminAnalytics() တို့ကင့်ပါ
+    }
+    else if (item.key === "orders") {
+      b.dataset.view = "orders";
+    }
+    else {
+      // fallback — main shop
+      b.dataset.view = "shop";
+    }
+
+    // ❌ old: b.addEventListener("click", () => onNavClick(item, b));
     navScroll.appendChild(b);
   });
-  updateAdminUI();
+
+  updateAdminUI?.();
 }
 
 function updateAdminUI() {
