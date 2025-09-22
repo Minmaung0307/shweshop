@@ -3666,9 +3666,9 @@ document.addEventListener("visibilitychange", () => {
 
     try {
       // ✅ const id — reassign မလုပ်တော့
-      const id =
-        document.getElementById("pId")?.value.trim() ||
-        fdb.collection("products").doc().id;
+     let id =
+    document.getElementById("pId")?.value.trim() ||
+    fdb.collection(PRODUCTS_COL).doc().id;
 
       const title = document.getElementById("pTitle")?.value.trim();
       const category = document.getElementById("pCategory")?.value.trim();
