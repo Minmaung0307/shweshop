@@ -3734,6 +3734,78 @@ document.addEventListener("visibilitychange", () => {
   // 🔓 make it callable from other modules
   window.renderStorefrontFromCloud = renderStorefrontFromCloud;
 
+  // === Search wiring (make it global) ===
+  function attachStorefrontSearch(itemsOpt) {
+    // latest list
+    const items = itemsOpt || window._productsCache || [];
+
+    // try to find a search input in your topbar
+    const input =
+      document.getElementById("search") ||
+      document.getElementById("searchInput") ||
+      document.querySelector(".top-search input") ||
+      document.querySelector('input[type="search"]');
+
+    if (!input) return; // no search box in DOM
+
+    const doSearch = () => {
+      const q = (input.value || "").trim().toLowerCase();
+      if (!q) {
+        // no query → restore current filtered view
+        const currentTitle =
+          document.getElementById("shopTitle")?.textContent?.trim() || "Shop";
+        // သင့်မှာ renderFilteredStore() ရှိရင် အဲ့ဒါသို့ ပြန်ခေါ်
+        if (typeof window.renderFilteredStore === "function") {
+          window.renderFilteredStore(currentTitle);
+        } else {
+          // မရှိရင် full list ပြ
+          window.renderStorefrontFromCloud?.(window._productsCache || []);
+        }
+        return;
+      }
+
+      // title / category / barcode / description ဖြင့် ရှာ
+      const res = items.filter((p) => {
+        const t = (p.title || "").toLowerCase();
+        const c = (p.category || "").toLowerCase();
+        const b = (p.barcode || "").toLowerCase();
+        const d = (p.description || p.desc || "").toLowerCase();
+        return t.includes(q) || c.includes(q) || b.includes(q) || d.includes(q);
+      });
+
+      // reuse storefront renderer
+      window.renderStorefrontFromCloud?.(res);
+
+      // “no results” UI ကို သင့် renderer ထဲ မရှိရင် ဒီလိုလည်း သုံးနိုင်
+      if (!res.length) {
+        const grid =
+          document.getElementById("productGrid") ||
+          document.querySelector(".product-grid") ||
+          document.querySelector(".grid");
+        if (grid) {
+          grid.innerHTML = `
+          <div class="small" style="opacity:.8;">
+            No results<br>
+            <span class="small">We couldn't find items for "${input.value}"</span>
+          </div>`;
+        }
+      }
+    };
+
+    // bind once (overwrite each time is fine)
+    input.oninput = doSearch;
+
+    // page already has text? trigger once
+    if (input.value) doSearch();
+  }
+
+  // expose globally so other code can call it
+  window.attachStorefrontSearch =
+    window.attachStorefrontSearch || attachStorefrontSearch;
+
+  // Optional: DOM ready မှာလည်း bind လုပ်ပြီးရင် အလုပ်လုပ်စေ
+  document.addEventListener("DOMContentLoaded", () => attachStorefrontSearch());
+
   function buildCategoryChipsFromProducts() {
     const host = document.getElementById("navScroll");
     if (!host) return;
@@ -4095,7 +4167,7 @@ document.addEventListener("visibilitychange", () => {
         if (typeof window.renderNewArrivals === "function") {
           window.renderNewArrivals(_productsCache);
         }
-        attachStorefrontSearch?.();
+        attachStorefrontSearch();
       },
       (err) => console.error("realtime error:", err)
     );
