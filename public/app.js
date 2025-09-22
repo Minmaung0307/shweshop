@@ -3721,29 +3721,35 @@ document.addEventListener("visibilitychange", () => {
   }
 
   // ===== Reusable product card =====
+  /* ---------- A) Card HTML helper (wide, readable) ---------- */
   function productCardHTML(p) {
     const price = `$${(+p.price || 0).toFixed(2)}`;
+    const img = p.thumb || "";
+    // card: image on top, price centered, actions bottom row
     return `
-    <div class="thumb" data-view="${
-      p.id
-    }" style="height:160px;border-radius:12px;overflow:hidden;background:#111;cursor:pointer">
-      <img src="${p.thumb || ""}" alt="${
-      p.title || ""
-    }" style="width:100%;height:100%;object-fit:cover;">
+    <div class="thumb" data-open="${p.id}" title="${p.title || ""}">
+      <img src="${img}" alt="${p.title || ""}">
     </div>
-    <div class="strong" style="margin-top:8px;">${p.title || ""}</div>
-    <div class="tag" style="display:flex;justify-content:center;margin-top:4px;">${price}</div>
-    <div class="row" style="margin-top:8px; gap:.5rem; justify-content:space-between;">
-      <button class="btn-mini" data-add="${
-        p.id
-      }" title="Add to Cart">Add to Cart</button>
-      <button class="btn-mini btn-outline" data-view="${
-        p.id
-      }" title="View detail">View</button>
+    <div class="row" style="margin-top:6px; justify-content:space-between; align-items:flex-start;">
+      <div class="strong" style="max-width:60%; line-height:1.2;">${
+        p.title || ""
+      }</div>
+      <div class="tag">${price}</div>
+    </div>
+    <div class="small" style="opacity:.8; margin-top:4px; min-height:34px;">
+      ${(p.description || p.desc || "").slice(0, 80)}
+    </div>
+    <div class="row" style="margin-top:8px; justify-content:center;">
+      <div class="tag" style="font-weight:600;">${price}</div>
+    </div>
+    <div class="row" style="margin-top:8px; justify-content:space-between;">
+      <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+      <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
     </div>
   `;
   }
 
+  /* ---------- B) Storefront renderer (buttons wired) ---------- */
   function renderStorefrontFromCloud(items) {
     const grid =
       document.getElementById("productGrid") ||
@@ -3760,140 +3766,28 @@ document.addEventListener("visibilitychange", () => {
 
     for (const p of items) {
       const card = document.createElement("div");
-      card.className = "card";
-      // image-left / info-right; main image is CONTAIN (show all)
-      card.innerHTML = `
-      <div class="row" style="align-items:flex-start; gap:12px;">
-        <!-- LEFT -->
-        <div style="width:180px; min-width:180px;">
-          <div class="thumb" data-open="${p.id}"
-               style="width:180px;height:180px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid rgba(0,0,0,.08);cursor:pointer;overflow:hidden;">
-            <img src="${p.thumb || ""}" alt="${p.title || ""}"
-                 style="max-width:100%;max-height:100%;object-fit:contain;display:block;">
-          </div>
-
-          <!-- thumbs carousel (show up to 6) -->
-          <div class="row" style="margin-top:8px; align-items:center; gap:6px;">
-            <button class="btn-mini btn-outline" data-thumbs-left="${
-              p.id
-            }" title="Prev">◀</button>
-            <div class="thumbs-wrap" data-thumbs="${
-              p.id
-            }" style="display:flex; gap:6px; overflow:hidden; max-width:136px;">
-              ${
-                Array.isArray(p.images) && p.images.length
-                  ? p.images
-                      .slice(0, 6)
-                      .map(
-                        (u, i) =>
-                          `<img data-thumb="${p.id}" data-index="${i}" src="${u}" alt="thumb"
-                         style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#111;border:1px solid rgba(0,0,0,.1);cursor:pointer;">`
-                      )
-                      .join("")
-                  : ""
-              }
-            </div>
-            <button class="btn-mini btn-outline" data-thumbs-right="${
-              p.id
-            }" title="Next">▶</button>
-          </div>
-        </div>
-
-        <!-- RIGHT -->
-        <div style="flex:1;min-width:0;">
-          <div class="row" style="justify-content:space-between; align-items:flex-start;">
-            <div class="strong" style="font-size:1rem; line-height:1.2;">${
-              p.title || ""
-            }</div>
-            <div class="tag" style="font-size:.95rem;">$${(
-              +p.price || 0
-            ).toFixed(2)}</div>
-          </div>
-
-          <div class="small" style="opacity:.9; text-align:right; margin-top:6px; line-height:1.35;">
-            ${
-              ((p.desc || p.description || "") + "").trim() ||
-              "<span style='opacity:.6'>No description</span>"
-            }
-          </div>
-
-          <div class="row" style="justify-content:flex-end; gap:6px; margin-top:10px;">
-            <button class="btn-mini btn-outline" data-promo="${
-              p.id
-            }">Apply Promo</button>
-            <button class="btn-mini" data-member="${
-              p.id
-            }">Membership Discount</button>
-          </div>
-
-          <div class="row" style="justify-content:space-between; margin-top:12px;">
-            <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
-            <button class="btn-mini btn-outline" data-detail="${
-              p.id
-            }">View</button>
-          </div>
-        </div>
-      </div>
-    `;
+      card.className = "card card-wide";
+      card.style.cursor = "default";
+      card.innerHTML = productCardHTML(p);
       grid.appendChild(card);
     }
 
-    // delegated handlers
     grid.onclick = (e) => {
-      const leftBtn = e.target.closest?.("[data-thumbs-left]");
-      const rightBtn = e.target.closest?.("[data-thumbs-right]");
-      const thumbImg = e.target.closest?.("img[data-thumb]");
-      const promoBtn = e.target.closest?.("[data-promo]");
-      const membBtn = e.target.closest?.("[data-member]");
-      const addBtn = e.target.closest?.("[data-add]");
-      const openBtn = e.target.closest?.("[data-detail],[data-open]");
+      const open = e.target.closest?.("[data-detail],[data-open]");
+      const add = e.target.closest?.("[data-add]");
+      if (!open && !add) return;
 
-      // scroll thumbs
-      if (leftBtn || rightBtn) {
-        const pid =
-          leftBtn?.dataset.thumbsLeft || rightBtn?.dataset.thumbsRight;
-        const rail = grid.querySelector(`[data-thumbs="${pid}"]`);
-        if (rail)
-          rail.scrollBy({ left: leftBtn ? -100 : 100, behavior: "smooth" });
+      const id = open?.dataset.detail || open?.dataset.open || add?.dataset.add;
+      const prod = (items || []).find((x) => x.id === id);
+      if (!prod) return;
+
+      if (open) {
+        window.openProductDetail?.(prod);
         return;
       }
 
-      // click small thumb → set hero (contain)
-      if (thumbImg) {
-        const pid = thumbImg.dataset.thumb;
-        const idx = +thumbImg.dataset.index || 0;
-        const prod = (items || []).find((x) => x.id === pid);
-        const heroImg = grid.querySelector(`.thumb[data-open="${pid}"] img`);
-        if (prod && heroImg) {
-          const url =
-            (Array.isArray(prod.images) && prod.images[idx]) ||
-            prod.thumb ||
-            "";
-          if (url) {
-            heroImg.src = url;
-            heroImg.style.objectFit = "contain";
-            heroImg.style.maxWidth = "100%";
-            heroImg.style.maxHeight = "100%";
-          }
-        }
-        return;
-      }
-
-      // promo / membership
-      if (promoBtn) {
-        openPromoModal?.();
-        return;
-      }
-      if (membBtn) {
-        openMembershipModal?.();
-        return;
-      }
-
-      // add to cart
-      if (addBtn) {
-        const id = addBtn.dataset.add;
-        const prod = (items || []).find((x) => x.id === id);
-        if (!prod) return;
+      if (add) {
+        // simple cart add
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
@@ -3906,22 +3800,10 @@ document.addEventListener("visibilitychange", () => {
             qty: 1,
           });
         localStorage.setItem("cart", JSON.stringify(cart));
-        updateCartCount?.();
-        return;
-      }
-
-      // view → detail modal
-      if (openBtn) {
-        const id = openBtn.dataset.detail || openBtn.dataset.open;
-        const prod = (items || []).find((x) => x.id === id);
-        if (prod) window.openProductDetail?.(prod);
+        typeof updateCartCount === "function" && updateCartCount();
       }
     };
   }
-
-  // module-safe global
-  window.renderStorefrontFromCloud =
-    window.renderStorefrontFromCloud || renderStorefrontFromCloud;
 
   function buildCategoryChipsFromProducts() {
     const host = document.getElementById("navScroll");
@@ -4504,91 +4386,140 @@ document.addEventListener("visibilitychange", () => {
 })();
 
 // ===== Product Detail Modal (View) =====
-(function setupProductDetail() {
-  const dlg = document.getElementById("productDetailModal");
+/* ---------- C) Detail modal logic (gallery + qty + actions) ---------- */
+(function setupProductDetail(){
+  const dlg  = document.getElementById("productDetailModal");
   if (!dlg) return;
 
   const elTitle = document.getElementById("pdTitle");
-  const elHero = document.getElementById("pdHero");
-  const elThumbs = document.getElementById("pdThumbs");
+  const elHero  = document.getElementById("pdHero");
+  const elThumbs= document.getElementById("pdThumbs");
   const elPrice = document.getElementById("pdPrice");
-  const elDesc = document.getElementById("pdDesc");
-  const elAdd = document.getElementById("pdAdd");
-  const elClose = dlg.querySelector("[data-close]");
+  const elCat   = document.getElementById("pdCategory");
+  const elBar   = document.getElementById("pdBarcode");
+  const elDesc  = document.getElementById("pdDesc");
+  const elQty   = document.getElementById("pdQty");
+  const elAdd   = document.getElementById("pdAdd");
+  const elBuy   = document.getElementById("pdBuy");
+  const elInc   = document.getElementById("pdInc");
+  const elDec   = document.getElementById("pdDec");
+  const elClose = document.getElementById("pdClose");
+  const elPromo = document.getElementById("pdPromoBtn");
+  const elMem   = document.getElementById("pdMemberBtn");
 
-  function setHero(url) {
-    if (!elHero) return;
-    elHero.src = url || "";
-    // CONTAIN to show all
-    elHero.style.objectFit = "contain";
-    elHero.style.background = "#fff";
-    elHero.style.maxWidth = "100%";
-    elHero.style.maxHeight = "100%";
+  let cur = null, imgs = [], idx = 0;
+
+  function setHero(i){
+    if (!imgs.length) { elHero.src = ""; return; }
+    idx = Math.max(0, Math.min(i, imgs.length-1));
+    elHero.src = imgs[idx];
+    // active state
+    elThumbs.querySelectorAll("img").forEach((im, j) => {
+      im.classList.toggle("active", j === idx);
+    });
   }
 
-  window.openProductDetail = function (prod) {
-    const images =
-      Array.isArray(prod.images) && prod.images.length
-        ? prod.images.slice(0, 6)
-        : [];
-    const hero = images[0] || prod.thumb || "";
+  function renderThumbs(list){
+    elThumbs.innerHTML = "";
+    list.forEach((u, i) => {
+      const im = document.createElement("img");
+      im.alt = "thumb";
+      im.src = u;
+      im.addEventListener("click", () => setHero(i));
+      elThumbs.appendChild(im);
+    });
+  }
 
-    elTitle && (elTitle.textContent = prod.title || "");
-    setHero(hero);
-    elPrice && (elPrice.textContent = `$${(+prod.price || 0).toFixed(2)}`);
-    elDesc &&
-      (elDesc.innerHTML =
-        ((prod.desc || prod.description || "") + "").trim() ||
-        "<span style='opacity:.6'>No description</span>");
+  function open(prod){
+    cur = prod;
+    imgs = [];
+    if (Array.isArray(prod.images) && prod.images.length) imgs = prod.images.slice(0, 6);
+    if (!imgs.length && prod.thumb) imgs = [prod.thumb];
 
-    if (elThumbs) {
-      elThumbs.innerHTML = "";
-      // main thumb included?
-      const list = images.length ? images : prod.thumb ? [prod.thumb] : [];
-      list.forEach((u, i) => {
-        const im = document.createElement("img");
-        im.src = u;
-        im.alt = "thumb";
-        im.style.cssText =
-          "width:56px;height:56px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid rgba(0,0,0,.1);background:#fff;";
-        im.addEventListener("click", () => setHero(u));
-        elThumbs.appendChild(im);
-      });
-    }
+    elTitle.textContent = prod.title || "";
+    elPrice.textContent = `$${(+prod.price||0).toFixed(2)}`;
+    elCat.textContent   = prod.category || "-";
+    elBar.textContent   = prod.barcode  || "-";
+    elDesc.textContent  = prod.description || prod.desc || "";
+    elQty.value = "1";
 
-    if (elAdd) {
-      elAdd.onclick = () => {
-        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-        const i = cart.findIndex((x) => x.id === prod.id);
-        if (i >= 0) cart[i].qty += 1;
-        else
-          cart.push({
-            id: prod.id,
-            title: prod.title,
-            price: +prod.price,
-            img: prod.thumb,
-            qty: 1,
-          });
-        localStorage.setItem("cart", JSON.stringify(cart));
-        updateCartCount?.();
-      };
-    }
+    renderThumbs(imgs);
+    setHero(0);
 
-    dlg.showModal ? dlg.showModal() : dlg.setAttribute("open", "");
-  };
+    // open dialog
+    dlg.showModal ? dlg.showModal() : dlg.setAttribute("open","");
 
-  elClose?.addEventListener("click", () =>
-    dlg.close ? dlg.close() : dlg.removeAttribute("open")
-  );
+    // focus for keyboard inc/dec
+    elQty.focus({preventScroll:true});
+  }
+
+  // expose
+  window.openProductDetail = open;
+
+  // qty
+  elInc?.addEventListener("click", () => {
+    elQty.value = String(Math.max(1, (+elQty.value||1)+1));
+  });
+  elDec?.addEventListener("click", () => {
+    elQty.value = String(Math.max(1, (+elQty.value||1)-1));
+  });
+
+  // add to cart
+  elAdd?.addEventListener("click", () => {
+    if (!cur) return;
+    const n = Math.max(1, (+elQty.value||1));
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const i = cart.findIndex(x => x.id === cur.id);
+    if (i >= 0) cart[i].qty += n;
+    else cart.push({ id: cur.id, title: cur.title, price:+cur.price, img: cur.thumb, qty:n });
+    localStorage.setItem("cart", JSON.stringify(cart));
+    typeof updateCartCount === "function" && updateCartCount();
+    // drawer မပိတ်ပါဘူး (modal ကိုလည်း မပိတ်)
+  });
+
+  // buy now → cart view
+  elBuy?.addEventListener("click", () => {
+    if (!cur) return;
+    const n = Math.max(1, (+elQty.value||1));
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const i = cart.findIndex(x => x.id === cur.id);
+    if (i >= 0) cart[i].qty += n;
+    else cart.push({ id: cur.id, title: cur.title, price:+cur.price, img: cur.thumb, qty:n });
+    localStorage.setItem("cart", JSON.stringify(cart));
+    typeof updateCartCount === "function" && updateCartCount();
+
+    // modal ပိတ်ပြီး cart drawer/page သို့
+    if (dlg.close) dlg.close(); else dlg.removeAttribute("open");
+    document.getElementById("btnCart")?.click();
+  });
+
+  // close
+  elClose?.addEventListener("click", () => {
+    if (dlg.close) dlg.close(); else dlg.removeAttribute("open");
+  });
+  dlg?.addEventListener("click", (e) => {
+    // click backdrop to close
+    if (e.target === dlg) { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); }
+  });
+
+  // promo / membership
+  elPromo?.addEventListener("click", () => window.openPromoModal?.());
+  elMem?.addEventListener("click",   () => window.openMembershipModal?.());
 })();
 
 // ... other functions
 // e.g. renderStorefrontFromCloud, setupProductDetail, etc.
 
 // ✅ at the bottom of app.js
-window.openPromoModal = window.openPromoModal || function(){
-  document.getElementById("promoModal")?.showModal?.() || alert("Enter promo in promoModal");
-};
-window.openMembershipModal = window.openMembershipModal || function(){
-  document.getElementById("membershipModal")?.showModal?.() || alert("Open membershipModal here");
-};
+window.openPromoModal =
+  window.openPromoModal ||
+  function () {
+    document.getElementById("promoModal")?.showModal?.() ||
+      alert("Enter promo in promoModal");
+  };
+window.openMembershipModal =
+  window.openMembershipModal ||
+  function () {
+    document.getElementById("membershipModal")?.showModal?.() ||
+      alert("Open membershipModal here");
+  };

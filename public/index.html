@@ -172,7 +172,9 @@
         <hr />
         <div class="nav-links">
           <button data-view="shop" class="link active">🛍️ Shop</button>
-          <button data-view="analytics" class="link" type="button">📈 Analytics</button>
+          <button data-view="analytics" class="link" type="button">
+            📈 Analytics
+          </button>
           <button data-view="orders" class="link">🧾 Orders</button>
           <button data-view="about" class="link">ℹ️ About</button>
         </div>
@@ -699,72 +701,66 @@
       </div>
     </dialog>
 
-    <!-- ▶ Product Detail Modal (Gallery + Add to cart) -->
-    <dialog id="productDetailModal" class="pm-modal" aria-modal="true">
-      <div class="pm-wrap">
-        <div class="pm-head">
-          <div class="pm-title" id="pdTitle">Product</div>
-          <button id="pdClose" class="btn-mini btn-outline" type="button">
-            ✕
-          </button>
-        </div>
-
-        <div
-          class="pd-body"
-          style="
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 14px;
-            align-items: start;
-          "
+    <!-- ========== Product Detail Modal ========== -->
+    <dialog id="productDetailModal" class="pd-modal" aria-modal="true">
+      <div class="pd-wrap">
+        <button
+          id="pdClose"
+          class="btn-mini btn-outline pd-close"
+          aria-label="Close"
         >
-          <!-- Gallery -->
-          <div>
-            <div
-              class="pd-hero"
-              style="
-                height: 320px;
-                border-radius: 12px;
-                overflow: hidden;
-                background: #111;
-              "
-            >
-              <img
-                id="pdHero"
-                alt="hero"
-                style="width: 100%; height: 100%; object-fit: cover"
-              />
+          ✕
+        </button>
+
+        <div class="pd-grid">
+          <!-- Left: images -->
+          <div class="pd-media">
+            <div class="pd-hero">
+              <img id="pdHero" alt="hero" />
             </div>
-            <div
-              id="pdThumbs"
-              class="row"
-              style="gap: 8px; flex-wrap: wrap; margin-top: 10px"
-            ></div>
+            <div class="pd-thumbs" id="pdThumbs" aria-label="More images"></div>
           </div>
 
-          <!-- Info -->
-          <div>
-            <div class="row" style="align-items: baseline">
-              <div id="pdPrice" class="strong" style="font-size: 20px"></div>
-              <div id="pdCategory" class="tag"></div>
-            </div>
-            <div
-              class="small"
-              id="pdBarcode"
-              style="opacity: 0.85; margin: 6px 0"
-            ></div>
-
-            <div class="row" style="gap: 10px; margin: 12px 0">
-              <button id="pdDec" class="btn-mini btn-outline">−</button>
-              <span id="pdQty" class="strong">1</span>
-              <button id="pdInc" class="btn-mini">＋</button>
+          <!-- Right: info -->
+          <div class="pd-info">
+            <h3 id="pdTitle" class="pd-title">Product</h3>
+            <div class="pd-meta">
+              <div class="pd-price" id="pdPrice">$0.00</div>
+              <div class="pd-cat" id="pdCategory">Category</div>
+              <div class="pd-bar" id="pdBarcode">SKU</div>
             </div>
 
-            <div class="row" style="gap: 10px">
-              <button id="pdAdd" class="btn-mini" data-id="">
-                Add to Cart
+            <p id="pdDesc" class="pd-desc"></p>
+
+            <div class="pd-qtyrow">
+              <button class="btn-mini" id="pdDec" aria-label="Decrease">
+                −
               </button>
-              <button id="pdBuy" class="btn-mini btn-outline">Buy now</button>
+              <input
+                id="pdQty"
+                class="pd-qty"
+                type="number"
+                min="1"
+                value="1"
+                inputmode="numeric"
+              />
+              <button class="btn-mini" id="pdInc" aria-label="Increase">
+                ＋
+              </button>
+            </div>
+
+            <div class="pd-actions">
+              <button class="btn-mini" id="pdAdd">Add to Cart</button>
+              <button class="btn-mini btn-outline" id="pdBuy">Buy Now</button>
+            </div>
+
+            <div class="pd-promos">
+              <button class="btn-mini btn-outline" id="pdPromoBtn">
+                Apply Promo
+              </button>
+              <button class="btn-mini btn-outline" id="pdMemberBtn">
+                Membership Discount
+              </button>
             </div>
           </div>
         </div>
