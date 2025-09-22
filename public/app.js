@@ -4344,3 +4344,12 @@ window.openMembershipModal =
     document.getElementById("membershipModal")?.showModal?.() ||
       alert("Open membershipModal here");
   };
+
+firebase.auth().onAuthStateChanged(async u => {
+  console.log("auth uid:", u?.uid);
+  if (!u) return;
+  try {
+    const d = await firebase.firestore().collection('users').doc(u.uid).get();
+    console.log("isAdmin?", d.exists && d.data()?.role === "admin", d.data());
+  } catch(e) { console.warn("admin check error:", e); }
+});
