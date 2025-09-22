@@ -3643,7 +3643,7 @@ document.addEventListener("visibilitychange", () => {
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
 
-  // === Product form submit (define id up-front; save once) ===
+  // === Product form submit (FIX: define id up-front; save once) ===
   let _savingProduct = false;
 
   elForm?.addEventListener("submit", async (e) => {
@@ -3659,7 +3659,7 @@ document.addEventListener("visibilitychange", () => {
     }
 
     try {
-      // ✅ EDIT mode → pId; ADD mode → new doc id (fdb = compat Firestore)
+      // ✅ EDIT mode → keep pId; ADD mode → create new doc id
       let id =
         document.getElementById("pId")?.value.trim() ||
         fdb.collection("products").doc().id;
@@ -3679,6 +3679,7 @@ document.addEventListener("visibilitychange", () => {
       let thumbURL = "";
       if (file) {
         try {
+          // uploadProductThumb အတွင်းမှာ put(..., {contentType}) သုံးထားသင့်
           thumbURL = await uploadProductThumb(file, id);
         } catch (err) {
           console.error("upload error:", err);
@@ -3687,7 +3688,7 @@ document.addEventListener("visibilitychange", () => {
         }
       }
 
-      // --- gallery (optional) ---
+      // --- upload gallery (optional) ---
       let images = [];
       try {
         const gfiles = document.getElementById("pGallery")?.files || [];
@@ -3706,7 +3707,7 @@ document.addEventListener("visibilitychange", () => {
         images,
       };
 
-      // ✅ Save ONE time (and keep returned id)
+      // ✅ Save ONCE
       try {
         id = await upsertProduct(prod);
       } catch (err) {
@@ -3715,7 +3716,7 @@ document.addEventListener("visibilitychange", () => {
         return;
       }
 
-      // hydrate scanner/cart map
+      // scanner/cart map refresh
       window.BARCODE_MAP = window.BARCODE_MAP || {};
       window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
 
