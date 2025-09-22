@@ -1449,6 +1449,16 @@ function updateAdminUI() {
 
 // === Part 5: Nav actions ===
 function onNavClick(item, btn) {
+  const btn = e.target.closest?.("[data-view]");
+  if (!btn) return;
+  const view = btn.dataset.view;
+
+  if (typeof switchView === "function") switchView(view);
+
+  if (view === "analytics") {
+    openAdminAnalytics(); // <-- NEW
+    return;
+  }
   // active UI
   document
     .querySelectorAll(".nav-chip")
@@ -1493,6 +1503,7 @@ function onNavClick(item, btn) {
   // default
   showShopGrid(item.label || "Shop");
 }
+document.getElementById("nav")?.addEventListener("click", onNavClick);
 
 // --- SWITCH VIEW (class-based) ---
 function switchView(name) {
@@ -2141,26 +2152,25 @@ function last12MonthLabels(){
   const out = [];
   for (let i=11;i>=0;i--){
     const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    out.push(d.toLocaleString(undefined,{month:'short', year:'2-digit'})); // e.g. Sep 25
+    out.push(d.toLocaleString(undefined,{month:'short', year:'2-digit'}));
   }
   return out;
 }
 
 // Load analytics data (Firestore → analytics/summary) with demo fallback
 async function loadAnalyticsData(){
-  // Try analytics/summary (admins only per your rules)
   try{
     const doc = await fdb.collection("analytics").doc("summary").get();
     if (doc.exists){
       const d = doc.data() || {};
       return {
-        monthlyRevenue: d.monthlyRevenue || {},    // { "2025-07": 1234, ... }
-        ordersByStatus: d.ordersByStatus || {},    // { placed:10, paid:8, shipped:6, cancelled:1 }
+        monthlyRevenue: d.monthlyRevenue || {},
+        ordersByStatus: d.ordersByStatus || {},
       };
     }
   }catch(e){ console.warn("[analytics] fetch summary failed:", e); }
 
-  // Fallback demo so UI always renders
+  // Fallback demo
   const now = new Date();
   const monthlyRevenue = {};
   for (let i=11;i>=0;i--){
@@ -2178,7 +2188,6 @@ function renderRevenueLine(monthlyRevenue){
   const ctx = el.getContext("2d");
   destroyChart(AA.charts.revenue);
 
-  // Build labels & values aligned to last 12 months
   const labels = last12MonthLabels();
   const now = new Date();
   const keys = [];
@@ -2213,7 +2222,6 @@ function renderRevenueLine(monthlyRevenue){
     }
   });
 
-  // Make the card taller for line chart
   el.parentElement.style.minHeight = "280px";
 }
 
@@ -2229,18 +2237,13 @@ function renderOrdersPie(ordersByStatus){
 
   AA.charts.orders = new Chart(ctx, {
     type: "pie",
-    data: {
-      labels: labels.map(s => s[0].toUpperCase()+s.slice(1)),
-      datasets: [{
-        data: values
-      }]
+    data: { labels: labels.map(s => s[0].toUpperCase()+s.slice(1)),
+      datasets: [{ data: values }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "bottom" }
-      }
+      plugins: { legend: { position: "bottom" } }
     }
   });
 
@@ -2249,7 +2252,6 @@ function renderOrdersPie(ordersByStatus){
 
 // Open / Render entry point
 async function openAdminAnalytics(){
-  // If you have your own view switcher, keep it
   if (typeof switchView === "function") switchView("analytics");
   const sec = document.getElementById("adminAnalytics");
   if (sec) sec.style.display = "";
@@ -2257,55 +2259,56 @@ async function openAdminAnalytics(){
   const data = await loadAnalyticsData();
   renderRevenueLine(data.monthlyRevenue || {});
   renderOrdersPie(data.ordersByStatus || {});
-  // scroll into view nicely
   sec?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Wire up buttons (pick whichever exists in your UI)
+// Buttons / Back-compat
 document.getElementById("btnAnalytics")?.addEventListener("click", openAdminAnalytics);
 document.getElementById("navAnalytics")?.addEventListener("click", openAdminAnalytics);
+window.openAdminAnalytics = window.openAdminAnalytics || openAdminAnalytics;
+window.renderAnalytics = function () { openAdminAnalytics(); };
 
 // If your router dispatches custom events, you can call openAdminAnalytics() when the tab becomes visible.
 
 // simple demo generator
-function makeDemoOrders(daysBack = 365) {
-  const cats = ["fashion", "beauty", "home", "auto", "electronics", "baby"];
-  const names = [
-    "Bag",
-    "T-Shirt",
-    "Serum",
-    "LED Lamp",
-    "Dash Cam",
-    "Stroller",
-    "Hair Dryer",
-    "Sneakers",
-  ];
-  const arr = [];
-  for (let i = daysBack - 1; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    const n = Math.floor(Math.random() * 3); // 0-2 orders/day
-    for (let j = 0; j < n; j++) {
-      const items = [];
-      const k = 1 + Math.floor(Math.random() * 3);
-      for (let t = 0; t < k; t++) {
-        const title = names[Math.floor(Math.random() * names.length)];
-        items.push({
-          title,
-          qty: 1 + Math.floor(Math.random() * 3),
-          price: 10 + Math.floor(Math.random() * 90),
-        });
-      }
-      const total = items.reduce((s, x) => s + x.price * x.qty, 0);
-      arr.push({
-        orderDate: d,
-        pricing: { total },
-        items,
-        cat: cats[Math.floor(Math.random() * cats.length)],
-      });
-    }
-  }
-  return arr;
-}
+// function makeDemoOrders(daysBack = 365) {
+//   const cats = ["fashion", "beauty", "home", "auto", "electronics", "baby"];
+//   const names = [
+//     "Bag",
+//     "T-Shirt",
+//     "Serum",
+//     "LED Lamp",
+//     "Dash Cam",
+//     "Stroller",
+//     "Hair Dryer",
+//     "Sneakers",
+//   ];
+//   const arr = [];
+//   for (let i = daysBack - 1; i >= 0; i--) {
+//     const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+//     const n = Math.floor(Math.random() * 3); // 0-2 orders/day
+//     for (let j = 0; j < n; j++) {
+//       const items = [];
+//       const k = 1 + Math.floor(Math.random() * 3);
+//       for (let t = 0; t < k; t++) {
+//         const title = names[Math.floor(Math.random() * names.length)];
+//         items.push({
+//           title,
+//           qty: 1 + Math.floor(Math.random() * 3),
+//           price: 10 + Math.floor(Math.random() * 90),
+//         });
+//       }
+//       const total = items.reduce((s, x) => s + x.price * x.qty, 0);
+//       arr.push({
+//         orderDate: d,
+//         pricing: { total },
+//         items,
+//         cat: cats[Math.floor(Math.random() * cats.length)],
+//       });
+//     }
+//   }
+//   return arr;
+// }
 
 // === Part 11: Membership (demo activate) ===
 // open membership
