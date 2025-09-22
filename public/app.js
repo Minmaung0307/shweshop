@@ -3706,7 +3706,7 @@ document.addEventListener("visibilitychange", () => {
   // === Upload one thumbnail to Storage → return downloadURL
   async function uploadProductThumb(file, productId) {
     if (!file) return "";
-    const ref = storage.ref(`products/${productId}/thumb.jpg`);
+    const ref = fstorage.ref(`products/${productId}/thumb.jpg`);
     // ✅ contentType ထည့်ပေး (บาง browser preflight/CORS နေပီးကယ်)
     await ref.put(file, { contentType: file.type || "image/jpeg" });
     return await ref.getDownloadURL();
@@ -3907,83 +3907,93 @@ document.addEventListener("visibilitychange", () => {
   // === Product form submit (no reassign; no global leak) ===
   let _savingProduct = false;
 
-  elForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (_savingProduct) return;
-    _savingProduct = true;
+elForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (_savingProduct) return;
+  _savingProduct = true;
 
-    const btnSave = elForm.querySelector('button[type="submit"]');
-    const prevTxt = btnSave?.textContent;
-    if (btnSave) {
-      btnSave.disabled = true;
-      btnSave.textContent = "Saving…";
+  const btnSave = elForm.querySelector('button[type="submit"]');
+  const prevTxt = btnSave?.textContent;
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = "Saving…";
+  }
+
+  try {
+    // Stable id (create first for upload path)
+    let id = document.getElementById("pId")?.value.trim();
+    if (!id) id = fdb.collection("products").doc().id;
+
+    const title    = document.getElementById("pTitle")?.value.trim();
+    const category = document.getElementById("pCategory")?.value.trim();
+    const price    = parseFloat(document.getElementById("pPrice")?.value);
+    const barcode  = document.getElementById("pBarcode")?.value.trim();
+    const file     = document.getElementById("pImgFile")?.files?.[0] || null;
+    const desc     = document.getElementById("pDesc")?.value.trim() || "";
+
+    if (!title || !category || isNaN(price) || !barcode) {
+      alert("Please fill Title, Category, Price, Barcode");
+      return;
     }
 
-    try {
-      let id =
-        document.getElementById("pId")?.value.trim() ||
-        fdb.collection(PRODUCTS_COL).doc().id;
-
-      const title = document.getElementById("pTitle")?.value.trim();
-      const category = document.getElementById("pCategory")?.value.trim();
-      const price = parseFloat(document.getElementById("pPrice")?.value);
-      const barcode = document.getElementById("pBarcode")?.value.trim();
-      const file = document.getElementById("pImgFile")?.files?.[0] || null;
-
-      // ✅ description ကို ယူ
-      const desc = document.getElementById("pDesc")?.value.trim() || "";
-
-      if (!title || !category || isNaN(price) || !barcode) {
-        alert("Please fill Title, Category, Price, Barcode");
+    let thumbURL = "";
+    if (file) {
+      try {
+        thumbURL = await uploadProductThumb(file, id);
+      } catch (err) {
+        console.error("upload error:", err);
+        alert("Image upload failed (permission/CORS/network).");
         return;
       }
-
-      let thumbURL = "";
-      if (file) {
-        try {
-          thumbURL = await uploadProductThumb(file, id);
-        } catch (err) {
-          console.error("upload error:", err);
-          alert("Image upload failed (permission/CORS/network).");
-          return;
-        }
-      }
-
-      let images = [];
-      try {
-        const gfiles = document.getElementById("pGallery")?.files || [];
-        if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
-      } catch (e) {
-        console.warn("gallery upload error:", e);
-      }
-
-      // ✅ product doc ထဲမှာ description ထည့်
-      const prod = {
-        id,
-        title,
-        category,
-        price: +price,
-        barcode,
-        thumb: thumbURL,
-        images,
-        description: desc,
-      };
-      await upsertProduct(prod);
-
-      window.BARCODE_MAP = window.BARCODE_MAP || {};
-      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
-
-      alert("Product saved.");
-      closeDialog("productModal");
-      resetProductForm();
-    } finally {
-      _savingProduct = false;
-      if (btnSave) {
-        btnSave.disabled = false;
-        btnSave.textContent = prevTxt || "Save";
-      }
     }
-  });
+
+    // optional gallery
+    let images = [];
+    try {
+      const gfiles = document.getElementById("pGallery")?.files || [];
+      if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+    } catch (e) {
+      console.warn("gallery upload error:", e);
+    }
+
+    const prod = {
+      id, title, category, price:+price, barcode,
+      thumb: thumbURL, images, description: desc,
+      updatedAt: Date.now(), createdAt: Date.now()
+    };
+
+    // ⛔ This throws if rules block (non-admin); catch below
+    await fdb.collection("products").doc(id).set(prod, { merge: true });
+
+    // update scanner map
+    window.BARCODE_MAP = window.BARCODE_MAP || {};
+    window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
+
+    // ✅ success
+    alert("Product saved.");
+    closeDialog("productModal");
+    // reset form
+    document.getElementById("pmMode")?.textContent = "Add";
+    elForm?.reset?.();
+    document.getElementById("pId") && (document.getElementById("pId").value = "");
+    document.getElementById("pThumbPreview") && (document.getElementById("pThumbPreview").src = "");
+    document.getElementById("pGalleryPreview") && (document.getElementById("pGalleryPreview").innerHTML = "");
+  } catch (err) {
+    console.error("save error:", err);
+    const msg = String(err?.message || err || "");
+    if (msg.includes("Missing or insufficient permissions") || msg.includes("PERMISSION_DENIED")) {
+      alert("Save failed: permission denied.\n\nTip: products are admin-only in Firestore rules. Create users/{yourUid} with { role: 'admin' } first.");
+    } else {
+      alert("Save failed. " + msg);
+    }
+  } finally {
+    _savingProduct = false;
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = prevTxt || "Save";
+    }
+  }
+});
 
   // refs (near other refs)
   const elGalleryFiles = document.getElementById("pGallery");

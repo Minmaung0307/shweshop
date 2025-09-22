@@ -112,7 +112,6 @@
       </div>
     </div>
 
-
     <!-- Horizontal chips / menu -->
     <nav id="navScroll" class="nav-scroll hscroll">
       <div class="nav-header">
@@ -557,7 +556,12 @@
             />
             <input id="pImgFile" class="input" type="file" accept="image/*" />
           </div>
-          <textarea id="pDesc" class="input" placeholder="Short description (e.g. material, size…)" rows="3"></textarea>
+          <textarea
+            id="pDesc"
+            class="input"
+            placeholder="Short description (e.g. material, size…)"
+            rows="3"
+          ></textarea>
 
           <div class="pm-thumbrow">
             <div class="small" style="opacity: 0.8">Thumbnail preview</div>
@@ -637,56 +641,60 @@
     </dialog>
 
     <!-- Detail modal skeleton (ensure these ids exist) -->
-<dialog id="productDetailModal" class="pd-modal">
-  <div class="pd-wrap">
-    <button id="pdClose" class="pd-close" aria-label="Close">✕</button>
+    <dialog id="productDetailModal" class="pd-modal">
+      <div class="pd-wrap">
+        <button id="pdClose" class="pd-close" aria-label="Close">✕</button>
 
-    <div class="pd-left">
-      <div class="pd-hero"><img id="pdHero" alt=""></div>
-      <div id="pdThumbs" class="pd-thumbs"></div>
-      <div class="pd-hero-nav">
-        <button id="pdPrev" class="btn-mini">‹ Prev</button>
-        <button id="pdNext" class="btn-mini">Next ›</button>
-      </div>
-    </div>
+        <div class="pd-left">
+          <div class="pd-hero"><img id="pdHero" alt="" /></div>
+          <div id="pdThumbs" class="pd-thumbs"></div>
+          <div class="pd-hero-nav">
+            <button id="pdPrev" class="btn-mini">‹ Prev</button>
+            <button id="pdNext" class="btn-mini">Next ›</button>
+          </div>
+        </div>
 
-    <div class="pd-right">
-      <h3 id="pdTitle"></h3>
-      <div class="pd-meta">
-        <span id="pdCategory" class="tag"></span>
-        <span id="pdBarcode" class="small"></span>
-      </div>
-      <div id="pdPrice" class="pd-price"></div>
-      <p id="pdDesc" class="pd-desc"></p>
+        <div class="pd-right">
+          <h3 id="pdTitle"></h3>
+          <div class="pd-meta">
+            <span id="pdCategory" class="tag"></span>
+            <span id="pdBarcode" class="small"></span>
+          </div>
+          <div id="pdPrice" class="pd-price"></div>
+          <p id="pdDesc" class="pd-desc"></p>
 
-      <div class="row" style="gap:.5rem;align-items:center">
-        <span class="small">Qty</span>
-        <button id="pdDec" class="btn-mini">−</button>
-        <span id="pdQty" class="strong">1</span>
-        <button id="pdInc" class="btn-mini">＋</button>
-      </div>
+          <div class="row" style="gap: 0.5rem; align-items: center">
+            <span class="small">Qty</span>
+            <button id="pdDec" class="btn-mini">−</button>
+            <span id="pdQty" class="strong">1</span>
+            <button id="pdInc" class="btn-mini">＋</button>
+          </div>
 
-      <div class="pd-promo-box">
-        <input id="pdPromoInput" class="input" placeholder="Enter promo code…">
-        <button id="pdApplyPromo" class="btn-mini">Apply</button>
-      </div>
+          <div class="pd-promo-box">
+            <input
+              id="pdPromoInput"
+              class="input"
+              placeholder="Enter promo code…"
+            />
+            <button id="pdApplyPromo" class="btn-mini">Apply</button>
+          </div>
 
-      <div class="pd-member-box">
-        <select id="pdMemberSelect" class="input">
-          <option value="">Membership (optional)</option>
-          <option value="gold">Gold (5% off)</option>
-          <option value="platinum">Platinum (8% off)</option>
-          <option value="diamond">Diamond (12% off)</option>
-        </select>
-      </div>
+          <div class="pd-member-box">
+            <select id="pdMemberSelect" class="input">
+              <option value="">Membership (optional)</option>
+              <option value="gold">Gold (5% off)</option>
+              <option value="platinum">Platinum (8% off)</option>
+              <option value="diamond">Diamond (12% off)</option>
+            </select>
+          </div>
 
-      <div class="row" style="gap:.5rem;margin-top:.5rem">
-        <button id="pdAdd" class="btn-mini">Add to Cart</button>
-        <button id="pdBuy" class="btn-mini btn-outline">Buy Now</button>
+          <div class="row" style="gap: 0.5rem; margin-top: 0.5rem">
+            <button id="pdAdd" class="btn-mini">Add to Cart</button>
+            <button id="pdBuy" class="btn-mini btn-outline">Buy Now</button>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</dialog>
+    </dialog>
 
     <!-- App -->
     <!-- Firebase (Compat CDN) — place these BEFORE app.js -->
@@ -696,37 +704,20 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
     <script>
-      // ---- Firebase init (compat) ----
       const firebaseConfig = {
         apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
         authDomain: "shweshop-mm.firebaseapp.com",
         projectId: "shweshop-mm",
-        storageBucket: "shweshop-mm.firebasestorage.app",
+        storageBucket: "shweshop-mm.appspot.com" /* <-- fix this */,
         messagingSenderId: "361216212375",
         appId: "1:361216212375:web:fed19b7fe4072000c298d2",
         measurementId: "G-WBJJZZNLX6",
       };
       firebase.initializeApp(firebaseConfig);
 
-      // expose instances
-      const _fdb = firebase.firestore();
-      const _storage = firebase.storage();
-      window.fdb = _fdb;
-      window.storage = _storage;
-      window.db = _fdb;
-
-      // auth state → fb-ready (race မဖြစ်ရန်)
-      let dispatched = false;
-      function notifyReadyOnce() {
-        if (!dispatched) {
-          dispatched = true;
-          document.dispatchEvent(new Event("fb-ready"));
-        }
-      }
-      firebase.auth().onAuthStateChanged((user) => {
-        console.log("auth state:", !!user, user?.uid || "");
-        notifyReadyOnce();
-      });
+      window.fdb = firebase.firestore();
+      window.storage = firebase.storage();
+      window.db = window.fdb;
     </script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
