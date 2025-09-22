@@ -1573,7 +1573,8 @@ function renderFilteredStore(label, opts = {}) {
   }
 
   setShopTitle(label);
-  renderStorefrontFromCloud?.(items);
+  // renderStorefrontFromCloud?.(items);
+  window.renderStorefrontFromCloud?.(items);
 }
 
 // --- SWITCH VIEW (class-based) ---
@@ -3744,24 +3745,24 @@ document.addEventListener("visibilitychange", () => {
   }
 
   function renderStorefrontFromCloud(items) {
-    const grid =
-      document.getElementById("productGrid") ||
-      document.getElementById("grid") ||
-      document.querySelector(".product-grid") ||
-      document.querySelector(".grid");
-    if (!grid) return;
+  const grid =
+    document.getElementById("productGrid") ||
+    document.getElementById("grid") ||
+    document.querySelector(".product-grid") ||
+    document.querySelector(".grid");
+  if (!grid) return;
 
-    grid.innerHTML = "";
-    if (!items?.length) {
-      grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
-      return;
-    }
+  grid.innerHTML = "";
+  if (!items?.length) {
+    grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
+    return;
+  }
 
-    for (const p of items) {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.style.cursor = "default";
-      card.innerHTML = `
+  for (const p of items) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.cursor = "default";
+    card.innerHTML = `
       <div class="thumb" data-open="${p.id}" style="cursor:pointer">
         <img src="${p.thumb || ""}" alt="${p.title || ""}">
       </div>
@@ -3773,45 +3774,40 @@ document.addEventListener("visibilitychange", () => {
         <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
       </div>
     `;
-      grid.appendChild(card);
+    grid.appendChild(card);
+  }
+
+  grid.onclick = (e) => {
+    const addBtn  = e.target.closest?.("[data-add]");
+    const openBtn = e.target.closest?.("[data-detail],[data-open]");
+    if (!addBtn && !openBtn) return;
+
+    const id =
+      addBtn?.dataset.add ||
+      openBtn?.dataset.detail ||
+      openBtn?.dataset.open;
+
+    const prod = (items || []).find((x) => x.id === id);
+    if (!prod) return;
+
+    if (addBtn) {
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const i = cart.findIndex((x) => x.id === id);
+      if (i >= 0) cart[i].qty += 1;
+      else cart.push({ id, title: prod.title, price: +prod.price, img: prod.thumb, qty: 1 });
+      localStorage.setItem("cart", JSON.stringify(cart));
+      if (typeof updateCartCount === "function") updateCartCount();
+      return;
     }
 
-    // single delegated handler for all cards
-    grid.onclick = (e) => {
-      const addBtn = e.target.closest?.("[data-add]");
-      const openBtn = e.target.closest?.("[data-detail],[data-open]");
-      if (!addBtn && !openBtn) return;
+    if (openBtn && typeof window.openProductDetail === "function") {
+      window.openProductDetail(prod);
+    }
+  };
+}
 
-      const id =
-        addBtn?.dataset.add || openBtn?.dataset.detail || openBtn?.dataset.open;
-
-      const prod = (items || []).find((x) => x.id === id);
-      if (!prod) return;
-
-      // Add to cart
-      if (addBtn) {
-        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-        const i = cart.findIndex((x) => x.id === id);
-        if (i >= 0) cart[i].qty += 1;
-        else
-          cart.push({
-            id,
-            title: prod.title,
-            price: +prod.price,
-            img: prod.thumb,
-            qty: 1,
-          });
-        localStorage.setItem("cart", JSON.stringify(cart));
-        if (typeof updateCartCount === "function") updateCartCount();
-        return;
-      }
-
-      // View (open detail modal)
-      if (openBtn && typeof window.openProductDetail === "function") {
-        window.openProductDetail(prod);
-      }
-    };
-  }
+// ✅ expose to global for module scripts
+window.renderStorefrontFromCloud = window.renderStorefrontFromCloud || renderStorefrontFromCloud;
 
   // ---------- Form / Modal wires ----------
   const elForm = document.getElementById("productForm");
