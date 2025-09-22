@@ -800,25 +800,16 @@
       };
       firebase.initializeApp(firebaseConfig);
 
-      // ---- Expose compat instances (ONE Firestore instance only) ----
-      const _fdb = firebase.firestore();
-      const _storage = firebase.storage();
+      window.fdb = firebase.firestore();
+      window.storage = firebase.storage();
+      window.db = window.fdb;
 
-      // Prefer fdb/storage in new code
-      window.fdb = _fdb;
-      window.storage = _storage;
-
-      // Back-compat alias for old code that still calls `db`
-      window.db = _fdb;
-
-      // ✅ anon sign-in with guard
       firebase
         .auth()
         .signInAnonymously()
         .then(() => console.log("anon auth ok"))
         .catch((err) => console.warn("anon signin:", err?.message || err));
 
-      // let app.js know
       document.dispatchEvent(new Event("fb-ready"));
     </script>
     <!-- ✅ Load EmailJS SDK -->
