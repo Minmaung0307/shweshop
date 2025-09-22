@@ -1180,3 +1180,14 @@ body { font-size: calc(16px * var(--fs)); }
 .aa-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
   .aa-card{background:var(--card-bg,rgba(255,255,255,0.04));border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;}
   .aa-title{font-weight:600;margin:0 0 10px 0;opacity:.9}
+
+/* Analytics charts — keep them compact */
+#adminAnalytics canvas,
+#view-analytics canvas {
+  max-height: 260px;
+  width: 100%;
+}
+
+.ana-card {
+  min-height: 280px; /* gives room but not huge */
+}

@@ -1423,7 +1423,7 @@ function buildNavChips() {
   navScroll.innerHTML = "";
 
   // 'All Categories' ကို မထည့်ချင်ရင် filter
-  const items = NAV_ITEMS.filter(it => it.key !== "allCategories");
+  const items = NAV_ITEMS.filter((it) => it.key !== "allCategories");
 
   items.forEach((item) => {
     const b = h("button");
@@ -1433,16 +1433,16 @@ function buildNavChips() {
 
     // dataset mapping only (central handler သာသုံးမယ်)
     if (item.type === "aud") {
-      b.dataset.type  = "aud";
+      b.dataset.type = "aud";
       b.dataset.value = item.value || item.key || "all";
       b.dataset.label = item.label || "Shop";
     } else if (item.type === "cat") {
-      b.dataset.type  = "cat";
+      b.dataset.type = "cat";
       b.dataset.value = item.value || item.key || "";
       b.dataset.label = item.label || item.value || "Shop";
     } else if (item.key === "new") {
       b.dataset.type = "tag";
-      b.dataset.key  = "new";
+      b.dataset.key = "new";
     } else if (item.key === "analytics") {
       b.dataset.view = "analytics";
     } else if (item.key === "orders") {
@@ -1461,24 +1461,28 @@ function buildNavChips() {
 }
 
 function updateAdminUI() {
-  const adminChip = [...(navScroll?.children || [])]
-    .find(b => (b.textContent || "").includes("Analytics"));
+  const adminChip = [...(navScroll?.children || [])].find((b) =>
+    (b.textContent || "").includes("Analytics")
+  );
   if (adminChip) adminChip.style.display = state.isAdmin ? "" : "none";
 
-  const ordersChip = [...(navScroll?.children || [])]
-    .find(b => (b.textContent || "").includes("Orders"));
+  const ordersChip = [...(navScroll?.children || [])].find((b) =>
+    (b.textContent || "").includes("Orders")
+  );
   if (ordersChip) ordersChip.style.display = state.user ? "" : "none";
 }
 
 // === Part 5: Nav actions (single delegated handler to #navScroll) ===
-(function attachNavHandler(){
-  const nav = document.getElementById("navScroll"); // ✅ HTML အတိုင်း
+// === NAV: one delegated handler on #navScroll ===
+(function attachNavHandler() {
+  const nav = document.getElementById("navScroll");
   if (!nav) return;
 
   function findNavEl(start) {
     let el = start;
     for (let i = 0; i < 4 && el; i++) {
-      if (el.dataset && (el.dataset.view || el.dataset.type || el.dataset.key)) return el;
+      if (el.dataset && (el.dataset.view || el.dataset.type || el.dataset.key))
+        return el;
       el = el.parentElement;
     }
     return null;
@@ -1488,53 +1492,89 @@ function updateAdminUI() {
     const targetEl = findNavEl(e.target);
     if (!targetEl) return;
 
-    // highlight
-    nav.querySelectorAll(".nav-chip,.link,[data-view],[data-type],[data-key]")
-       .forEach(n => n.classList?.remove("active"));
+    // active highlight
+    nav
+      .querySelectorAll(".nav-chip,.link,[data-view],[data-type],[data-key]")
+      .forEach((n) => n.classList?.remove("active"));
     targetEl.classList?.add("active");
 
-    const view  = targetEl.dataset.view || "";
-    const type  = targetEl.dataset.type || "";
-    const key   = targetEl.dataset.key  || "";
+    const view = targetEl.dataset.view || "";
+    const type = targetEl.dataset.type || "";
+    const key = targetEl.dataset.key || "";
     const value = targetEl.dataset.value || "";
-    const label = targetEl.dataset.label || targetEl.textContent?.trim() || "Shop";
+    const label =
+      targetEl.dataset.label || targetEl.textContent?.trim() || "Shop";
 
     // direct views
-    if (view === "analytics" || key === "analytics") { 
-      openAdminAnalytics?.(); 
-      return; 
+    if (view === "analytics" || key === "analytics") {
+      openAdminAnalytics?.();
+      return;
     }
-    if (view === "orders" || key === "orders")     { 
-      if (typeof switchView === "function") switchView("orders"); 
-      renderOrders?.(); 
-      return; 
+    if (view === "orders" || key === "orders") {
+      if (typeof switchView === "function") switchView("orders");
+      renderOrders?.();
+      return;
     }
 
-    // audience / category / new
+    // filters → render storefront
     if (type === "aud") {
       window.currentAudience = value || "all";
       window.currentCategory = "";
-      showShopGrid?.(label);
+      renderFilteredStore(label);
       return;
     }
     if (type === "cat") {
       window.currentAudience = "all";
       window.currentCategory = value || "";
-      showShopGrid?.(label);
+      renderFilteredStore(label);
       return;
     }
     if (type === "tag" && key === "new") {
       window.currentAudience = "all";
       window.currentCategory = "";
-      showShopGrid?.("New Arrivals", { tag: "new" });
+      renderFilteredStore("New Arrivals", { tag: "new" });
       return;
     }
 
     // fallback
-    if (view) { if (typeof switchView === "function") switchView(view); return; }
-    showShopGrid?.(label);
+    if (view) {
+      if (typeof switchView === "function") switchView(view);
+      return;
+    }
+    renderFilteredStore(label);
   });
 })();
+
+// === helpers (keep these once, not duplicated) ===
+function setShopTitle(txt) {
+  const h =
+    document.getElementById("shopTitle") ||
+    document.querySelector("[data-shop-title]");
+  if (h) h.textContent = txt || "Shop";
+}
+
+function renderFilteredStore(label, opts = {}) {
+  const all = (window._productsCache || []).slice();
+
+  let items = all;
+  const aud = (window.currentAudience || "all").toLowerCase();
+  if (aud !== "all")
+    items = items.filter((p) => (p.audience || "all").toLowerCase() === aud);
+
+  const cat = (window.currentCategory || "").toLowerCase();
+  if (cat)
+    items = items.filter((p) => (p.category || "").toLowerCase() === cat);
+
+  if (opts.tag === "new") {
+    items = items
+      .slice()
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .slice(0, 16);
+  }
+
+  setShopTitle(label);
+  renderStorefrontFromCloud?.(items);
+}
 
 // --- SWITCH VIEW (class-based) ---
 function switchView(name) {
@@ -2160,155 +2200,198 @@ async function loadOrders() {
 
 // ========== Admin Analytics (Line + Pie) ==========
 // Keep refs to avoid "Canvas already in use" errors
-const AA = {
-  charts: {
-    revenue: null,
-    orders:  null,
-  }
-};
+// const AA = {
+//   charts: {
+//     revenue: null,
+//     orders:  null,
+//   }
+// };
 
 // Destroy helper
-function destroyChart(ref){
-  try { ref?.destroy?.(); } catch(_) {}
-}
+// function destroyChart(ref){
+//   try { ref?.destroy?.(); } catch(_) {}
+// }
 
 // Format helpers
-function monthKey(d){ // yyyy-mm
+function monthKey(d) {
+  // yyyy-mm
   const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,'0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
 }
-function last12MonthLabels(){
-  const now = new Date();
-  const out = [];
-  for (let i=11;i>=0;i--){
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    out.push(d.toLocaleString(undefined,{month:'short', year:'2-digit'}));
-  }
-  return out;
-}
+// function last12MonthLabels(){
+//   const now = new Date();
+//   const out = [];
+//   for (let i=11;i>=0;i--){
+//     const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+//     out.push(d.toLocaleString(undefined,{month:'short', year:'2-digit'}));
+//   }
+//   return out;
+// }
 
 // Load analytics data (Firestore → analytics/summary) with demo fallback
-async function loadAnalyticsData(){
-  try{
-    const doc = await fdb.collection("analytics").doc("summary").get();
-    if (doc.exists){
-      const d = doc.data() || {};
-      return {
-        monthlyRevenue: d.monthlyRevenue || {},
-        ordersByStatus: d.ordersByStatus || {},
-      };
-    }
-  }catch(e){ console.warn("[analytics] fetch summary failed:", e); }
+// async function loadAnalyticsData(){
+//   try{
+//     const doc = await fdb.collection("analytics").doc("summary").get();
+//     if (doc.exists){
+//       const d = doc.data() || {};
+//       return {
+//         monthlyRevenue: d.monthlyRevenue || {},
+//         ordersByStatus: d.ordersByStatus || {},
+//       };
+//     }
+//   }catch(e){ console.warn("[analytics] fetch summary failed:", e); }
 
-  // Fallback demo
-  const now = new Date();
-  const monthlyRevenue = {};
-  for (let i=11;i>=0;i--){
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    monthlyRevenue[monthKey(d)] = Math.round(800 + Math.random()*1400);
-  }
-  const ordersByStatus = { placed: 32, paid: 26, shipped: 21, cancelled: 3 };
-  return { monthlyRevenue, ordersByStatus };
-}
+//   // Fallback demo
+//   const now = new Date();
+//   const monthlyRevenue = {};
+//   for (let i=11;i>=0;i--){
+//     const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+//     monthlyRevenue[monthKey(d)] = Math.round(800 + Math.random()*1400);
+//   }
+//   const ordersByStatus = { placed: 32, paid: 26, shipped: 21, cancelled: 3 };
+//   return { monthlyRevenue, ordersByStatus };
+// }
 
 // Revenue Line
-function renderRevenueLine(monthlyRevenue){
+const ANA = { charts: { revenue: null, orders: null }, booted: false };
+
+function destroyChart(ins) {
+  try {
+    ins?.destroy?.();
+  } catch {}
+}
+
+function renderRevenueLine(monthlyRevenue = {}) {
   const el = document.getElementById("revChart");
   if (!el) return;
   const ctx = el.getContext("2d");
-  destroyChart(AA.charts.revenue);
+  destroyChart(ANA.charts.revenue);
 
-  const labels = last12MonthLabels();
-  const now = new Date();
-  const keys = [];
-  for (let i=11;i>=0;i--){
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    keys.push(monthKey(d));
-  }
-  const values = keys.map(k => +monthlyRevenue[k] || 0);
+  const labels = (function () {
+    const out = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      out.push(
+        d.toLocaleString(undefined, { month: "short", year: "2-digit" })
+      );
+    }
+    return out;
+  })();
 
-  AA.charts.revenue = new Chart(ctx, {
+  const keys = (function () {
+    const out = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      out.push(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      );
+    }
+    return out;
+  })();
+
+  const values = keys.map((k) => +monthlyRevenue[k] || 0);
+
+  // keep parent compact
+  el.parentElement?.classList?.add("ana-card");
+
+  ANA.charts.revenue = new Chart(ctx, {
     type: "line",
     data: {
       labels,
-      datasets: [{
-        label: "Revenue (USD)",
-        data: values,
-        tension: 0.35,
-        fill: true
-      }]
+      datasets: [
+        { label: "Revenue (USD)", data: values, tension: 0.35, fill: true },
+      ],
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
+      maintainAspectRatio: true, // keep size small
+      interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: true },
-        tooltip: { callbacks: { label: (c)=> `$${c.raw?.toLocaleString?.() || c.raw}` } }
+        legend: { display: true, position: "bottom" },
+        tooltip: {
+          callbacks: { label: (c) => `$${(+c.raw).toLocaleString()}` },
+        },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: v=>'$'+Number(v).toLocaleString() } }
-      }
-    }
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => "$" + Number(v).toLocaleString() },
+        },
+      },
+    },
   });
-
-  el.parentElement.style.minHeight = "280px";
 }
 
-// Orders Pie
-function renderOrdersPie(ordersByStatus){
+function renderOrdersPie(ordersByStatus = {}) {
   const el = document.getElementById("ordersPieChart");
   if (!el) return;
   const ctx = el.getContext("2d");
-  destroyChart(AA.charts.orders);
+  destroyChart(ANA.charts.orders);
 
-  const labels = ["placed","paid","shipped","cancelled"];
-  const values = labels.map(k => +ordersByStatus[k] || 0);
+  const labels = ["Placed", "Paid", "Shipped", "Cancelled"];
+  const values = ["placed", "paid", "shipped", "cancelled"].map(
+    (k) => +ordersByStatus[k] || 0
+  );
 
-  AA.charts.orders = new Chart(ctx, {
+  el.parentElement?.classList?.add("ana-card");
+
+  ANA.charts.orders = new Chart(ctx, {
     type: "pie",
-    data: { labels: labels.map(s => s[0].toUpperCase()+s.slice(1)),
-      datasets: [{ data: values }]
-    },
+    data: { labels, datasets: [{ data: values }] },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" } }
-    }
+      maintainAspectRatio: true,
+      plugins: { legend: { position: "bottom" } },
+    },
   });
-
-  el.parentElement.style.minHeight = "280px";
 }
 
-// Open / Render entry point
-async function openAdminAnalytics(){
-  // 1) router-based view (ရှိရင်)
+async function openAdminAnalytics() {
   if (typeof switchView === "function") switchView("analytics");
-
-  // 2) plain section fallback (id=adminAnalytics) — ရှိရင်ပေါ်စေ
-  const sec = document.getElementById("adminAnalytics");
+  const sec =
+    document.getElementById("adminAnalytics") ||
+    document.getElementById("view-analytics");
   if (sec) sec.style.display = "";
 
-  // 3) view-style layout (id=view-analytics) — ရှိရင် active လုပ်
-  const pane = document.getElementById("view-analytics");
-  if (pane) {
-    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    pane.classList.add("active");
+  // load (with your summary fetch or fallback)
+  let data = { monthlyRevenue: {}, ordersByStatus: {} };
+  try {
+    const doc = await fdb.collection("analytics").doc("summary").get();
+    if (doc.exists) data = doc.data();
+  } catch (e) {
+    // fallback demo data
+    const now = new Date();
+    const monthlyRevenue = {};
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthlyRevenue[
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      ] = Math.round(800 + Math.random() * 1500);
+    }
+    data.monthlyRevenue = monthlyRevenue;
+    data.ordersByStatus = { placed: 20, paid: 15, shipped: 12, cancelled: 2 };
   }
 
-  const data = await loadAnalyticsData();
   renderRevenueLine(data.monthlyRevenue || {});
   renderOrdersPie(data.ordersByStatus || {});
 
-  (pane || sec)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  sec?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // Buttons / Back-compat
-document.getElementById("btnAnalytics")?.addEventListener("click", openAdminAnalytics);
-document.getElementById("navAnalytics")?.addEventListener("click", openAdminAnalytics);
+document
+  .getElementById("btnAnalytics")
+  ?.addEventListener("click", openAdminAnalytics);
+document
+  .getElementById("navAnalytics")
+  ?.addEventListener("click", openAdminAnalytics);
 window.openAdminAnalytics = window.openAdminAnalytics || openAdminAnalytics;
-window.renderAnalytics = function () { openAdminAnalytics(); };
+window.renderAnalytics = function () {
+  openAdminAnalytics();
+};
 
 // If your router dispatches custom events, you can call openAdminAnalytics() when the tab becomes visible.
 
@@ -3678,21 +3761,35 @@ document.addEventListener("visibilitychange", () => {
       const card = document.createElement("div");
       card.className = "card";
       card.style.cursor = "default";
-      card.innerHTML = productCardHTML(p);
+      card.innerHTML = `
+      <div class="thumb" data-open="${p.id}" style="cursor:pointer">
+        <img src="${p.thumb || ""}" alt="${p.title || ""}">
+      </div>
+      <div class="row" style="margin-top:8px; justify-content:center;">
+        <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
+      </div>
+      <div class="row" style="margin-top:6px; justify-content:space-between;">
+        <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
+        <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
+      </div>
+    `;
       grid.appendChild(card);
     }
 
-    // one handler for all cards
+    // single delegated handler for all cards
     grid.onclick = (e) => {
-      const add = e.target.closest?.("[data-add]");
-      const view = e.target.closest?.("[data-view]");
-      if (!add && !view) return;
+      const addBtn = e.target.closest?.("[data-add]");
+      const openBtn = e.target.closest?.("[data-detail],[data-open]");
+      if (!addBtn && !openBtn) return;
 
-      const id = add?.dataset.add || view?.dataset.view;
+      const id =
+        addBtn?.dataset.add || openBtn?.dataset.detail || openBtn?.dataset.open;
+
       const prod = (items || []).find((x) => x.id === id);
       if (!prod) return;
 
-      if (add) {
+      // Add to cart
+      if (addBtn) {
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
@@ -3709,11 +3806,9 @@ document.addEventListener("visibilitychange", () => {
         return;
       }
 
-      if (view) {
-        // ✅ open detail modal (NOT add-product modal)
-        if (typeof window.openProductDetail === "function") {
-          window.openProductDetail(prod);
-        }
+      // View (open detail modal)
+      if (openBtn && typeof window.openProductDetail === "function") {
+        window.openProductDetail(prod);
       }
     };
   }
@@ -4030,13 +4125,13 @@ document.addEventListener("visibilitychange", () => {
     host.appendChild(all);
 
     // each cat
-   for (const c of cats) {
-  const catBtn = document.createElement("button"); // btn → catBtn
-  catBtn.className = "btn-mini btn-outline";
-  catBtn.dataset.cat = c;
-  catBtn.textContent = c;
-  host.appendChild(catBtn);
-}
+    for (const c of cats) {
+      const catBtn = document.createElement("button"); // btn → catBtn
+      catBtn.className = "btn-mini btn-outline";
+      catBtn.dataset.cat = c;
+      catBtn.textContent = c;
+      host.appendChild(catBtn);
+    }
 
     // click → filter main storefront grid (#productGrid)
     host.onclick = (e) => {
@@ -4052,32 +4147,38 @@ document.addEventListener("visibilitychange", () => {
     };
   }
 
-  function attachStorefrontSearch(items) {
-    // try to find an input for search
+  function attachStorefrontSearch() {
     const input =
       document.getElementById("search") ||
       document.getElementById("searchInput") ||
       document.querySelector(".top-search input") ||
       document.querySelector('input[type="search"]');
+
     if (!input) return;
 
     const doSearch = () => {
       const q = (input.value || "").trim().toLowerCase();
+      const all = (window._productsCache || []).slice();
+
       if (!q) {
-        renderStorefrontFromCloud?.(items);
+        // when cleared, show current filters (All/Men/Women etc.)
+        renderFilteredStore("Shop");
         return;
       }
-      const res = (items || []).filter((p) => {
+
+      const res = all.filter((p) => {
         const t = (p.title || "").toLowerCase();
         const c = (p.category || "").toLowerCase();
         const b = (p.barcode || "").toLowerCase();
         return t.includes(q) || c.includes(q) || b.includes(q);
       });
+
+      setShopTitle(`Results for “${input.value}”`);
       renderStorefrontFromCloud?.(res);
     };
 
     input.oninput = doSearch;
-    // if page loaded with text already
+    // initial state
     if (input.value) doSearch();
   }
 
