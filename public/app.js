@@ -1450,54 +1450,50 @@ function updateAdminUI() {
 // === Part 5: Nav actions ===
 // ✅ Single, defensive nav handler
 function onNavClick(e) {
-  // normalize event/source
   const src = (e && (e.target || e.currentTarget)) || this;
   if (!src) return;
 
-  // find nearest actionable element
-  const target = src.closest ? src.closest("[data-view],[data-type],[data-key]") : null;
+  // data-view or data-key lookup
+  const target = src.closest
+    ? src.closest("[data-view],[data-type],[data-key]")
+    : null;
   if (!target) return;
 
-  // highlight active
-  document.querySelectorAll(".nav-chip").forEach(c => c.classList.remove("active"));
-  target.classList.add("active");
-
-  // direct view switching
   const view = target.dataset.view;
-  if (view) {
-    if (typeof switchView === "function") switchView(view);
-
-    if (view === "analytics") {
-      openAdminAnalytics();
-      return;
-    }
-    if (view === "orders") {
-      renderOrders?.();
-      return;
-    }
-    return; // other views handled by switchView
-  }
-
-  // structured nav via data-*
-  const type  = target.dataset.type;   // 'aud' | 'cat' | 'tag'
-  const key   = target.dataset.key;    // e.g. 'new'
-  const value = target.dataset.value || "";
+  const type = target.dataset.type;
+  const key  = target.dataset.key;
+  const val  = target.dataset.value || "";
   const label = target.dataset.label || target.textContent?.trim() || "Shop";
 
+  // --- Active highlight ---
+  document.querySelectorAll(".nav-chip").forEach(c =>
+    c.classList.remove("active")
+  );
+  target.classList.add("active");
+
+  // --- Direct view handling ---
+  if (view === "analytics" || key === "analytics") {
+    openAdminAnalytics();   // 🔑 call analytics entry
+    return;
+  }
+  if (view === "orders" || key === "orders") {
+    if (typeof switchView === "function") switchView("orders");
+    renderOrders?.();
+    return;
+  }
+
   if (type === "aud") {
-    window.currentAudience = value || "all";
+    window.currentAudience = val || "all";
     window.currentCategory = "";
     showShopGrid(label);
     return;
   }
-
   if (type === "cat") {
     window.currentAudience = "all";
-    window.currentCategory = value || "";
-    showShopGrid(label || value || "Shop");
+    window.currentCategory = val || "";
+    showShopGrid(label);
     return;
   }
-
   if (type === "tag" && key === "new") {
     window.currentAudience = "all";
     window.currentCategory = "";
@@ -1505,27 +1501,17 @@ function onNavClick(e) {
     return;
   }
 
-  if (key === "orders") {
-    if (typeof switchView === "function") switchView("orders");
-    renderOrders?.();
-    return;
-  }
-
-  if (key === "analytics") {
-    openAdminAnalytics();
-    return;
-  }
-
   // default
   showShopGrid(label);
 }
-// container delegation (ရှိရင်)
+
+// nav delegation
 document.getElementById("nav")?.addEventListener("click", onNavClick);
 
 // or individual chips/buttons
-document.querySelectorAll(".nav-chip").forEach(el => {
-  el.addEventListener("click", onNavClick);
-});
+// document.querySelectorAll(".nav-chip").forEach(el => {
+//   el.addEventListener("click", onNavClick);
+// });
 
 // --- SWITCH VIEW (class-based) ---
 function switchView(name) {
@@ -2274,14 +2260,25 @@ function renderOrdersPie(ordersByStatus){
 
 // Open / Render entry point
 async function openAdminAnalytics(){
+  // 1) router-based view (ရှိရင်)
   if (typeof switchView === "function") switchView("analytics");
+
+  // 2) plain section fallback (id=adminAnalytics) — ရှိရင်ပေါ်စေ
   const sec = document.getElementById("adminAnalytics");
   if (sec) sec.style.display = "";
+
+  // 3) view-style layout (id=view-analytics) — ရှိရင် active လုပ်
+  const pane = document.getElementById("view-analytics");
+  if (pane) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    pane.classList.add("active");
+  }
 
   const data = await loadAnalyticsData();
   renderRevenueLine(data.monthlyRevenue || {});
   renderOrdersPie(data.ordersByStatus || {});
-  sec?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  (pane || sec)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
 }
 
 // Buttons / Back-compat
