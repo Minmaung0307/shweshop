@@ -3645,8 +3645,8 @@ document.addEventListener("visibilitychange", () => {
     }
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
-  
-// === Product form submit (FIXED) ===
+
+// === Product form submit (FIX: define id; save once) ===
 let _savingProduct = false;
 
 elForm?.addEventListener("submit", async (e) => {
@@ -3659,9 +3659,10 @@ elForm?.addEventListener("submit", async (e) => {
   if (btnSave) { btnSave.disabled = true; btnSave.textContent = "Saving…"; }
 
   try {
-    // ① Define id up-front
-    let id = (document.getElementById("pId")?.value.trim())
-          || fdb.collection("products").doc().id;
+    // ✅ Define id up-front (EDIT mode → keep pId; ADD mode → new doc id)
+    let id =
+      (document.getElementById("pId")?.value.trim()) ||
+      fdb.collection("products").doc().id;
 
     const title    = document.getElementById("pTitle")?.value.trim();
     const category = document.getElementById("pCategory")?.value.trim();
@@ -3674,11 +3675,11 @@ elForm?.addEventListener("submit", async (e) => {
       return;
     }
 
-    // upload thumb
+    // thumb upload
     let thumbURL = "";
     if (file) {
       try {
-        thumbURL = await uploadProductThumb(file, id);
+        thumbURL = await uploadProductThumb(file, id); // inside: put(..., {contentType: ...})
       } catch (err) {
         console.error("upload error:", err);
         alert("Image upload failed (permission/CORS/network).");
@@ -3686,7 +3687,7 @@ elForm?.addEventListener("submit", async (e) => {
       }
     }
 
-    // gallery (optional)
+    // gallery upload (optional)
     let images = [];
     try {
       const gfiles = document.getElementById("pGallery")?.files || [];
@@ -3695,7 +3696,7 @@ elForm?.addEventListener("submit", async (e) => {
 
     const prod = { id, title, category, price:+price, barcode, thumb: thumbURL, images };
 
-    // ② Save ONCE (keep returned id)
+    // ✅ Save ONCE (and keep returned id just in case)
     try {
       id = await upsertProduct(prod);
     } catch (err) {
@@ -3704,7 +3705,7 @@ elForm?.addEventListener("submit", async (e) => {
       return;
     }
 
-    // update barcode map
+    // Update scanner/cart map
     window.BARCODE_MAP = window.BARCODE_MAP || {};
     window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
 
