@@ -1412,11 +1412,16 @@ async function uploadGalleryFiles(files, productId) {
   return out;
 }
 
+// id ကို form ထဲကနေ သတ်မှတ်ထားရမယ် (အပေါ်မှာ)
+const id = document.getElementById("pId")?.value.trim() || fdb.collection("products").doc().id;
+
 // --- after thumbURL is ready ---
 let images = [];
 try {
   const gfiles = document.getElementById("pGallery")?.files || [];
-  if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+  if (gfiles.length) {
+    images = await uploadGalleryFiles(gfiles, id);
+  }
 } catch (e) {
   console.warn("gallery upload error:", e);
 }
@@ -1424,13 +1429,14 @@ try {
 // product doc
 const prod = {
   id,
-  title,
+  pdTitle,
   category,
   price: +price,
   barcode,
   thumb: thumbURL,
   images,
 };
+
 await upsertProduct(prod);
 
 // === Part 4: Nav chips & admin UI toggle ===
@@ -3643,7 +3649,7 @@ document.addEventListener("visibilitychange", () => {
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
 
-  // === Product form submit (FIX: define id up-front; save once) ===
+  // === Product form submit (no reassign; no global leak) ===
   let _savingProduct = false;
 
   elForm?.addEventListener("submit", async (e) => {
@@ -3659,8 +3665,8 @@ document.addEventListener("visibilitychange", () => {
     }
 
     try {
-      // ✅ EDIT mode → keep pId; ADD mode → create new doc id
-      let id =
+      // ✅ const id — reassign မလုပ်တော့
+      const id =
         document.getElementById("pId")?.value.trim() ||
         fdb.collection("products").doc().id;
 
@@ -3675,11 +3681,10 @@ document.addEventListener("visibilitychange", () => {
         return;
       }
 
-      // --- upload thumb (optional) ---
+      // upload thumb
       let thumbURL = "";
       if (file) {
         try {
-          // uploadProductThumb အတွင်းမှာ put(..., {contentType}) သုံးထားသင့်
           thumbURL = await uploadProductThumb(file, id);
         } catch (err) {
           console.error("upload error:", err);
@@ -3688,7 +3693,7 @@ document.addEventListener("visibilitychange", () => {
         }
       }
 
-      // --- upload gallery (optional) ---
+      // gallery (optional)
       let images = [];
       try {
         const gfiles = document.getElementById("pGallery")?.files || [];
@@ -3707,16 +3712,10 @@ document.addEventListener("visibilitychange", () => {
         images,
       };
 
-      // ✅ Save ONCE
-      try {
-        id = await upsertProduct(prod);
-      } catch (err) {
-        console.error("save error:", err);
-        alert("Save failed. You may not have permission to add/edit products.");
-        return;
-      }
+      // ✅ Save ONE time — reassign မလို
+      await upsertProduct(prod);
 
-      // scanner/cart map refresh
+      // update scanner/cart map
       window.BARCODE_MAP = window.BARCODE_MAP || {};
       window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
 
