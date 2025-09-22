@@ -3717,18 +3717,17 @@ document.addEventListener("visibilitychange", () => {
   function productCardHTML(p) {
     return `
     <div class="thumb" data-detail="${p.id}">
-      <img src="${p.thumb || ""}" alt="${p.title || ""}">
+      <img src="${p.thumb || ""}" alt="${
+      p.title || ""
+    }" style="width:100%;height:180px;object-fit:contain;background:#0b0b0b;border-radius:12px;">
     </div>
-
-    <div class="row" style="gap:8px; align-items:flex-start; margin-top:8px;">
-      <div class="strong" style="flex:1; line-height:1.3">${p.title || ""}</div>
+    <div class="row" style="margin-top:6px;justify-content:space-between;align-items:flex-start">
+      <div class="strong" style="max-width:65%;">${p.title || ""}</div>
+      <div class="tag" style="margin-left:6px;">$${(+p.price || 0).toFixed(
+        2
+      )}</div>
     </div>
-
-    <div class="row center-price">
-      <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
-    </div>
-
-    <div class="row actions">
+    <div class="row" style="margin-top:6px;justify-content:space-between">
       <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
       <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
     </div>
@@ -3749,40 +3748,20 @@ document.addEventListener("visibilitychange", () => {
       grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
       return;
     }
-
-    const adHTML = `
-    <div class="card" style="padding:0; overflow:hidden;">
-      <div style="background:#1a1a1a; border-radius:12px; border:1px solid rgba(255,255,255,.08);">
-        <img src="images/ads/sample-wide.jpg" alt="Ad" style="width:100%; height:160px; object-fit:cover; display:block;">
-        <div style="padding:10px 12px; display:flex; justify-content:space-between; align-items:center;">
-          <div class="small" style="opacity:.8;">Sponsored</div>
-          <button class="btn-mini btn-outline">Learn more</button>
-        </div>
-      </div>
-    </div>`;
-
-    items.forEach((p, i) => {
+    for (const p of items) {
       const card = document.createElement("div");
       card.className = "card";
-      card.style.cursor = "default";
       card.innerHTML = productCardHTML(p);
       grid.appendChild(card);
+    }
 
-      // insert ad after every 6 cards
-      if ((i + 1) % 6 === 0) {
-        const ad = document.createElement("div");
-        ad.innerHTML = adHTML;
-        grid.appendChild(ad.firstElementChild);
-      }
-    });
-
-    // one handler for all cards
+    // Delegated click
     grid.onclick = (e) => {
       const add = e.target.closest?.("[data-add]");
-      const detEl = e.target.closest?.("[data-detail]");
-      if (!add && !detEl) return;
+      const det = e.target.closest?.("[data-detail]");
+      if (!add && !det) return;
 
-      const id = add?.dataset.add || detEl?.dataset.detail;
+      const id = add?.dataset.add || det?.dataset.detail;
       const prod = (items || []).find((x) => x.id === id);
       if (!prod) return;
 
@@ -3802,11 +3781,11 @@ document.addEventListener("visibilitychange", () => {
         updateCartCount?.();
         return;
       }
-
-      // detail:
-      window.openProductDetail?.(prod);
+      if (det) openProductDetail?.(prod);
     };
   }
+
+  window.renderStorefrontFromCloud = renderStorefrontFromCloud;
 
   function buildCategoryChipsFromProducts() {
     const host = document.getElementById("navScroll");
@@ -3941,7 +3920,6 @@ document.addEventListener("visibilitychange", () => {
     }
 
     try {
-      // prepare id
       let id =
         document.getElementById("pId")?.value.trim() ||
         fdb.collection(PRODUCTS_COL).doc().id;
@@ -3952,12 +3930,14 @@ document.addEventListener("visibilitychange", () => {
       const barcode = document.getElementById("pBarcode")?.value.trim();
       const file = document.getElementById("pImgFile")?.files?.[0] || null;
 
+      // ✅ description ကို ယူ
+      const desc = document.getElementById("pDesc")?.value.trim() || "";
+
       if (!title || !category || isNaN(price) || !barcode) {
         alert("Please fill Title, Category, Price, Barcode");
         return;
       }
 
-      // upload thumb
       let thumbURL = "";
       if (file) {
         try {
@@ -3969,7 +3949,6 @@ document.addEventListener("visibilitychange", () => {
         }
       }
 
-      // gallery (optional)
       let images = [];
       try {
         const gfiles = document.getElementById("pGallery")?.files || [];
@@ -3978,7 +3957,7 @@ document.addEventListener("visibilitychange", () => {
         console.warn("gallery upload error:", e);
       }
 
-      // ✅ build product object here
+      // ✅ product doc ထဲမှာ description ထည့်
       const prod = {
         id,
         title,
@@ -3987,19 +3966,12 @@ document.addEventListener("visibilitychange", () => {
         barcode,
         thumb: thumbURL,
         images,
+        description: desc,
       };
-
-      // save once
       await upsertProduct(prod);
 
-      // update scanner/cart map
       window.BARCODE_MAP = window.BARCODE_MAP || {};
-      window.BARCODE_MAP[barcode] = {
-        id,
-        title,
-        price: +price,
-        img: thumbURL,
-      };
+      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
 
       alert("Product saved.");
       closeDialog("productModal");
@@ -4322,126 +4294,133 @@ document.addEventListener("visibilitychange", () => {
 
 // ===== Product Detail Modal (View) =====
 /* ---------- C) Detail modal logic (gallery + qty + actions) ---------- */
+// ===== Product Detail Modal =====
 (function setupProductDetail() {
   const dlg = document.getElementById("productDetailModal");
   if (!dlg) return;
 
-  const elTitle = document.getElementById("pdTitle");
-  const elHero = document.getElementById("pdHero");
-  const elThumbs = document.getElementById("pdThumbs");
-  const elPrice = document.getElementById("pdPrice");
-  const elCat = document.getElementById("pdCategory");
-  const elBar = document.getElementById("pdBarcode");
-  const elDesc = document.getElementById("pdDesc");
-  const elQty = document.getElementById("pdQty");
-  const elAdd = document.getElementById("pdAdd");
-  const elBuy = document.getElementById("pdBuy");
+  const el = {
+    title: document.getElementById("pdTitle"),
+    hero: document.getElementById("pdHero"),
+    thumbs: document.getElementById("pdThumbs"),
+    price: document.getElementById("pdPrice"),
+    cat: document.getElementById("pdCategory"),
+    bar: document.getElementById("pdBarcode"),
+    desc: document.getElementById("pdDesc"),
+    qty: document.getElementById("pdQty"),
+    add: document.getElementById("pdAdd"),
+    buy: document.getElementById("pdBuy"),
+    prev: document.getElementById("pdPrev"),
+    next: document.getElementById("pdNext"),
+    close: document.getElementById("pdClose"),
+    promo: document.getElementById("pdPromoInput"),
+    apply: document.getElementById("pdApplyPromo"),
+    member: document.getElementById("pdMemberSelect"),
+    dec: document.getElementById("pdDec"),
+    inc: document.getElementById("pdInc"),
+  };
 
-  let cur = null;
-  let imgs = [];
-  let idx = 0;
+  let cur = null,
+    idx = 0,
+    imgs = [];
 
   function setHero(i) {
-    if (!imgs.length) return;
-    idx = (i + imgs.length) % imgs.length;
-    elHero.src = imgs[idx];
+    idx = Math.max(0, Math.min(i, imgs.length - 1));
+    if (el.hero) el.hero.src = imgs[idx] || "";
   }
 
   function renderThumbs() {
-    elThumbs.innerHTML = "";
+    if (!el.thumbs) return;
+    el.thumbs.innerHTML = "";
     imgs.forEach((u, i) => {
       const im = document.createElement("img");
       im.src = u;
       im.alt = "thumb";
+      im.style.cssText =
+        "width:60px;height:60px;object-fit:contain;border-radius:8px;background:#0b0b0b;border:1px solid rgba(255,255,255,.12);cursor:pointer";
       im.addEventListener("click", () => setHero(i));
-      elThumbs.appendChild(im);
+      el.thumbs.appendChild(im);
     });
   }
 
-  window.openProductDetail = function (p) {
-    cur = p || null;
-    imgs = [];
-    if (!cur) return;
+  window.openProductDetail = function (prod) {
+    cur = prod || {};
+    imgs = [cur.thumb, ...(Array.isArray(cur.images) ? cur.images : [])].filter(
+      Boolean
+    );
+    if (!imgs.length) imgs = [cur.thumb].filter(Boolean);
 
-    // images: hero + gallery (6)
-    if (cur.thumb) imgs.push(cur.thumb);
-    if (Array.isArray(cur.images)) imgs.push(...cur.images.filter(Boolean));
-    if (!imgs.length) imgs = ["images/placeholder.png"];
-    setHero(0);
+    // fill
+    el.title && (el.title.textContent = cur.title || "");
+    el.price && (el.price.textContent = `$${(+cur.price || 0).toFixed(2)}`);
+    el.cat && (el.cat.textContent = cur.category || "");
+    el.bar && (el.bar.textContent = cur.barcode || "");
+    el.desc && (el.desc.textContent = cur.description || cur.desc || "");
+    el.qty && (el.qty.textContent = "1");
+
     renderThumbs();
+    setHero(0);
 
-    // text
-    elTitle.textContent = cur.title || "";
-    elPrice.textContent = `$${(+cur.price || 0).toFixed(2)}`;
-    elCat.textContent = cur.category ? `Category: ${cur.category}` : "";
-    elBar.textContent = cur.barcode ? `SKU: ${cur.barcode}` : "";
-    elDesc.textContent = cur.description || cur.desc || "";
-
-    // qty reset
-    elQty.value = 1;
-
-    // show
+    // open
     dlg.showModal?.() || dlg.setAttribute("open", "");
   };
 
-  // qty buttons
-  document.getElementById("pdInc")?.addEventListener("click", () => {
-    elQty.value = parseInt(elQty.value || "1", 10) + 1;
+  // qty
+  el.dec?.addEventListener("click", () => {
+    const q = Math.max(1, (parseInt(el.qty?.textContent || "1", 10) || 1) - 1);
+    el.qty.textContent = String(q);
   });
-  document.getElementById("pdDec")?.addEventListener("click", () => {
-    const n = Math.max(1, parseInt(elQty.value || "1", 10) - 1);
-    elQty.value = n;
-  });
-
-  // prev/next gallery
-  document
-    .getElementById("pdPrev")
-    ?.addEventListener("click", () => setHero(idx - 1));
-  document
-    .getElementById("pdNext")
-    ?.addEventListener("click", () => setHero(idx + 1));
-
-  // close
-  document.getElementById("pdClose")?.addEventListener("click", () => {
-    dlg.close?.();
-    dlg.removeAttribute("open");
+  el.inc?.addEventListener("click", () => {
+    const q = (parseInt(el.qty?.textContent || "1", 10) || 1) + 1;
+    el.qty.textContent = String(q);
   });
 
-  // CTA
-  elAdd?.addEventListener("click", () => {
+  // add/buy
+  el.add?.addEventListener("click", () => {
     if (!cur) return;
-    const qty = Math.max(1, parseInt(elQty.value || "1", 10));
+    const q = parseInt(el.qty?.textContent || "1", 10) || 1;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const i = cart.findIndex((x) => x.id === cur.id);
-    if (i >= 0) cart[i].qty += qty;
+    if (i >= 0) cart[i].qty += q;
     else
       cart.push({
         id: cur.id,
         title: cur.title,
         price: +cur.price,
         img: cur.thumb,
-        qty,
+        qty: q,
       });
     localStorage.setItem("cart", JSON.stringify(cart));
     updateCartCount?.();
   });
-
-  elBuy?.addEventListener("click", () => {
-    // add then open cart drawer/page
-    elAdd.click();
+  el.buy?.addEventListener("click", () => {
+    // simple: add then jump to cart
+    el.add?.click();
     document.getElementById("btnCart")?.click();
   });
 
-  // Promo & Membership
-  document.getElementById("pdPromoBtn")?.addEventListener("click", () => {
-    window.openPromoModal?.();
+  // promo / membership
+  el.apply?.addEventListener("click", () => {
+    const code = (el.promo?.value || "").trim();
+    if (!code) {
+      alert("Enter promo code.");
+      return;
+    }
+    // Call your existing applyPromo(code) if any
+    window.applyPromoCode
+      ? window.applyPromoCode(code)
+      : alert(`Applied: ${code} (demo)`);
   });
-  document.getElementById("pdMemberBtn")?.addEventListener("click", () => {
-    window.openMembershipModal?.();
+  el.member?.addEventListener("change", (e) => {
+    const v = e.target.value;
+    // just a heads-up; real discount calc should happen in cart total
+    if (v) console.log("member selected:", v);
   });
 
-  // safety: avoid accidental form submit inside dialog
-  dlg.addEventListener("cancel", (e) => e.preventDefault());
+  // nav & close
+  el.prev?.addEventListener("click", () => setHero(idx - 1));
+  el.next?.addEventListener("click", () => setHero(idx + 1));
+  el.close?.addEventListener("click", () => dlg.close?.());
 })();
 
 // Always read products from realtime cache

@@ -29,9 +29,6 @@
 
       <!-- Desktop center search -->
       <div class="top-search"></div>
-      <!-- <div class="top-search">
-        <input id="searchInput" class="input" placeholder="Search products…" />
-      </div> -->
 
       <div class="top-actions">
         <button id="btnCart" class="icon-btn badge" aria-label="Cart">
@@ -60,34 +57,8 @@
         >
           🚪
         </button>
-
-        <!-- Theme/Fontsize dropdowns -->
-        <!-- <div class="quick-prefs">
-    <label class="sr-only" for="themeSelect">Theme</label>
-    <select id="themeSelect" class="input compact" title="Theme">
-      <option value="dark">Dark</option>
-      <option value="light">Light</option>
-      <option value="midnight">Midnight</option>
-      <option value="ocean">Ocean</option>
-      <option value="forest">Forest</option>
-      <option value="purple">Purple</option>
-      <option value="rose">Rose</option>
-      <option value="solar-light">Solarized Light</option>
-      <option value="solar-dark">Solarized Dark</option>
-      <option value="contrast">High Contrast</option>
-    </select>
-    <label class="sr-only" for="fsSelect">Font size</label>
-    <select id="fsSelect" class="input compact" title="Font size">
-      <option value="0.90">XS</option>
-      <option value="1.00" selected>SM</option>
-      <option value="1.10">MD</option>
-      <option value="1.20">LG</option>
-      <option value="1.30">XL</option>
-      <option value="1.40">2XL</option>
-      <option value="1.60">3XL</option>
-    </select>
-  </div> -->
       </div>
+      <button id="btnAnalytics" class="icon-btn" title="Analytics">📈</button>
       <!-- Topbar: Product Manager buttons -->
       <button id="btnProductManager" class="icon-btn" title="Products">
         📦
@@ -140,13 +111,7 @@
         </select>
       </div>
     </div>
-    <!-- <div class="top-search-row">
-      <input
-        id="searchInputMobile"
-        class="input"
-        placeholder="Search products…"
-      />
-    </div> -->
+
 
     <!-- Horizontal chips / menu -->
     <nav id="navScroll" class="nav-scroll hscroll">
@@ -206,12 +171,6 @@
 
       <!-- Home sections (per-category carousels + ad slots) -->
       <section id="homeSections" class="home-sections"></section>
-
-      <!-- Full Shop Grid -->
-      <!-- <section id="view-shop" class="view active">
-        <h2 id="shopTitle" class="pad">All Categories</h2>
-        <div id="productGrid" class="grid"></div>
-      </section> -->
 
       <!-- Analytics -->
       <section
@@ -412,31 +371,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Delivery / Pickup -->
-      <!-- <div class="deliver-box">
-        <div class="strong">Delivery Options</div>
-        <label class="radio"
-          ><input type="radio" name="dopt" value="delivery" checked />
-          Delivery</label
-        >
-        <div id="deliveryFields" class="stack">
-          <input id="addrLine" class="input" placeholder="Address line" />
-          <input id="addrCity" class="input" placeholder="City" />
-          <input id="addrPhone" class="input" placeholder="Phone" />
-          <input id="addrNote" class="input" placeholder="Note (optional)" />
-        </div>
-        <label class="radio"
-          ><input type="radio" name="dopt" value="pickup" /> Pickup</label
-        >
-        <div id="pickupFields" class="stack" style="display: none">
-          <select id="pickupStore" class="input">
-            <option value="downtown">Downtown Store</option>
-            <option value="north">North Store</option>
-          </select>
-          <input id="pickupTime" class="input" type="datetime-local" />
-        </div>
-      </div> -->
     </aside>
 
     <!-- Cart modal -->
@@ -623,6 +557,7 @@
             />
             <input id="pImgFile" class="input" type="file" accept="image/*" />
           </div>
+          <textarea id="pDesc" class="input" placeholder="Short description (e.g. material, size…)" rows="3"></textarea>
 
           <div class="pm-thumbrow">
             <div class="small" style="opacity: 0.8">Thumbnail preview</div>
@@ -701,60 +636,57 @@
       </div>
     </dialog>
 
-    <!-- ================= Product Detail Modal ================= -->
-    <dialog id="productDetailModal" class="pd-modal" aria-modal="true">
-      <div class="pd-wrap">
-        <button class="pd-close" id="pdClose" aria-label="Close">✕</button>
+    <!-- Detail modal skeleton (ensure these ids exist) -->
+<dialog id="productDetailModal" class="pd-modal">
+  <div class="pd-wrap">
+    <button id="pdClose" class="pd-close" aria-label="Close">✕</button>
 
-        <div class="pd-grid">
-          <!-- Left: hero + thumbs -->
-          <div class="pd-left">
-            <div class="pd-hero">
-              <img id="pdHero" alt="product" />
-            </div>
-            <div class="pd-thumbs">
-              <button class="pd-nav" id="pdPrev">‹</button>
-              <div id="pdThumbs" class="pd-thumbs-strip"></div>
-              <button class="pd-nav" id="pdNext">›</button>
-            </div>
-          </div>
-
-          <!-- Right: info -->
-          <div class="pd-right">
-            <h2 id="pdTitle" class="pd-title">Product title</h2>
-            <div class="pd-meta">
-              <div class="pd-price" id="pdPrice">$0.00</div>
-              <div class="pd-cat" id="pdCategory"></div>
-              <div class="pd-bar" id="pdBarcode"></div>
-            </div>
-
-            <div class="pd-desc" id="pdDesc"></div>
-
-            <div class="pd-actions">
-              <div class="pd-qty">
-                <button id="pdDec" class="btn-mini">−</button>
-                <input id="pdQty" type="number" min="1" value="1" />
-                <button id="pdInc" class="btn-mini">＋</button>
-              </div>
-
-              <div class="pd-promos">
-                <button class="btn-mini btn-outline" id="pdPromoBtn">
-                  Apply Promo
-                </button>
-                <button class="btn-mini btn-outline" id="pdMemberBtn">
-                  Membership Discount
-                </button>
-              </div>
-
-              <div class="pd-cta">
-                <button class="btn-mini" id="pdAdd">Add to Cart</button>
-                <button class="btn-mini btn-primary" id="pdBuy">Buy Now</button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div class="pd-left">
+      <div class="pd-hero"><img id="pdHero" alt=""></div>
+      <div id="pdThumbs" class="pd-thumbs"></div>
+      <div class="pd-hero-nav">
+        <button id="pdPrev" class="btn-mini">‹ Prev</button>
+        <button id="pdNext" class="btn-mini">Next ›</button>
       </div>
-    </dialog>
+    </div>
+
+    <div class="pd-right">
+      <h3 id="pdTitle"></h3>
+      <div class="pd-meta">
+        <span id="pdCategory" class="tag"></span>
+        <span id="pdBarcode" class="small"></span>
+      </div>
+      <div id="pdPrice" class="pd-price"></div>
+      <p id="pdDesc" class="pd-desc"></p>
+
+      <div class="row" style="gap:.5rem;align-items:center">
+        <span class="small">Qty</span>
+        <button id="pdDec" class="btn-mini">−</button>
+        <span id="pdQty" class="strong">1</span>
+        <button id="pdInc" class="btn-mini">＋</button>
+      </div>
+
+      <div class="pd-promo-box">
+        <input id="pdPromoInput" class="input" placeholder="Enter promo code…">
+        <button id="pdApplyPromo" class="btn-mini">Apply</button>
+      </div>
+
+      <div class="pd-member-box">
+        <select id="pdMemberSelect" class="input">
+          <option value="">Membership (optional)</option>
+          <option value="gold">Gold (5% off)</option>
+          <option value="platinum">Platinum (8% off)</option>
+          <option value="diamond">Diamond (12% off)</option>
+        </select>
+      </div>
+
+      <div class="row" style="gap:.5rem;margin-top:.5rem">
+        <button id="pdAdd" class="btn-mini">Add to Cart</button>
+        <button id="pdBuy" class="btn-mini btn-outline">Buy Now</button>
+      </div>
+    </div>
+  </div>
+</dialog>
 
     <!-- App -->
     <!-- Firebase (Compat CDN) — place these BEFORE app.js -->
