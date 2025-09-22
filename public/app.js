@@ -1422,7 +1422,7 @@ function buildNavChips() {
   if (!navScroll) return;
   navScroll.innerHTML = "";
 
-  // 'All Categories' ကို မထည့်ချင်ရင် filter ထားချက်က OK
+  // 'All Categories' ကို မထည့်ချင်ရင် filter
   const items = NAV_ITEMS.filter(it => it.key !== "allCategories");
 
   items.forEach((item) => {
@@ -1431,36 +1431,29 @@ function buildNavChips() {
     b.type = "button";
     b.textContent = item.label || item.key;
 
-    // 🔗 dataset mapping only — NO per-button handler here
-    // audience chips (e.g. For All / Men / Women / Kids / Pets ...)
+    // dataset mapping only (central handler သာသုံးမယ်)
     if (item.type === "aud") {
       b.dataset.type  = "aud";
       b.dataset.value = item.value || item.key || "all";
       b.dataset.label = item.label || "Shop";
-    }
-    // category chips (e.g. Fashion / Beauty / Electronics ...)
-    else if (item.type === "cat") {
+    } else if (item.type === "cat") {
       b.dataset.type  = "cat";
       b.dataset.value = item.value || item.key || "";
       b.dataset.label = item.label || item.value || "Shop";
-    }
-    // special keys
-    else if (item.key === "new") {
+    } else if (item.key === "new") {
       b.dataset.type = "tag";
       b.dataset.key  = "new";
-    }
-    else if (item.key === "analytics") {
-      b.dataset.view = "analytics"; // handleNavClick ထဲက openAdminAnalytics() တို့ကင့်ပါ
-    }
-    else if (item.key === "orders") {
+    } else if (item.key === "analytics") {
+      b.dataset.view = "analytics";
+    } else if (item.key === "orders") {
       b.dataset.view = "orders";
-    }
-    else {
-      // fallback — main shop
+    } else {
       b.dataset.view = "shop";
     }
 
-    // ❌ old: b.addEventListener("click", () => onNavClick(item, b));
+    // ❌ per-button handler မတပ်တော့ပါ
+    // b.addEventListener("click", () => onNavClick(item, b));
+
     navScroll.appendChild(b);
   });
 
@@ -1468,24 +1461,20 @@ function buildNavChips() {
 }
 
 function updateAdminUI() {
-  const adminChip = [...(navScroll?.children || [])].find((b) =>
-    (b.textContent || "").includes("Analytics")
-  );
+  const adminChip = [...(navScroll?.children || [])]
+    .find(b => (b.textContent || "").includes("Analytics"));
   if (adminChip) adminChip.style.display = state.isAdmin ? "" : "none";
 
-  const ordersChip = [...(navScroll?.children || [])].find((b) =>
-    (b.textContent || "").includes("Orders")
-  );
+  const ordersChip = [...(navScroll?.children || [])]
+    .find(b => (b.textContent || "").includes("Orders"));
   if (ordersChip) ordersChip.style.display = state.user ? "" : "none";
 }
 
-// === Part 5: Nav actions ===
-// --- NAV FIX: single handler + safe rebind ---
-(function () {
-  const nav = document.getElementById("nav");
+// === Part 5: Nav actions (single delegated handler to #navScroll) ===
+(function attachNavHandler(){
+  const nav = document.getElementById("navScroll"); // ✅ HTML အတိုင်း
   if (!nav) return;
 
-  // find nearest element that carries nav data-attrs
   function findNavEl(start) {
     let el = start;
     for (let i = 0; i < 4 && el; i++) {
@@ -1495,14 +1484,13 @@ function updateAdminUI() {
     return null;
   }
 
-  function handleNavClick(e) {
+  nav.addEventListener("click", (e) => {
     const targetEl = findNavEl(e.target);
     if (!targetEl) return;
 
-    // highlight active
-    document
-      .querySelectorAll(".nav-chip,.link,[data-view],[data-type],[data-key]")
-      .forEach(n => n.classList?.remove("active"));
+    // highlight
+    nav.querySelectorAll(".nav-chip,.link,[data-view],[data-type],[data-key]")
+       .forEach(n => n.classList?.remove("active"));
     targetEl.classList?.add("active");
 
     const view  = targetEl.dataset.view || "";
@@ -1511,11 +1499,18 @@ function updateAdminUI() {
     const value = targetEl.dataset.value || "";
     const label = targetEl.dataset.label || targetEl.textContent?.trim() || "Shop";
 
-    // --- direct views ---
-    if (view === "analytics" || key === "analytics") { openAdminAnalytics(); return; }
-    if (view === "orders"    || key === "orders")    { if (typeof switchView === "function") switchView("orders"); renderOrders?.(); return; }
+    // direct views
+    if (view === "analytics" || key === "analytics") { 
+      openAdminAnalytics?.(); 
+      return; 
+    }
+    if (view === "orders" || key === "orders")     { 
+      if (typeof switchView === "function") switchView("orders"); 
+      renderOrders?.(); 
+      return; 
+    }
 
-    // --- audience / category / tags ---
+    // audience / category / new
     if (type === "aud") {
       window.currentAudience = value || "all";
       window.currentCategory = "";
@@ -1535,21 +1530,10 @@ function updateAdminUI() {
       return;
     }
 
-    // fallback: generic view or shop
+    // fallback
     if (view) { if (typeof switchView === "function") switchView(view); return; }
     showShopGrid?.(label);
-  }
-
-  // 🔁 prevent double-binding across reloads/patches
-  if (window.__navHandler__) {
-    try { nav.removeEventListener("click", window.__navHandler__); } catch {}
-  }
-  nav.addEventListener("click", handleNavClick);
-  window.__navHandler__ = handleNavClick;
-
-  // back-compat
-  window.openAdminAnalytics = window.openAdminAnalytics || openAdminAnalytics;
-  window.renderAnalytics = function () { openAdminAnalytics(); };
+  });
 })();
 
 // --- SWITCH VIEW (class-based) ---
