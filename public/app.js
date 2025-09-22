@@ -3530,11 +3530,12 @@ document.addEventListener("visibilitychange", () => {
     return blob;
   }
 
-  // ✅ UPDATED: upload with contentType + resized blob
+  // === Upload one thumbnail to Storage → return downloadURL
   async function uploadProductThumb(file, productId) {
-    const ref = fstorage.ref(`products/${productId}/thumb.jpg`);
-    const blob = await fileToJpegBlob(file, 1024, 0.85);
-    await ref.put(blob, { contentType: "image/jpeg" });
+    if (!file) return "";
+    const ref = storage.ref(`products/${productId}/thumb.jpg`);
+    // ✅ contentType ထည့်ပေး (บาง browser preflight/CORS နေပီးကယ်)
+    await ref.put(file, { contentType: file.type || "image/jpeg" });
     return await ref.getDownloadURL();
   }
 
@@ -3547,12 +3548,11 @@ document.addEventListener("visibilitychange", () => {
     if (!grid) return;
 
     grid.innerHTML = "";
-    if (!items || !items.length) {
+    if (!items?.length) {
       grid.innerHTML = `<div class="small" style="opacity:.8;">No products.</div>`;
       return;
     }
 
-    // build cards
     for (const p of items) {
       const card = document.createElement("div");
       card.className = "card";
@@ -3570,28 +3570,26 @@ document.addEventListener("visibilitychange", () => {
       </div>
     `;
       grid.appendChild(card);
-    } // ✅ SINGLE delegation (each render sets once)
+    }
+
+    // ✅ ONE delegation handler (outside loop)
     grid.onclick = (e) => {
-      // open detail (click on View button OR on the hero thumb)
+      // open detail
       const openEl = e.target.closest?.("[data-detail],[data-open]");
       if (openEl) {
-        const id =
-          openEl.dataset.detail ||
-          openEl.dataset.open ||
-          openEl.closest(".card")?.querySelector("[data-add]")?.dataset.add;
-        if (!id) return;
+        const id = openEl.dataset.detail || openEl.dataset.open;
         const prod = (items || []).find((x) => x.id === id);
-        if (prod) window.openProductDetail?.(prod); // <- use the detail modal opener you defined
+        if (prod && typeof window.openProductDetail === "function") {
+          window.openProductDetail(prod);
+        }
         return;
       }
-
       // add to cart
-      const add = e.target.closest?.("[data-add]");
-      if (add) {
-        const id = add.dataset.add;
+      const addBtn = e.target.closest?.("[data-add]");
+      if (addBtn) {
+        const id = addBtn.dataset.add;
         const prod = (items || []).find((x) => x.id === id);
         if (!prod) return;
-
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
@@ -3605,7 +3603,6 @@ document.addEventListener("visibilitychange", () => {
           });
         localStorage.setItem("cart", JSON.stringify(cart));
         if (typeof updateCartCount === "function") updateCartCount();
-        return;
       }
     };
   }
@@ -3646,77 +3643,93 @@ document.addEventListener("visibilitychange", () => {
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
 
-// === Product form submit (FIX: define id; save once) ===
-let _savingProduct = false;
+  // === Product form submit (define id up-front; save once) ===
+  let _savingProduct = false;
 
-elForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (_savingProduct) return;
-  _savingProduct = true;
+  elForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (_savingProduct) return;
+    _savingProduct = true;
 
-  const btnSave = elForm.querySelector('button[type="submit"]');
-  const prevTxt = btnSave?.textContent;
-  if (btnSave) { btnSave.disabled = true; btnSave.textContent = "Saving…"; }
-
-  try {
-    // ✅ Define id up-front (EDIT mode → keep pId; ADD mode → new doc id)
-    let id =
-      (document.getElementById("pId")?.value.trim()) ||
-      fdb.collection("products").doc().id;
-
-    const title    = document.getElementById("pTitle")?.value.trim();
-    const category = document.getElementById("pCategory")?.value.trim();
-    const price    = parseFloat(document.getElementById("pPrice")?.value);
-    const barcode  = document.getElementById("pBarcode")?.value.trim();
-    const file     = document.getElementById("pImgFile")?.files?.[0] || null;
-
-    if (!title || !category || isNaN(price) || !barcode) {
-      alert("Please fill Title, Category, Price, Barcode");
-      return;
+    const btnSave = elForm.querySelector('button[type="submit"]');
+    const prevTxt = btnSave?.textContent;
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.textContent = "Saving…";
     }
 
-    // thumb upload
-    let thumbURL = "";
-    if (file) {
-      try {
-        thumbURL = await uploadProductThumb(file, id); // inside: put(..., {contentType: ...})
-      } catch (err) {
-        console.error("upload error:", err);
-        alert("Image upload failed (permission/CORS/network).");
+    try {
+      // ✅ EDIT mode → pId; ADD mode → new doc id (fdb = compat Firestore)
+      let id =
+        document.getElementById("pId")?.value.trim() ||
+        fdb.collection("products").doc().id;
+
+      const title = document.getElementById("pTitle")?.value.trim();
+      const category = document.getElementById("pCategory")?.value.trim();
+      const price = parseFloat(document.getElementById("pPrice")?.value);
+      const barcode = document.getElementById("pBarcode")?.value.trim();
+      const file = document.getElementById("pImgFile")?.files?.[0] || null;
+
+      if (!title || !category || isNaN(price) || !barcode) {
+        alert("Please fill Title, Category, Price, Barcode");
         return;
       }
+
+      // --- upload thumb (optional) ---
+      let thumbURL = "";
+      if (file) {
+        try {
+          thumbURL = await uploadProductThumb(file, id);
+        } catch (err) {
+          console.error("upload error:", err);
+          alert("Image upload failed (permission/CORS/network).");
+          return;
+        }
+      }
+
+      // --- gallery (optional) ---
+      let images = [];
+      try {
+        const gfiles = document.getElementById("pGallery")?.files || [];
+        if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+      } catch (e) {
+        console.warn("gallery upload error:", e);
+      }
+
+      const prod = {
+        id,
+        title,
+        category,
+        price: +price,
+        barcode,
+        thumb: thumbURL,
+        images,
+      };
+
+      // ✅ Save ONE time (and keep returned id)
+      try {
+        id = await upsertProduct(prod);
+      } catch (err) {
+        console.error("save error:", err);
+        alert("Save failed. You may not have permission to add/edit products.");
+        return;
+      }
+
+      // hydrate scanner/cart map
+      window.BARCODE_MAP = window.BARCODE_MAP || {};
+      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
+
+      alert("Product saved.");
+      closeDialog("productModal");
+      resetProductForm();
+    } finally {
+      _savingProduct = false;
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.textContent = prevTxt || "Save";
+      }
     }
-
-    // gallery upload (optional)
-    let images = [];
-    try {
-      const gfiles = document.getElementById("pGallery")?.files || [];
-      if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
-    } catch (e) { console.warn("gallery upload error:", e); }
-
-    const prod = { id, title, category, price:+price, barcode, thumb: thumbURL, images };
-
-    // ✅ Save ONCE (and keep returned id just in case)
-    try {
-      id = await upsertProduct(prod);
-    } catch (err) {
-      console.error("save error:", err);
-      alert("Save failed. You may not have permission to add/edit products.");
-      return;
-    }
-
-    // Update scanner/cart map
-    window.BARCODE_MAP = window.BARCODE_MAP || {};
-    window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
-
-    alert("Product saved.");
-    closeDialog("productModal");
-    resetProductForm();
-  } finally {
-    _savingProduct = false;
-    if (btnSave) { btnSave.disabled = false; btnSave.textContent = prevTxt || "Save"; }
-  }
-});
+  });
 
   // refs (near other refs)
   const elGalleryFiles = document.getElementById("pGallery");

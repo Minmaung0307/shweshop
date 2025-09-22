@@ -793,7 +793,7 @@
         apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
         authDomain: "shweshop-mm.firebaseapp.com",
         projectId: "shweshop-mm",
-        // ✅ Your actual bucket (new projects often use firebasestorage.app)
+        // ✅ Storage bucket ကို Firebasestorage.app သုံးထားပြီးသား — ဒီလိုပဲထားပါ
         storageBucket: "shweshop-mm.firebasestorage.app",
         messagingSenderId: "361216212375",
         appId: "1:361216212375:web:fed19b7fe4072000c298d2",
@@ -801,14 +801,14 @@
       };
       firebase.initializeApp(firebaseConfig);
 
-      // Expose compat instances (one Firestore instance only)
+      // Expose compat instances (ONE Firestore instance only)
       const _fdb = firebase.firestore();
       const _storage = firebase.storage();
       window.fdb = _fdb;
       window.storage = _storage;
-      window.db = _fdb; // back-compat alias
+      window.db = _fdb; // back-compat alias (legacy code က use လုပ်နိုင်ဖို့)
 
-      // Wait for auth state, then notify app.js (prevents race conditions)
+      // Auth state → fb-ready (race condition မဖြစ်ရန်)
       let dispatched = false;
       function notifyReadyOnce() {
         if (!dispatched) {
@@ -816,23 +816,18 @@
           document.dispatchEvent(new Event("fb-ready"));
         }
       }
-
       firebase.auth().onAuthStateChanged((user) => {
         console.log("auth state:", !!user, user?.uid || "");
         notifyReadyOnce();
       });
 
-      // Try Anonymous sign-in (no Google needed). Must be ENABLED in console.
+      // (OPTIONAL) Anonymous sign-in မ ENABLE ရင် ဒီ 4 လိုင်းကို comment ထားနိုင်ပါတယ်
       if (!firebase.auth().currentUser) {
         firebase
           .auth()
           .signInAnonymously()
           .then(() => console.log("anon auth ok"))
-          .catch((err) => {
-            // Usually: auth/admin-restricted-operation → enable Anonymous in console
-            console.warn("anon signin:", err?.message || err);
-            // Keep app running; Storage/Firestore writes that require auth will fail until enabled
-          });
+          .catch((err) => console.warn("anon signin:", err?.message || err));
       }
     </script>
     <!-- ✅ Load EmailJS SDK -->
