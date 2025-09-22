@@ -3523,6 +3523,30 @@ document.addEventListener("visibilitychange", () => {
     return await ref.getDownloadURL();
   }
 
+  // ===== Reusable product card =====
+  function productCardHTML(p) {
+    const price = `$${(+p.price || 0).toFixed(2)}`;
+    return `
+    <div class="thumb" data-view="${
+      p.id
+    }" style="height:160px;border-radius:12px;overflow:hidden;background:#111;cursor:pointer">
+      <img src="${p.thumb || ""}" alt="${
+      p.title || ""
+    }" style="width:100%;height:100%;object-fit:cover;">
+    </div>
+    <div class="strong" style="margin-top:8px;">${p.title || ""}</div>
+    <div class="tag" style="display:flex;justify-content:center;margin-top:4px;">${price}</div>
+    <div class="row" style="margin-top:8px; gap:.5rem; justify-content:space-between;">
+      <button class="btn-mini" data-add="${
+        p.id
+      }" title="Add to Cart">Add to Cart</button>
+      <button class="btn-mini btn-outline" data-view="${
+        p.id
+      }" title="View detail">View</button>
+    </div>
+  `;
+  }
+
   function renderStorefrontFromCloud(items) {
     const grid =
       document.getElementById("productGrid") ||
@@ -3540,40 +3564,22 @@ document.addEventListener("visibilitychange", () => {
     for (const p of items) {
       const card = document.createElement("div");
       card.className = "card";
-      card.innerHTML = `
-      <div class="thumb" data-open="${p.id}">
-        <img src="${p.thumb || ""}" alt="${p.title || ""}">
-      </div>
-      <div class="row">
-        <div class="strong">${p.title || ""}</div>
-        <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
-      </div>
-      <div class="row" style="margin-top:6px;">
-        <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
-        <button class="btn-mini btn-outline" data-detail="${p.id}">View</button>
-      </div>
-    `;
+      card.style.cursor = "default";
+      card.innerHTML = productCardHTML(p);
       grid.appendChild(card);
     }
 
-    // ✅ ONE delegation handler (outside loop)
+    // one handler for all cards
     grid.onclick = (e) => {
-      // open detail
-      const openEl = e.target.closest?.("[data-detail],[data-open]");
-      if (openEl) {
-        const id = openEl.dataset.detail || openEl.dataset.open;
-        const prod = (items || []).find((x) => x.id === id);
-        if (prod && typeof window.openProductDetail === "function") {
-          window.openProductDetail(prod);
-        }
-        return;
-      }
-      // add to cart
-      const addBtn = e.target.closest?.("[data-add]");
-      if (addBtn) {
-        const id = addBtn.dataset.add;
-        const prod = (items || []).find((x) => x.id === id);
-        if (!prod) return;
+      const add = e.target.closest?.("[data-add]");
+      const view = e.target.closest?.("[data-view]");
+      if (!add && !view) return;
+
+      const id = add?.dataset.add || view?.dataset.view;
+      const prod = (items || []).find((x) => x.id === id);
+      if (!prod) return;
+
+      if (add) {
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
@@ -3587,6 +3593,14 @@ document.addEventListener("visibilitychange", () => {
           });
         localStorage.setItem("cart", JSON.stringify(cart));
         if (typeof updateCartCount === "function") updateCartCount();
+        return;
+      }
+
+      if (view) {
+        // ✅ open detail modal (NOT add-product modal)
+        if (typeof window.openProductDetail === "function") {
+          window.openProductDetail(prod);
+        }
       }
     };
   }
@@ -3838,44 +3852,46 @@ document.addEventListener("visibilitychange", () => {
       box.innerHTML = `<div class="small" style="opacity:.8;">No new arrivals.</div>`;
       return;
     }
+
     for (const p of arr) {
       const card = document.createElement("div");
       card.className = "card";
-      card.innerHTML = `
-      <div class="thumb" style="height:160px;border-radius:12px;overflow:hidden;background:#111;">
-        <img src="${p.thumb || ""}" alt="${
-        p.title || ""
-      }" style="width:100%;height:100%;object-fit:cover;">
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <div class="strong">${p.title || ""}</div>
-        <div class="tag">$${(+p.price || 0).toFixed(2)}</div>
-      </div>
-      <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
-    `;
+      card.innerHTML = productCardHTML(p);
       box.appendChild(card);
     }
 
-    // add-to-cart (simple)
+    // same handler pattern
     box.onclick = (e) => {
-      const btn = e.target.closest?.("[data-add]");
-      if (!btn) return;
-      const id = btn.dataset.add;
+      const add = e.target.closest?.("[data-add]");
+      const view = e.target.closest?.("[data-view]");
+      if (!add && !view) return;
+
+      const id = add?.dataset.add || view?.dataset.view;
       const prod = arr.find((x) => x.id === id);
       if (!prod) return;
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const i = cart.findIndex((x) => x.id === id);
-      if (i >= 0) cart[i].qty += 1;
-      else
-        cart.push({
-          id,
-          title: prod.title,
-          price: +prod.price,
-          img: prod.thumb,
-          qty: 1,
-        });
-      localStorage.setItem("cart", JSON.stringify(cart));
-      if (typeof updateCartCount === "function") updateCartCount();
+
+      if (add) {
+        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        const i = cart.findIndex((x) => x.id === id);
+        if (i >= 0) cart[i].qty += 1;
+        else
+          cart.push({
+            id,
+            title: prod.title,
+            price: +prod.price,
+            img: prod.thumb,
+            qty: 1,
+          });
+        localStorage.setItem("cart", JSON.stringify(cart));
+        if (typeof updateCartCount === "function") updateCartCount();
+        return;
+      }
+
+      if (view) {
+        if (typeof window.openProductDetail === "function") {
+          window.openProductDetail(prod);
+        }
+      }
     };
   }
 
@@ -4065,10 +4081,13 @@ document.addEventListener("visibilitychange", () => {
     ?.addEventListener("click", () => closeDialog("productListModal"));
 })();
 
+// ===== Product Detail Modal (View) =====
 (function setupProductDetail() {
   const dlg = document.getElementById("productDetailModal");
-  if (!dlg) return;
-
+  if (!dlg) {
+    console.warn("[detail] #productDetailModal not found");
+    return;
+  }
   const elTitle = document.getElementById("pdTitle");
   const elHero = document.getElementById("pdHero");
   const elThumbs = document.getElementById("pdThumbs");
@@ -4077,186 +4096,99 @@ document.addEventListener("visibilitychange", () => {
   const elBar = document.getElementById("pdBarcode");
   const elQty = document.getElementById("pdQty");
   const elAdd = document.getElementById("pdAdd");
-  const elPrev = document.getElementById("pdPrev");
-  const elNext = document.getElementById("pdNext");
+  const elClose = document.getElementById("pdClose");
 
-  let cur = null; // current product {id,title,price,category,barcode,thumb, images?}
-  let idx = 0; // current hero index
-  let imgs = []; // current gallery array
-
-  function collectImages(p) {
-    // accept various field names; fallback to thumb
-    const arr = (p.images || p.imgs || p.gallery || []).filter(Boolean);
-    if (p.thumb) arr.unshift(p.thumb);
-    // dedupe while preserving order
-    const seen = new Set();
-    const out = [];
-    for (const u of arr)
-      if (u && !seen.has(u)) {
-        seen.add(u);
-        out.push(u);
-      }
-    return out.length ? out : [""];
-  }
+  let cur = null,
+    idx = 0;
 
   function setHero(i) {
-    if (!imgs.length) return;
+    const imgs =
+      Array.isArray(cur?.images) && cur.images.length
+        ? cur.images
+        : [cur.thumb];
     idx = Math.max(0, Math.min(i, imgs.length - 1));
-    if (elHero) {
-      elHero.src = imgs[idx] || "";
-      elHero.alt = (cur?.title || "") + " - " + (idx + 1);
-    }
-    // highlight active thumb
+    if (elHero) elHero.src = imgs[idx] || "";
     if (elThumbs) {
-      [...elThumbs.querySelectorAll("[data-idx]")].forEach((btn) => {
-        btn.classList.toggle("active", +btn.dataset.idx === idx);
+      elThumbs.querySelectorAll("img").forEach((im, j) => {
+        im.style.outline = j === idx ? "2px solid #63b3ed" : "none";
       });
     }
   }
 
-  function buildThumbs() {
+  function renderThumbs() {
     if (!elThumbs) return;
     elThumbs.innerHTML = "";
+    const imgs =
+      Array.isArray(cur?.images) && cur.images.length
+        ? cur.images
+        : [cur.thumb];
     imgs.forEach((u, i) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "pd-thumb";
-      b.dataset.idx = String(i);
-      b.innerHTML = `<img src="${u}" alt="thumb ${i + 1}">`;
-      b.addEventListener("click", () => setHero(i));
-      elThumbs.appendChild(b);
+      const im = document.createElement("img");
+      im.src = u || "";
+      im.alt = cur?.title || "";
+      im.style.cssText =
+        "width:56px;height:56px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12);cursor:pointer";
+      im.addEventListener("click", () => setHero(i));
+      elThumbs.appendChild(im);
     });
   }
 
-  function fmtUSD(n) {
-    try {
-      return n.toLocaleString(undefined, {
-        style: "currency",
-        currency: "USD",
-      });
-    } catch {
-      return `$${(+n || 0).toFixed(2)}`;
-    }
-  }
-
-  function sanitizeQty() {
-    let q = parseInt(elQty?.value || "1", 10);
-    if (isNaN(q) || q < 1) q = 1;
-    if (q > 99) q = 99;
-    if (elQty) elQty.value = String(q);
-    return q;
-  }
-
-  // public: open with a product object
-  function openProductDetail(p) {
-    cur = p || null;
+  function open(prod) {
+    cur = prod || null;
     if (!cur) return;
-
-    imgs = collectImages(cur);
-    buildThumbs();
-    setHero(0);
 
     if (elTitle) elTitle.textContent = cur.title || "";
-    if (elPrice) elPrice.textContent = fmtUSD(+cur.price || 0);
-    if (elCat) elCat.textContent = cur.category || "-";
-    if (elBar) elBar.textContent = cur.barcode || cur.id || "-";
+    if (elPrice) elPrice.textContent = `$${(+cur.price || 0).toFixed(2)}`;
+    if (elCat) elCat.textContent = cur.category || "";
+    if (elBar) elBar.textContent = cur.barcode || "";
+
+    renderThumbs();
+    setHero(0);
+
     if (elQty) elQty.value = "1";
 
-    // show modal/dialog
-    if (dlg.showModal) dlg.showModal();
-    else dlg.setAttribute("open", "");
-
-    // focus for key nav
-    dlg.focus?.();
+    dlg.showModal ? dlg.showModal() : dlg.setAttribute("open", "");
   }
 
-  // expose globally so card click can call it
-  window.openProductDetail = openProductDetail;
+  function close() {
+    dlg.close ? dlg.close() : dlg.removeAttribute("open");
+  }
 
-  // gallery nav
-  elPrev?.addEventListener("click", () =>
-    setHero((idx - 1 + imgs.length) % imgs.length)
-  );
-  elNext?.addEventListener("click", () => setHero((idx + 1) % imgs.length));
-
-  // keyboard support (←/→, Esc)
-  dlg.addEventListener?.("keydown", (e) => {
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      setHero((idx - 1 + imgs.length) % imgs.length);
-    }
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      setHero((idx + 1) % imgs.length);
-    }
-    if (e.key === "Escape") {
-      dlg.close?.();
-    }
-  });
-
-  // qty change
-  elQty?.addEventListener("input", sanitizeQty);
-  elQty?.addEventListener("blur", sanitizeQty);
-
-  // add to cart (keep modal open)
   elAdd?.addEventListener("click", () => {
-    if (!cur) return;
-    const q = sanitizeQty();
-    // prefer app’s existing addToCart(product, qty)
-    if (typeof window.addToCart === "function") {
-      window.addToCart(
-        {
-          id: cur.id,
-          title: cur.title,
-          price: +cur.price,
-          img: imgs[0] || cur.thumb,
-        },
-        q
-      );
-    } else {
-      // minimal fallback → localStorage cart
-      const key = "cart";
-      let cart = [];
-      try {
-        cart = JSON.parse(localStorage.getItem(key) || "[]");
-      } catch {}
-      const i = cart.findIndex((x) => x.id === cur.id);
-      if (i >= 0) cart[i].qty += q;
-      else
-        cart.push({
-          id: cur.id,
-          title: cur.title,
-          price: +cur.price,
-          img: imgs[0] || cur.thumb,
-          qty: q,
-        });
-      try {
-        localStorage.setItem(key, JSON.stringify(cart));
-      } catch {}
-      if (typeof window.updateCartCount === "function")
-        window.updateCartCount();
-    }
-
-    // small feedback
-    const btn = elAdd;
-    const old = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Added ✓";
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = old;
-    }, 900);
+    const q = Math.max(1, parseInt(elQty?.value || "1", 10) || 1);
+    const id = cur.id;
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const i = cart.findIndex((x) => x.id === id);
+    if (i >= 0) cart[i].qty += q;
+    else
+      cart.push({
+        id,
+        title: cur.title,
+        price: +cur.price,
+        img: cur.thumb,
+        qty: q,
+      });
+    localStorage.setItem("cart", JSON.stringify(cart));
+    if (typeof updateCartCount === "function") updateCartCount();
+    // မပိတ်ပါနဲ့ – user က ဆက်ကြည့်နိုင်ရန်
   });
 
-  // click outside to close (for <dialog>)
-  dlg.addEventListener?.("click", (e) => {
-    const rect = dlg.querySelector?.(".pd-wrap")?.getBoundingClientRect?.();
-    if (!rect) return;
-    const inside =
-      e.clientX >= rect.left &&
-      e.clientX <= rect.right &&
-      e.clientY >= rect.top &&
-      e.clientY <= rect.bottom;
-    if (!inside) dlg.close?.();
+  dlg.addEventListener("click", (e) => {
+    // backdrop အပေါ်ခေါက်လို့ မပိတ်ချင်ရင် ဒီ handler ကို skip လုပ်ပါ
+    // if (e.target === dlg) close();
   });
+
+  elClose?.addEventListener("click", close);
+
+  document.getElementById("pdMinus")?.addEventListener("click", () => {
+    const n = Math.max(1, (parseInt(elQty?.value || "1", 10) || 1) - 1);
+    if (elQty) elQty.value = String(n);
+  });
+  document.getElementById("pdPlus")?.addEventListener("click", () => {
+    const n = Math.max(1, (parseInt(elQty?.value || "1", 10) || 1) + 1);
+    if (elQty) elQty.value = String(n);
+  });
+
+  // expose opener
+  window.openProductDetail = open;
 })();
