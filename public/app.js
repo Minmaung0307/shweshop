@@ -3905,7 +3905,8 @@ document.addEventListener("visibilitychange", () => {
   });
 
   // === Product form submit (no reassign; no global leak) ===
-  let _savingProduct = false;
+  // == Add / Edit Product: Submit ==
+let _savingProduct = false;
 
 elForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -3920,69 +3921,98 @@ elForm?.addEventListener("submit", async (e) => {
   }
 
   try {
-    // Stable id (create first for upload path)
+    // --- Stable id (create early for upload path) ---
     let id = document.getElementById("pId")?.value.trim();
-    if (!id) id = fdb.collection("products").doc().id;
+    if (!id) id = fdb.collection("products").doc().id; // fdb = firebase.firestore()
 
-    const title    = document.getElementById("pTitle")?.value.trim();
-    const category = document.getElementById("pCategory")?.value.trim();
-    const price    = parseFloat(document.getElementById("pPrice")?.value);
-    const barcode  = document.getElementById("pBarcode")?.value.trim();
+    // --- Read fields ---
+    const title    = document.getElementById("pTitle")?.value.trim() || "";
+    const category = document.getElementById("pCategory")?.value.trim() || "";
+    const priceVal = document.getElementById("pPrice")?.value;
+    const price    = Number.parseFloat(priceVal);
+    const barcode  = document.getElementById("pBarcode")?.value.trim() || "";
     const file     = document.getElementById("pImgFile")?.files?.[0] || null;
     const desc     = document.getElementById("pDesc")?.value.trim() || "";
 
-    if (!title || !category || isNaN(price) || !barcode) {
+    if (!title || !category || Number.isNaN(price) || !barcode) {
       alert("Please fill Title, Category, Price, Barcode");
-      return;
+      throw new Error("validation_failed");
     }
 
+    // --- Upload main thumb (optional) ---
     let thumbURL = "";
     if (file) {
       try {
         thumbURL = await uploadProductThumb(file, id);
       } catch (err) {
-        console.error("upload error:", err);
+        console.error("[upload thumb] error:", err);
         alert("Image upload failed (permission/CORS/network).");
-        return;
+        throw err;
       }
     }
 
-    // optional gallery
+    // --- Upload gallery (optional) ---
     let images = [];
     try {
       const gfiles = document.getElementById("pGallery")?.files || [];
-      if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
-    } catch (e) {
-      console.warn("gallery upload error:", e);
+      if (gfiles.length) {
+        // make sure helper exists (no-op fallback)
+        if (typeof uploadGalleryFiles !== "function") {
+          window.uploadGalleryFiles = async () => [];
+        }
+        images = await uploadGalleryFiles(gfiles, id);
+      }
+    } catch (err) {
+      console.warn("gallery upload error:", err);
+      // gallery ပိုင်းမအောင်မြင်လည်း main flow ကို ပိတ်မထားဘူး
     }
 
+    // --- Build product doc ---
+    const now = Date.now();
+    const isNew = !document.getElementById("pId")?.value.trim();
+
     const prod = {
-      id, title, category, price:+price, barcode,
-      thumb: thumbURL, images, description: desc,
-      updatedAt: Date.now(), createdAt: Date.now()
+      id,
+      title,
+      category,
+      price: +price,
+      barcode,
+      thumb: thumbURL,          // '' အဖြစ်တင်နိုင် (optional)
+      images,                   // [] အဖြစ်တင်နိုင် (optional)
+      description: desc,        // '' လည်းရ
+      updatedAt: now,
+      // createdAt ကို item အသစ်တင်ချင်တဲ့အခါတွင်ပဲ ထည့်
+      ...(isNew ? { createdAt: now } : {})
     };
 
-    // ⛔ This throws if rules block (non-admin); catch below
+    // --- Save to Firestore (admin only per rules) ---
     await fdb.collection("products").doc(id).set(prod, { merge: true });
 
-    // update scanner map
+    // --- Update in-memory BARCODE map (scanner/cart uses it) ---
     window.BARCODE_MAP = window.BARCODE_MAP || {};
-    window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
+    window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
 
-    // ✅ success
+    // --- Done UI ---
     alert("Product saved.");
     closeDialog("productModal");
-    // reset form
+
+    // Reset form/preview safely
     document.getElementById("pmMode")?.textContent = "Add";
     elForm?.reset?.();
-    document.getElementById("pId") && (document.getElementById("pId").value = "");
-    document.getElementById("pThumbPreview") && (document.getElementById("pThumbPreview").src = "");
-    document.getElementById("pGalleryPreview") && (document.getElementById("pGalleryPreview").innerHTML = "");
+    const idEl = document.getElementById("pId");
+    if (idEl) idEl.value = "";
+    const prevEl = document.getElementById("pThumbPreview");
+    if (prevEl) prevEl.src = "";
+    const galPrev = document.getElementById("pGalleryPreview");
+    if (galPrev) galPrev.innerHTML = "";
+
   } catch (err) {
-    console.error("save error:", err);
+    // show helpful message
     const msg = String(err?.message || err || "");
-    if (msg.includes("Missing or insufficient permissions") || msg.includes("PERMISSION_DENIED")) {
-      alert("Save failed: permission denied.\n\nTip: products are admin-only in Firestore rules. Create users/{yourUid} with { role: 'admin' } first.");
+    if (msg.includes("validation_failed")) {
+      // already alerted; no-op
+    } else if (msg.includes("Missing or insufficient permissions") || msg.includes("PERMISSION_DENIED")) {
+      alert("Save failed: permission denied.\n\nTip: Only admins can write products. Create users/{yourUid} with { role: 'admin' } and re-auth.");
     } else {
       alert("Save failed. " + msg);
     }
