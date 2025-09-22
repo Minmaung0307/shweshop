@@ -2116,88 +2116,156 @@ async function loadOrders() {
   }
 }
 
-async function renderAnalytics() {
-  const daysBack = Number(document.getElementById("anaRange")?.value || 365);
-  const sinceIso = new Date(Date.now() - daysBack * 86400000)
-    .toISOString()
-    .slice(0, 10);
+// ========== Admin Analytics (Line + Pie) ==========
+// Keep refs to avoid "Canvas already in use" errors
+const AA = {
+  charts: {
+    revenue: null,
+    orders:  null,
+  }
+};
 
-  let orders = [];
+// Destroy helper
+function destroyChart(ref){
+  try { ref?.destroy?.(); } catch(_) {}
+}
 
-  if (state.user) {
-    try {
-      let qref;
-      if (state.isAdmin) {
-        // ✅ admin: shop-wide
-        qref = query(
-          collection(db, "orders"),
-          where("orderDate", ">=", sinceIso),
-          limit(1000)
-        );
-      } else {
-        // ✅ non-admin: my orders only
-        qref = query(
-          collection(db, "orders"),
-          where("orderDate", ">=", sinceIso),
-          where("userId", "==", state.user.uid),
-          limit(1000)
-        );
-      }
-      const snap = await getDocs(qref);
-      snap.forEach((d) => orders.push(d.data()));
-    } catch (e) {
-      console.warn("analytics blocked", e);
+// Format helpers
+function monthKey(d){ // yyyy-mm
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+function last12MonthLabels(){
+  const now = new Date();
+  const out = [];
+  for (let i=11;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    out.push(d.toLocaleString(undefined,{month:'short', year:'2-digit'})); // e.g. Sep 25
+  }
+  return out;
+}
+
+// Load analytics data (Firestore → analytics/summary) with demo fallback
+async function loadAnalyticsData(){
+  // Try analytics/summary (admins only per your rules)
+  try{
+    const doc = await fdb.collection("analytics").doc("summary").get();
+    if (doc.exists){
+      const d = doc.data() || {};
+      return {
+        monthlyRevenue: d.monthlyRevenue || {},    // { "2025-07": 1234, ... }
+        ordersByStatus: d.ordersByStatus || {},    // { placed:10, paid:8, shipped:6, cancelled:1 }
+      };
     }
+  }catch(e){ console.warn("[analytics] fetch summary failed:", e); }
+
+  // Fallback demo so UI always renders
+  const now = new Date();
+  const monthlyRevenue = {};
+  for (let i=11;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    monthlyRevenue[monthKey(d)] = Math.round(800 + Math.random()*1400);
   }
+  const ordersByStatus = { placed: 32, paid: 26, shipped: 21, cancelled: 3 };
+  return { monthlyRevenue, ordersByStatus };
+}
 
-  // Fallback to demo if empty/blocked
-  if (!orders.length) {
-    orders = makeDemoOrders(daysBack);
+// Revenue Line
+function renderRevenueLine(monthlyRevenue){
+  const el = document.getElementById("revChart");
+  if (!el) return;
+  const ctx = el.getContext("2d");
+  destroyChart(AA.charts.revenue);
+
+  // Build labels & values aligned to last 12 months
+  const labels = last12MonthLabels();
+  const now = new Date();
+  const keys = [];
+  for (let i=11;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    keys.push(monthKey(d));
   }
+  const values = keys.map(k => +monthlyRevenue[k] || 0);
 
-  // === aggregate ===
-  const byDay = {};
-  const tally = {};
-  orders.forEach((o) => {
-    const d = o.orderDate || o.createdAt?.slice?.(0, 10);
-    const amt = Number(o.pricing?.total || o.total || 0);
-    if (d) byDay[d] = (byDay[d] || 0) + amt;
-    (o.items || []).forEach((it) => {
-      tally[it.title] = (tally[it.title] || 0) + Number(it.qty || 1);
-    });
-  });
-
-  const days = [];
-  for (let i = daysBack - 1; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    days.push(d);
-  }
-  const rev = days.map((d) => byDay[d] || 0);
-
-  new Chart(document.getElementById("revChart"), {
+  AA.charts.revenue = new Chart(ctx, {
     type: "line",
     data: {
-      labels: days.map((d) => d.slice(5)),
-      datasets: [{ data: rev, label: "Revenue" }],
+      labels,
+      datasets: [{
+        label: "Revenue (USD)",
+        data: values,
+        tension: 0.35,
+        fill: true
+      }]
     },
-    options: { responsive: true, plugins: { legend: { display: false } } },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true },
+        tooltip: { callbacks: { label: (c)=> `$${c.raw?.toLocaleString?.() || c.raw}` } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v=>'$'+Number(v).toLocaleString() } }
+      }
+    }
   });
 
-  const top = Object.entries(tally)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 7);
-  new Chart(document.getElementById("topChart"), {
-    type: "bar",
-    data: {
-      labels: top.map(([k]) => k),
-      datasets: [{ data: top.map(([, v]) => v), label: "Qty" }],
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } },
-  });
+  // Make the card taller for line chart
+  el.parentElement.style.minHeight = "280px";
 }
-document
-  .getElementById("anaRange")
-  ?.addEventListener("change", renderAnalytics);
+
+// Orders Pie
+function renderOrdersPie(ordersByStatus){
+  const el = document.getElementById("ordersPieChart");
+  if (!el) return;
+  const ctx = el.getContext("2d");
+  destroyChart(AA.charts.orders);
+
+  const labels = ["placed","paid","shipped","cancelled"];
+  const values = labels.map(k => +ordersByStatus[k] || 0);
+
+  AA.charts.orders = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: labels.map(s => s[0].toUpperCase()+s.slice(1)),
+      datasets: [{
+        data: values
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" }
+      }
+    }
+  });
+
+  el.parentElement.style.minHeight = "280px";
+}
+
+// Open / Render entry point
+async function openAdminAnalytics(){
+  // If you have your own view switcher, keep it
+  if (typeof switchView === "function") switchView("analytics");
+  const sec = document.getElementById("adminAnalytics");
+  if (sec) sec.style.display = "";
+
+  const data = await loadAnalyticsData();
+  renderRevenueLine(data.monthlyRevenue || {});
+  renderOrdersPie(data.ordersByStatus || {});
+  // scroll into view nicely
+  sec?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Wire up buttons (pick whichever exists in your UI)
+document.getElementById("btnAnalytics")?.addEventListener("click", openAdminAnalytics);
+document.getElementById("navAnalytics")?.addEventListener("click", openAdminAnalytics);
+
+// If your router dispatches custom events, you can call openAdminAnalytics() when the tab becomes visible.
 
 // simple demo generator
 function makeDemoOrders(daysBack = 365) {

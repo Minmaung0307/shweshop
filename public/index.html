@@ -10,10 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <script
-      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-      defer
-    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <!-- Replace client-id -->
     <script
       src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD"
@@ -215,25 +212,19 @@
       </section> -->
 
       <!-- Analytics -->
-      <section id="view-analytics" class="view">
-        <div class="card">
-          <div class="pad">
-            <div class="row between">
-              <div class="card-title">Sales Overview</div>
-              <select id="anaRange" class="input" style="max-width: 160px">
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365" selected>Last 12 months</option>
-              </select>
-            </div>
-            <canvas id="revChart" height="120"></canvas>
+      <section
+        id="adminAnalytics"
+        class="admin-analytics"
+        style="display: none"
+      >
+        <div class="aa-grid">
+          <div class="aa-card">
+            <div class="aa-title">Revenue — last 12 months</div>
+            <canvas id="revChart"></canvas>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="pad">
-            <div class="card-title">Top Products</div>
-            <canvas id="topChart" height="120"></canvas>
+          <div class="aa-card">
+            <div class="aa-title">Orders by Status</div>
+            <canvas id="ordersPieChart"></canvas>
           </div>
         </div>
       </section>
@@ -788,35 +779,38 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
     <script>
-  // ---- Firebase init (compat) ----
-  const firebaseConfig = {
-    apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
-    authDomain: "shweshop-mm.firebaseapp.com",
-    projectId: "shweshop-mm",
-    storageBucket: "shweshop-mm.firebasestorage.app",
-    messagingSenderId: "361216212375",
-    appId: "1:361216212375:web:fed19b7fe4072000c298d2",
-    measurementId: "G-WBJJZZNLX6",
-  };
-  firebase.initializeApp(firebaseConfig);
+      // ---- Firebase init (compat) ----
+      const firebaseConfig = {
+        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+        authDomain: "shweshop-mm.firebaseapp.com",
+        projectId: "shweshop-mm",
+        storageBucket: "shweshop-mm.firebasestorage.app",
+        messagingSenderId: "361216212375",
+        appId: "1:361216212375:web:fed19b7fe4072000c298d2",
+        measurementId: "G-WBJJZZNLX6",
+      };
+      firebase.initializeApp(firebaseConfig);
 
-  // expose instances
-  const _fdb = firebase.firestore();
-  const _storage = firebase.storage();
-  window.fdb = _fdb;
-  window.storage = _storage;
-  window.db = _fdb;
+      // expose instances
+      const _fdb = firebase.firestore();
+      const _storage = firebase.storage();
+      window.fdb = _fdb;
+      window.storage = _storage;
+      window.db = _fdb;
 
-  // auth state → fb-ready (race မဖြစ်ရန်)
-  let dispatched = false;
-  function notifyReadyOnce(){
-    if (!dispatched) { dispatched = true; document.dispatchEvent(new Event("fb-ready")); }
-  }
-  firebase.auth().onAuthStateChanged((user)=>{
-    console.log("auth state:", !!user, user?.uid || "");
-    notifyReadyOnce();
-  });
-</script>
+      // auth state → fb-ready (race မဖြစ်ရန်)
+      let dispatched = false;
+      function notifyReadyOnce() {
+        if (!dispatched) {
+          dispatched = true;
+          document.dispatchEvent(new Event("fb-ready"));
+        }
+      }
+      firebase.auth().onAuthStateChanged((user) => {
+        console.log("auth state:", !!user, user?.uid || "");
+        notifyReadyOnce();
+      });
+    </script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
