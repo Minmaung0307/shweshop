@@ -1448,70 +1448,81 @@ function updateAdminUI() {
 }
 
 // === Part 5: Nav actions ===
-// ✅ Single, defensive nav handler
-function onNavClick(e) {
-  const src = (e && (e.target || e.currentTarget)) || this;
-  if (!src) return;
+// --- NAV FIX: single handler + safe rebind ---
+(function () {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
 
-  // data-view or data-key lookup
-  const target = src.closest
-    ? src.closest("[data-view],[data-type],[data-key]")
-    : null;
-  if (!target) return;
-
-  const view = target.dataset.view;
-  const type = target.dataset.type;
-  const key  = target.dataset.key;
-  const val  = target.dataset.value || "";
-  const label = target.dataset.label || target.textContent?.trim() || "Shop";
-
-  // --- Active highlight ---
-  document.querySelectorAll(".nav-chip").forEach(c =>
-    c.classList.remove("active")
-  );
-  target.classList.add("active");
-
-  // --- Direct view handling ---
-  if (view === "analytics" || key === "analytics") {
-    openAdminAnalytics();   // 🔑 call analytics entry
-    return;
-  }
-  if (view === "orders" || key === "orders") {
-    if (typeof switchView === "function") switchView("orders");
-    renderOrders?.();
-    return;
+  // find nearest element that carries nav data-attrs
+  function findNavEl(start) {
+    let el = start;
+    for (let i = 0; i < 4 && el; i++) {
+      if (el.dataset && (el.dataset.view || el.dataset.type || el.dataset.key)) return el;
+      el = el.parentElement;
+    }
+    return null;
   }
 
-  if (type === "aud") {
-    window.currentAudience = val || "all";
-    window.currentCategory = "";
-    showShopGrid(label);
-    return;
-  }
-  if (type === "cat") {
-    window.currentAudience = "all";
-    window.currentCategory = val || "";
-    showShopGrid(label);
-    return;
-  }
-  if (type === "tag" && key === "new") {
-    window.currentAudience = "all";
-    window.currentCategory = "";
-    showShopGrid("New Arrivals", { tag: "new" });
-    return;
+  function handleNavClick(e) {
+    const targetEl = findNavEl(e.target);
+    if (!targetEl) return;
+
+    // highlight active
+    document
+      .querySelectorAll(".nav-chip,.link,[data-view],[data-type],[data-key]")
+      .forEach(n => n.classList?.remove("active"));
+    targetEl.classList?.add("active");
+
+    const view  = targetEl.dataset.view || "";
+    const type  = targetEl.dataset.type || "";
+    const key   = targetEl.dataset.key  || "";
+    const value = targetEl.dataset.value || "";
+    const label = targetEl.dataset.label || targetEl.textContent?.trim() || "Shop";
+
+    // --- direct views ---
+    if (view === "analytics" || key === "analytics") { openAdminAnalytics(); return; }
+    if (view === "orders"    || key === "orders")    { if (typeof switchView === "function") switchView("orders"); renderOrders?.(); return; }
+
+    // --- audience / category / tags ---
+    if (type === "aud") {
+      window.currentAudience = value || "all";
+      window.currentCategory = "";
+      showShopGrid?.(label);
+      return;
+    }
+    if (type === "cat") {
+      window.currentAudience = "all";
+      window.currentCategory = value || "";
+      showShopGrid?.(label);
+      return;
+    }
+    if (type === "tag" && key === "new") {
+      window.currentAudience = "all";
+      window.currentCategory = "";
+      showShopGrid?.("New Arrivals", { tag: "new" });
+      return;
+    }
+
+    // fallback: generic view or shop
+    if (view) { if (typeof switchView === "function") switchView(view); return; }
+    showShopGrid?.(label);
   }
 
-  // default
-  showShopGrid(label);
-}
+  // 🔁 prevent double-binding across reloads/patches
+  if (window.__navHandler__) {
+    try { nav.removeEventListener("click", window.__navHandler__); } catch {}
+  }
+  nav.addEventListener("click", handleNavClick);
+  window.__navHandler__ = handleNavClick;
 
-// nav delegation
-document.getElementById("nav")?.addEventListener("click", onNavClick);
+  // buttons outside #nav (optional)
+  document.getElementById("btnAnalytics")?.addEventListener("click", openAdminAnalytics);
+  document.getElementById("btnOrders")?.addEventListener("click", () => { switchView?.("orders"); renderOrders?.(); });
 
-// or individual chips/buttons
-// document.querySelectorAll(".nav-chip").forEach(el => {
-//   el.addEventListener("click", onNavClick);
-// });
+  // back-compat (old code calling renderAnalytics)
+  window.openAdminAnalytics = window.openAdminAnalytics || openAdminAnalytics;
+  window.renderAnalytics = function () { openAdminAnalytics(); };
+})();
 
 // --- SWITCH VIEW (class-based) ---
 function switchView(name) {
