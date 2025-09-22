@@ -689,19 +689,19 @@
 
     <script>
       const firebaseConfig = {
-        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
+        apiKey: "…",
         authDomain: "shweshop-mm.firebaseapp.com",
         projectId: "shweshop-mm",
-        storageBucket: "shweshop-mm.appspot.com" /* <-- fix this */,
+        storageBucket: "shweshop-mm.firebasestorage.app", // ✅ ဒီလို (NOT appspot.com)
         messagingSenderId: "361216212375",
         appId: "1:361216212375:web:fed19b7fe4072000c298d2",
         measurementId: "G-WBJJZZNLX6",
       };
       firebase.initializeApp(firebaseConfig);
-
       window.fdb = firebase.firestore();
       window.storage = firebase.storage();
       window.db = window.fdb;
+      document.dispatchEvent(new Event("fb-ready"));
     </script>
     <!-- ✅ Load EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>

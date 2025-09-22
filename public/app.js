@@ -1519,24 +1519,37 @@ function updateAdminUI() {
 })();
 
 // === helpers (keep these once, not duplicated) ===
-function setShopTitle(txt){
-  const h = document.getElementById("shopTitle") || document.querySelector("[data-shop-title]");
+function setShopTitle(txt) {
+  const h =
+    document.getElementById("shopTitle") ||
+    document.querySelector("[data-shop-title]");
   if (h) h.textContent = txt || "Shop";
 }
-function renderFilteredStore(label, opts = {}){
+function renderFilteredStore(label, opts = {}) {
   const all = (window._productsCache || []).slice();
   let items = all;
 
   const aud = (window.currentAudience || "all").toLowerCase();
-  if (aud !== "all") items = items.filter(p => (p.audience||"all").toLowerCase() === aud);
+  if (aud !== "all")
+    items = items.filter((p) => (p.audience || "all").toLowerCase() === aud);
 
   const cat = (window.currentCategory || "").toLowerCase();
-  if (cat) items = items.filter(p => (p.category||"").toLowerCase() === cat);
+  if (cat)
+    items = items.filter((p) => (p.category || "").toLowerCase() === cat);
 
-  if (opts.tag === "new") items = items.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,16);
-  if (opts.query){
+  if (opts.tag === "new")
+    items = items
+      .slice()
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .slice(0, 16);
+  if (opts.query) {
     const q = opts.query.toLowerCase();
-    items = items.filter(p => (p.title||"").toLowerCase().includes(q) || (p.category||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q));
+    items = items.filter(
+      (p) =>
+        (p.title || "").toLowerCase().includes(q) ||
+        (p.category || "").toLowerCase().includes(q) ||
+        (p.barcode || "").toLowerCase().includes(q)
+    );
   }
 
   setShopTitle(label);
@@ -3602,8 +3615,16 @@ document.addEventListener("visibilitychange", () => {
     console.error("[ProductManager] Firebase compat not ready.");
   }
 
-  function openDialog(id){ const d=document.getElementById(id); if(!d) return; d.showModal?.() ?? d.setAttribute("open",""); }
-  function closeDialog(id){ const d=document.getElementById(id); if(!d) return; d.close?.() ?? d.removeAttribute("open"); }
+  function openDialog(id) {
+    const d = document.getElementById(id);
+    if (!d) return;
+    d.showModal?.() ?? d.setAttribute("open", "");
+  }
+  function closeDialog(id) {
+    const d = document.getElementById(id);
+    if (!d) return;
+    d.close?.() ?? d.removeAttribute("open");
+  }
 
   // ---------- Cloud Store ----------
   const PRODUCTS_COL = "products";
@@ -3617,12 +3638,22 @@ document.addEventListener("visibilitychange", () => {
   }
 
   async function deleteProduct(id) {
-    try { await fdb.collection(PRODUCTS_COL).doc(id).delete(); } catch(e){ console.warn("delete doc:", e); }
-    try { await fstorage.ref(`products/${id}/thumb.jpg`).delete(); } catch(e){}
+    try {
+      await fdb.collection(PRODUCTS_COL).doc(id).delete();
+    } catch (e) {
+      console.warn("delete doc:", e);
+    }
+    try {
+      await fstorage.ref(`products/${id}/thumb.jpg`).delete();
+    } catch (e) {}
   }
 
-  async function fileToPreviewURL(file){
-    return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); });
+  async function fileToPreviewURL(file) {
+    return new Promise((res) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.readAsDataURL(file);
+    });
   }
 
   async function uploadProductThumb(file, productId) {
@@ -3641,7 +3672,9 @@ document.addEventListener("visibilitychange", () => {
       </div>
       <div class="row" style="margin-top:6px;justify-content:space-between;align-items:flex-start">
         <div class="strong" style="max-width:65%;">${p.title || ""}</div>
-        <div class="tag" style="margin-left:6px;">$${(+p.price || 0).toFixed(2)}</div>
+        <div class="tag" style="margin-left:6px;">$${(+p.price || 0).toFixed(
+          2
+        )}</div>
       </div>
       <div class="row" style="margin-top:6px;justify-content:space-between">
         <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
@@ -3683,7 +3716,14 @@ document.addEventListener("visibilitychange", () => {
         const cart = JSON.parse(localStorage.getItem("cart") || "[]");
         const i = cart.findIndex((x) => x.id === id);
         if (i >= 0) cart[i].qty += 1;
-        else cart.push({ id, title: prod.title, price: +prod.price, img: prod.thumb, qty: 1 });
+        else
+          cart.push({
+            id,
+            title: prod.title,
+            price: +prod.price,
+            img: prod.thumb,
+            qty: 1,
+          });
         localStorage.setItem("cart", JSON.stringify(cart));
         updateCartCount?.();
         return;
@@ -3701,11 +3741,11 @@ document.addEventListener("visibilitychange", () => {
 
     const audience = [
       { label: "For All", value: "all" },
-      { label: "Men",     value: "men" },
-      { label: "Women",   value: "women" },
-      { label: "Kids",    value: "kids" },
+      { label: "Men", value: "men" },
+      { label: "Women", value: "women" },
+      { label: "Kids", value: "kids" },
     ];
-    for (const a of audience){
+    for (const a of audience) {
       const b = document.createElement("button");
       b.className = "nav-chip";
       b.dataset.type = "aud";
@@ -3714,12 +3754,15 @@ document.addEventListener("visibilitychange", () => {
       host.appendChild(b);
     }
     const div = document.createElement("span");
-    div.style.cssText="display:inline-block;width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 6px;vertical-align:middle;";
+    div.style.cssText =
+      "display:inline-block;width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 6px;vertical-align:middle;";
     host.appendChild(div);
 
     const items = window._productsCache || [];
-    const cats = Array.from(new Set(items.map(x => (x.category||"").trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-    for (const c of cats){
+    const cats = Array.from(
+      new Set(items.map((x) => (x.category || "").trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    for (const c of cats) {
       const b = document.createElement("button");
       b.className = "nav-chip btn-outline";
       b.dataset.type = "cat";
@@ -3735,9 +3778,13 @@ document.addEventListener("visibilitychange", () => {
     host.appendChild(newB);
 
     // smooth scroll to grid when any chip clicked
-    host.addEventListener("click", (e)=>{
-      const el = e.target.closest?.(".nav-chip"); if(!el) return;
-      (document.getElementById("productGrid") || document.querySelector(".product-grid"))?.scrollIntoView({behavior:"smooth", block:"start"});
+    host.addEventListener("click", (e) => {
+      const el = e.target.closest?.(".nav-chip");
+      if (!el) return;
+      (
+        document.getElementById("productGrid") ||
+        document.querySelector(".product-grid")
+      )?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -3746,37 +3793,49 @@ document.addEventListener("visibilitychange", () => {
   const elThumbPrev = document.getElementById("pThumbPreview");
   const elImgFile = document.getElementById("pImgFile");
 
-  function resetProductForm(){
-    document.getElementById("pmMode") && (document.getElementById("pmMode").textContent="Add");
+  function resetProductForm() {
+    document.getElementById("pmMode") &&
+      (document.getElementById("pmMode").textContent = "Add");
     elForm?.reset?.();
-    document.getElementById("pId") && (document.getElementById("pId").value="");
-    elThumbPrev && (elThumbPrev.src="");
-    const galPrev = document.getElementById("pGalleryPreview"); if(galPrev) galPrev.innerHTML = "";
+    document.getElementById("pId") &&
+      (document.getElementById("pId").value = "");
+    elThumbPrev && (elThumbPrev.src = "");
+    const galPrev = document.getElementById("pGalleryPreview");
+    if (galPrev) galPrev.innerHTML = "";
   }
 
-  document.getElementById("pmReset")?.addEventListener("click", resetProductForm);
-  document.getElementById("btnAddProduct")?.addEventListener("click", ()=>{ resetProductForm(); openDialog("productModal"); });
-  document.getElementById("pmClose")?.addEventListener("click", ()=> closeDialog("productModal"));
+  document
+    .getElementById("pmReset")
+    ?.addEventListener("click", resetProductForm);
+  document.getElementById("btnAddProduct")?.addEventListener("click", () => {
+    resetProductForm();
+    openDialog("productModal");
+  });
+  document
+    .getElementById("pmClose")
+    ?.addEventListener("click", () => closeDialog("productModal"));
 
-  elImgFile?.addEventListener("change", async (e)=>{
+  elImgFile?.addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
     elThumbPrev && (elThumbPrev.src = f ? await fileToPreviewURL(f) : "");
   });
 
   // Gallery preview (optional)
-  const elGalleryFiles   = document.getElementById("pGallery");
+  const elGalleryFiles = document.getElementById("pGallery");
   const elGalleryPreview = document.getElementById("pGalleryPreview");
-  function miniThumb(url){
+  function miniThumb(url) {
     const im = document.createElement("img");
-    im.src=url; im.alt="thumb";
-    im.style.cssText="width:64px;height:64px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12)";
+    im.src = url;
+    im.alt = "thumb";
+    im.style.cssText =
+      "width:64px;height:64px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12)";
     return im;
   }
-  elGalleryFiles?.addEventListener("change", (e)=>{
-    if(!elGalleryPreview) return;
-    elGalleryPreview.innerHTML="";
-    const files = Array.from(e.target.files||[]).slice(0,6);
-    for(const f of files){
+  elGalleryFiles?.addEventListener("change", (e) => {
+    if (!elGalleryPreview) return;
+    elGalleryPreview.innerHTML = "";
+    const files = Array.from(e.target.files || []).slice(0, 6);
+    for (const f of files) {
       const u = URL.createObjectURL(f);
       elGalleryPreview.appendChild(miniThumb(u));
     }
@@ -3784,26 +3843,29 @@ document.addEventListener("visibilitychange", () => {
 
   // Submit
   let _savingProduct = false;
-  elForm?.addEventListener("submit", async (e)=>{
+  elForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (_savingProduct) return;
     _savingProduct = true;
 
     const btnSave = elForm.querySelector('button[type="submit"]');
     const prevTxt = btnSave?.textContent;
-    if (btnSave){ btnSave.disabled = true; btnSave.textContent = "Saving…"; }
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.textContent = "Saving…";
+    }
 
-    try{
+    try {
       let id = document.getElementById("pId")?.value.trim();
       if (!id) id = fdb.collection("products").doc().id;
 
-      const title    = document.getElementById("pTitle")?.value.trim() || "";
+      const title = document.getElementById("pTitle")?.value.trim() || "";
       const category = document.getElementById("pCategory")?.value.trim() || "";
       const priceVal = document.getElementById("pPrice")?.value;
-      const price    = Number.parseFloat(priceVal);
-      const barcode  = document.getElementById("pBarcode")?.value.trim() || "";
-      const file     = document.getElementById("pImgFile")?.files?.[0] || null;
-      const desc     = document.getElementById("pDesc")?.value.trim() || "";
+      const price = Number.parseFloat(priceVal);
+      const barcode = document.getElementById("pBarcode")?.value.trim() || "";
+      const file = document.getElementById("pImgFile")?.files?.[0] || null;
+      const desc = document.getElementById("pDesc")?.value.trim() || "";
 
       if (!title || !category || Number.isNaN(price) || !barcode) {
         alert("Please fill Title, Category, Price, Barcode");
@@ -3811,28 +3873,42 @@ document.addEventListener("visibilitychange", () => {
       }
 
       let thumbURL = "";
-      if (file){
-        try { thumbURL = await uploadProductThumb(file, id); }
-        catch(err){ console.error("[upload thumb] error:", err); alert("Image upload failed (permission/CORS/network)."); throw err; }
+      if (file) {
+        try {
+          thumbURL = await uploadProductThumb(file, id);
+        } catch (err) {
+          console.error("[upload thumb] error:", err);
+          alert("Image upload failed (permission/CORS/network).");
+          throw err;
+        }
       }
 
       // gallery upload (optional). Provide a no-op fallback if function not defined elsewhere
-      if (typeof window.uploadGalleryFiles !== "function"){
-        window.uploadGalleryFiles = async ()=>[];
+      if (typeof window.uploadGalleryFiles !== "function") {
+        window.uploadGalleryFiles = async () => [];
       }
       let images = [];
-      try{
+      try {
         const gfiles = document.getElementById("pGallery")?.files || [];
         if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
-      }catch(err){ console.warn("gallery upload error:", err); }
+      } catch (err) {
+        console.warn("gallery upload error:", err);
+      }
 
       const now = Date.now();
       const isNew = !document.getElementById("pId")?.value.trim();
 
       const prod = {
-        id, title, category, price:+price, barcode,
-        thumb: thumbURL, images, description: desc,
-        updatedAt: now, ...(isNew ? { createdAt: now } : {})
+        id,
+        title,
+        category,
+        price: +price,
+        barcode,
+        thumb: thumbURL,
+        images,
+        description: desc,
+        updatedAt: now,
+        ...(isNew ? { createdAt: now } : {}),
       };
 
       // ✅ Save (no invalid assignment)
@@ -3840,22 +3916,31 @@ document.addEventListener("visibilitychange", () => {
 
       // update in-memory map
       window.BARCODE_MAP = window.BARCODE_MAP || {};
-      window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
+      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
 
       alert("Product saved.");
       closeDialog("productModal");
       resetProductForm();
-    } catch(err){
+    } catch (err) {
       const msg = String(err?.message || err || "");
-      if (msg.includes("validation_failed")) { /* already alerted */ }
-      else if (msg.includes("PERMISSION_DENIED") || msg.includes("insufficient permissions")){
-        alert("Save failed: permission denied.\n\nTip: Only admins can write products. Create users/{yourUid} with { role: 'admin' }.");
+      if (msg.includes("validation_failed")) {
+        /* already alerted */
+      } else if (
+        msg.includes("PERMISSION_DENIED") ||
+        msg.includes("insufficient permissions")
+      ) {
+        alert(
+          "Save failed: permission denied.\n\nTip: Only admins can write products. Create users/{yourUid} with { role: 'admin' }."
+        );
       } else {
         alert("Save failed. " + msg);
       }
     } finally {
       _savingProduct = false;
-      if (btnSave){ btnSave.disabled = false; btnSave.textContent = prevTxt || "Save"; }
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.textContent = prevTxt || "Save";
+      }
     }
   });
 
@@ -3870,48 +3955,69 @@ document.addEventListener("visibilitychange", () => {
 
   function populateCategoriesDropdown() {
     if (!elPlCategory) return;
-    const cats = Array.from(new Set(_productsCache.map(x=>x.category).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+    const cats = Array.from(
+      new Set(_productsCache.map((x) => x.category).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
     const cur = elPlCategory.value;
-    elPlCategory.innerHTML = `<option value="">All categories</option>` + cats.map(c=>`<option value="${c}">${c}</option>`).join("");
+    elPlCategory.innerHTML =
+      `<option value="">All categories</option>` +
+      cats.map((c) => `<option value="${c}">${c}</option>`).join("");
     if (cats.includes(cur)) elPlCategory.value = cur;
   }
 
-  function filteredSortedProducts(){
+  function filteredSortedProducts() {
     const q = (elPlSearch?.value || "").trim().toLowerCase();
     const cat = elPlCategory?.value || "";
-    const sort= elPlSort?.value || "new";
+    const sort = elPlSort?.value || "new";
     let items = _productsCache.slice();
-    if (q) items = items.filter(x =>
-      (x.title||"").toLowerCase().includes(q) ||
-      (x.barcode||"").toLowerCase().includes(q) ||
-      (x.id||"").toLowerCase().includes(q)
-    );
-    if (cat) items = items.filter(x=>(x.category||"")===cat);
-    const coll = new Intl.Collator(undefined,{sensitivity:"base"});
-    if (sort==="title_az")   items.sort((a,b)=>coll.compare(a.title,b.title));
-    if (sort==="title_za")   items.sort((a,b)=>coll.compare(b.title,a.title));
-    if (sort==="price_low")  items.sort((a,b)=>(a.price||0)-(b.price||0));
-    if (sort==="price_high") items.sort((a,b)=>(b.price||0)-(a.price||0));
-    if (sort==="new")        items.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+    if (q)
+      items = items.filter(
+        (x) =>
+          (x.title || "").toLowerCase().includes(q) ||
+          (x.barcode || "").toLowerCase().includes(q) ||
+          (x.id || "").toLowerCase().includes(q)
+      );
+    if (cat) items = items.filter((x) => (x.category || "") === cat);
+    const coll = new Intl.Collator(undefined, { sensitivity: "base" });
+    if (sort === "title_az")
+      items.sort((a, b) => coll.compare(a.title, b.title));
+    if (sort === "title_za")
+      items.sort((a, b) => coll.compare(b.title, a.title));
+    if (sort === "price_low")
+      items.sort((a, b) => (a.price || 0) - (b.price || 0));
+    if (sort === "price_high")
+      items.sort((a, b) => (b.price || 0) - (a.price || 0));
+    if (sort === "new")
+      items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     return items;
   }
 
-  function renderProductList(){
+  function renderProductList() {
     if (!elPlList) return;
     populateCategoriesDropdown();
     const items = filteredSortedProducts();
-    elPlList.innerHTML = items.length ? "" : `<div class="small" style="opacity:.8;">No products yet.</div>`;
-    for (const p of items){
+    elPlList.innerHTML = items.length
+      ? ""
+      : `<div class="small" style="opacity:.8;">No products yet.</div>`;
+    for (const p of items) {
       const card = document.createElement("div");
       card.className = "pm-card";
       card.innerHTML = `
         <img alt="${p.title ?? ""}" src="${p.thumb || ""}">
-        <div class="row"><div class="strong">${p.title ?? ""}</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
-        <div class="row"><div class="small" style="opacity:.85;">${p.category || "-"}</div><div class="small">#${p.id}</div></div>
-        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${p.barcode || "-"}</div></div>
+        <div class="row"><div class="strong">${
+          p.title ?? ""
+        }</div><div class="tag">$${(+p.price || 0).toFixed(2)}</div></div>
+        <div class="row"><div class="small" style="opacity:.85;">${
+          p.category || "-"
+        }</div><div class="small">#${p.id}</div></div>
+        <div class="row"><div class="small" style="opacity:.75;">Barcode:</div><div class="small" style="opacity:.9;">${
+          p.barcode || "-"
+        }</div></div>
         <div class="row" style="gap:.4rem; justify-content:flex-end;">
           <button class="btn-mini" data-edit="${p.id}">Edit</button>
-          <button class="btn-mini btn-outline" data-del="${p.id}">Delete</button>
+          <button class="btn-mini btn-outline" data-del="${
+            p.id
+          }">Delete</button>
         </div>
       `;
       elPlList.appendChild(card);
@@ -3922,29 +4028,31 @@ document.addEventListener("visibilitychange", () => {
   elPlCategory?.addEventListener("change", renderProductList);
   elPlSort?.addEventListener("change", renderProductList);
 
-  elPlList?.addEventListener("click", async (e)=>{
+  elPlList?.addEventListener("click", async (e) => {
     const edit = e.target.closest?.("[data-edit]");
-    const del  = e.target.closest?.("[data-del]");
+    const del = e.target.closest?.("[data-del]");
     if (!edit && !del) return;
 
     const id = edit?.dataset.edit || del?.dataset.del;
-    const p = _productsCache.find(x=>x.id===id);
+    const p = _productsCache.find((x) => x.id === id);
     if (!p) return;
 
-    if (del){
+    if (del) {
       if (confirm(`Delete "${p.title}"?`)) await deleteProduct(id);
       return;
     }
 
     // edit
-    document.getElementById("pmMode") && (document.getElementById("pmMode").textContent="Edit");
+    document.getElementById("pmMode") &&
+      (document.getElementById("pmMode").textContent = "Edit");
     document.getElementById("pId").value = p.id;
     document.getElementById("pTitle").value = p.title || "";
     document.getElementById("pCategory").value = p.category || "";
     document.getElementById("pPrice").value = p.price || 0;
     document.getElementById("pBarcode").value = p.barcode || "";
     document.getElementById("pThumbPreview").src = p.thumb || "";
-    document.getElementById("pDesc") && (document.getElementById("pDesc").value = p.description || "");
+    document.getElementById("pDesc") &&
+      (document.getElementById("pDesc").value = p.description || "");
     openDialog("productModal");
   });
 
@@ -3955,41 +4063,59 @@ document.addEventListener("visibilitychange", () => {
       setTimeout(ensureProductsRealtime, 300);
       return;
     }
-    _unsubProducts = fdb.collection(PRODUCTS_COL).onSnapshot((snap)=>{
-      _productsCache = snap.docs.map(d=>({ id: d.id, ...d.data() }));
-      window._productsCache = _productsCache;
-      buildCategoryChipsFromProducts?.();
+    _unsubProducts = fdb.collection(PRODUCTS_COL).onSnapshot(
+      (snap) => {
+        _productsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        window._productsCache = _productsCache;
+        buildCategoryChipsFromProducts?.();
 
-      window.BARCODE_MAP = {};
-      for (const p of _productsCache){
-        if (p.barcode) window.BARCODE_MAP[p.barcode] = { id: p.id, title: p.title, price: p.price, img: p.thumb };
-      }
+        window.BARCODE_MAP = {};
+        for (const p of _productsCache) {
+          if (p.barcode)
+            window.BARCODE_MAP[p.barcode] = {
+              id: p.id,
+              title: p.title,
+              price: p.price,
+              img: p.thumb,
+            };
+        }
 
-      renderProductList?.();
+        renderProductList?.();
 
-      if (typeof renderFilteredStore === "function") {
-        const titleEl = document.getElementById("shopTitle") || document.querySelector("[data-shop-title]");
-        const curTitle = titleEl?.textContent?.trim() || "Shop";
-        renderFilteredStore(curTitle);
-      } else {
-        window.renderStorefrontFromCloud?.(_productsCache);
-      }
+        if (typeof renderFilteredStore === "function") {
+          const titleEl =
+            document.getElementById("shopTitle") ||
+            document.querySelector("[data-shop-title]");
+          const curTitle = titleEl?.textContent?.trim() || "Shop";
+          renderFilteredStore(curTitle);
+        } else {
+          window.renderStorefrontFromCloud?.(_productsCache);
+        }
 
-      renderNewArrivals?.(_productsCache);
-      attachStorefrontSearch?.();
-    }, (err)=> console.error("realtime error:", err));
+        if (typeof window.renderNewArrivals === "function") {
+          window.renderNewArrivals(_productsCache);
+        }
+        attachStorefrontSearch?.();
+      },
+      (err) => console.error("realtime error:", err)
+    );
   }
 
-  document.addEventListener("fb-ready", async ()=>{
+  document.addEventListener("fb-ready", async () => {
     try {
-      const snap = await fdb.collection("products").orderBy("updatedAt","desc").get();
-      const items = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      const snap = await fdb
+        .collection("products")
+        .orderBy("updatedAt", "desc")
+        .get();
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       renderStorefrontFromCloud?.(items);
-    } catch(e){ console.warn("initial load failed:", e); }
+    } catch (e) {
+      console.warn("initial load failed:", e);
+    }
     ensureProductsRealtime();
   });
 
-  document.addEventListener("DOMContentLoaded", ()=>{
+  document.addEventListener("DOMContentLoaded", () => {
     if (!_unsubProducts) ensureProductsRealtime();
   });
 })();
