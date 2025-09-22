@@ -1413,31 +1413,9 @@ async function uploadGalleryFiles(files, productId) {
 }
 
 // id ကို form ထဲကနေ သတ်မှတ်ထားရမယ် (အပေါ်မှာ)
-const id = document.getElementById("pId")?.value.trim() || fdb.collection("products").doc().id;
-
-// --- after thumbURL is ready ---
-let images = [];
-try {
-  const gfiles = document.getElementById("pGallery")?.files || [];
-  if (gfiles.length) {
-    images = await uploadGalleryFiles(gfiles, id);
-  }
-} catch (e) {
-  console.warn("gallery upload error:", e);
-}
-
-// product doc
-const prod = {
-  id,
-  pdTitle,
-  category,
-  price: +price,
-  barcode,
-  thumb: thumbURL,
-  images,
-};
-
-await upsertProduct(prod);
+const id =
+  document.getElementById("pId")?.value.trim() ||
+  fdb.collection("products").doc().id;
 
 // === Part 4: Nav chips & admin UI toggle ===
 function buildNavChips() {
@@ -3665,10 +3643,10 @@ document.addEventListener("visibilitychange", () => {
     }
 
     try {
-      // ✅ const id — reassign မလုပ်တော့
-     let id =
-    document.getElementById("pId")?.value.trim() ||
-    fdb.collection(PRODUCTS_COL).doc().id;
+      // prepare id
+      let id =
+        document.getElementById("pId")?.value.trim() ||
+        fdb.collection(PRODUCTS_COL).doc().id;
 
       const title = document.getElementById("pTitle")?.value.trim();
       const category = document.getElementById("pCategory")?.value.trim();
@@ -3702,6 +3680,7 @@ document.addEventListener("visibilitychange", () => {
         console.warn("gallery upload error:", e);
       }
 
+      // ✅ build product object here
       const prod = {
         id,
         title,
@@ -3712,12 +3691,17 @@ document.addEventListener("visibilitychange", () => {
         images,
       };
 
-      // ✅ Save ONE time — reassign မလို
+      // save once
       await upsertProduct(prod);
 
       // update scanner/cart map
       window.BARCODE_MAP = window.BARCODE_MAP || {};
-      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
+      window.BARCODE_MAP[barcode] = {
+        id,
+        title,
+        price: +price,
+        img: thumbURL,
+      };
 
       alert("Product saved.");
       closeDialog("productModal");
