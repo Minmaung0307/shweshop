@@ -3646,96 +3646,77 @@ document.addEventListener("visibilitychange", () => {
     if (elThumbPrev) elThumbPrev.src = await fileToPreviewURL(f);
   });
 
-  // top-level guard
-  let _savingProduct = false;
+  // === Product form submit (REPLACE your current submit handler) ===
+let _savingProduct = false;
 
-  elForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (_savingProduct) return;
-    _savingProduct = true;
+elForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (_savingProduct) return;
+  _savingProduct = true;
 
-    const btnSave = elForm.querySelector('button[type="submit"]');
-    const prevTxt = btnSave?.textContent;
-    if (btnSave) {
-      btnSave.disabled = true;
-      btnSave.textContent = "Saving…";
+  const btnSave = elForm.querySelector('button[type="submit"]');
+  const prevTxt = btnSave?.textContent;
+  if (btnSave) { btnSave.disabled = true; btnSave.textContent = "Saving…"; }
+
+  try {
+    // ✅ Define id first
+    let id = (document.getElementById("pId")?.value.trim()) || fdb.collection("products").doc().id;
+
+    const title    = document.getElementById("pTitle")?.value.trim();
+    const category = document.getElementById("pCategory")?.value.trim();
+    const price    = parseFloat(document.getElementById("pPrice")?.value);
+    const barcode  = document.getElementById("pBarcode")?.value.trim();
+    const file     = document.getElementById("pImgFile")?.files?.[0] || null;
+
+    if (!title || !category || isNaN(price) || !barcode) {
+      alert("Please fill Title, Category, Price, Barcode");
+      return;
     }
 
-    try {
-      // Prepare id early
-      let id =
-        document.getElementById("pId")?.value.trim() ||
-        fdb.collection(PRODUCTS_COL).doc().id;
-
-      const title = document.getElementById("pTitle")?.value.trim();
-      const category = document.getElementById("pCategory")?.value.trim();
-      const price = parseFloat(document.getElementById("pPrice")?.value);
-      const barcode = document.getElementById("pBarcode")?.value.trim();
-      const file = document.getElementById("pImgFile")?.files?.[0] || null;
-
-      if (!title || !category || isNaN(price) || !barcode) {
-        alert("Please fill Title, Category, Price, Barcode");
-        return;
-      }
-
-      // upload thumb (recommend: your uploadProductThumb sets contentType)
-      let thumbURL = "";
-      if (file) {
-        try {
-          thumbURL = await uploadProductThumb(file, id);
-        } catch (err) {
-          console.error("upload error:", err);
-          alert("Image upload failed (permission/CORS/network).");
-          return;
-        }
-      }
-
-      // gallery files
-      let images = [];
+    // thumb upload (with contentType)
+    let thumbURL = "";
+    if (file) {
       try {
-        const gfiles = document.getElementById("pGallery")?.files || [];
-        if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
-      } catch (e) {
-        console.warn("gallery upload error:", e);
-      }
-
-      const prod = {
-        id,
-        title,
-        category,
-        price: +price,
-        barcode,
-        thumb: thumbURL,
-        images,
-      };
-
-      // ✅ save ONCE
-      try {
-        let id = await upsertProduct(prod);
+        thumbURL = await uploadProductThumb(file, id); // must set contentType inside
       } catch (err) {
-        console.error("save error:", err);
-        alert("Save failed. You may not have permission to add/edit products.");
+        console.error("upload error:", err);
+        alert("Image upload failed (permission/CORS/network).");
         return;
       }
+    }
 
-      // update barcode map
-      window.BARCODE_MAP = window.BARCODE_MAP || {};
-      window.BARCODE_MAP[barcode] = { id, title, price: +price, img: thumbURL };
+    // gallery upload (optional)
+    let images = [];
+    try {
+      const gfiles = document.getElementById("pGallery")?.files || [];
+      if (gfiles.length) images = await uploadGalleryFiles(gfiles, id);
+    } catch (e) {
+      console.warn("gallery upload error:", e);
+    }
 
-      alert("Product saved.");
-      closeDialog("productModal");
-      resetProductForm();
+    const prod = { id, title, category, price:+price, barcode, thumb: thumbURL, images };
+
+    // ✅ save ONCE (and keep the returned id)
+    try {
+      id = await upsertProduct(prod);
     } catch (err) {
       console.error("save error:", err);
       alert("Save failed. You may not have permission to add/edit products.");
-    } finally {
-      _savingProduct = false;
-      if (btnSave) {
-        btnSave.disabled = false;
-        btnSave.textContent = prevTxt || "Save";
-      }
+      return;
     }
-  });
+
+    // update barcode map (uses the defined `id`)
+    window.BARCODE_MAP = window.BARCODE_MAP || {};
+    window.BARCODE_MAP[barcode] = { id, title, price:+price, img: thumbURL };
+
+    alert("Product saved.");
+    closeDialog("productModal");
+    resetProductForm();
+  } finally {
+    _savingProduct = false;
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = prevTxt || "Save"; }
+  }
+});
 
   // refs (near other refs)
   const elGalleryFiles = document.getElementById("pGallery");

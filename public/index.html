@@ -811,13 +811,14 @@
       // Back-compat alias for old code that still calls `db`
       window.db = _fdb;
 
-      // Optional: allow writes that require auth (e.g., Storage put)
+      // ✅ anon sign-in with guard
       firebase
         .auth()
         .signInAnonymously()
+        .then(() => console.log("anon auth ok"))
         .catch((err) => console.warn("anon signin:", err?.message || err));
 
-      // Let app.js know Firebase is ready
+      // let app.js know
       document.dispatchEvent(new Event("fb-ready"));
     </script>
     <!-- ✅ Load EmailJS SDK -->
