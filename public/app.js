@@ -3761,19 +3761,18 @@ document.addEventListener("visibilitychange", () => {
     for (const p of items) {
       const card = document.createElement("div");
       card.className = "card";
-      // --- Card layout: img (left) • info (right) ---
+      // image-left / info-right; main image is CONTAIN (show all)
       card.innerHTML = `
       <div class="row" style="align-items:flex-start; gap:12px;">
-        <!-- LEFT: main image + thumbs -->
-        <div style="width:160px; min-width:160px;">
-          <div class="thumb" data-open="${
-            p.id
-          }" style="width:160px; height:160px; border-radius:12px; overflow:hidden; background:#111; cursor:pointer;">
-            <img src="${p.thumb || ""}" alt="${
-        p.title || ""
-      }" style="width:100%; height:100%; object-fit:cover;">
+        <!-- LEFT -->
+        <div style="width:180px; min-width:180px;">
+          <div class="thumb" data-open="${p.id}"
+               style="width:180px;height:180px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid rgba(0,0,0,.08);cursor:pointer;overflow:hidden;">
+            <img src="${p.thumb || ""}" alt="${p.title || ""}"
+                 style="max-width:100%;max-height:100%;object-fit:contain;display:block;">
           </div>
-          <!-- thumbs carousel -->
+
+          <!-- thumbs carousel (show up to 6) -->
           <div class="row" style="margin-top:8px; align-items:center; gap:6px;">
             <button class="btn-mini btn-outline" data-thumbs-left="${
               p.id
@@ -3784,11 +3783,11 @@ document.addEventListener("visibilitychange", () => {
               ${
                 Array.isArray(p.images) && p.images.length
                   ? p.images
-                      .slice(0, 12)
+                      .slice(0, 6)
                       .map(
                         (u, i) =>
                           `<img data-thumb="${p.id}" data-index="${i}" src="${u}" alt="thumb"
-                         style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12);cursor:pointer;">`
+                         style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#111;border:1px solid rgba(0,0,0,.1);cursor:pointer;">`
                       )
                       .join("")
                   : ""
@@ -3800,8 +3799,8 @@ document.addEventListener("visibilitychange", () => {
           </div>
         </div>
 
-        <!-- RIGHT: title, price, desc, promo/member, bottom buttons -->
-        <div style="flex:1;">
+        <!-- RIGHT -->
+        <div style="flex:1;min-width:0;">
           <div class="row" style="justify-content:space-between; align-items:flex-start;">
             <div class="strong" style="font-size:1rem; line-height:1.2;">${
               p.title || ""
@@ -3810,11 +3809,14 @@ document.addEventListener("visibilitychange", () => {
               +p.price || 0
             ).toFixed(2)}</div>
           </div>
-          <div class="small" style="opacity:.9; text-align:right; margin-top:4px;">
-            ${(p.desc || p.description || "").toString().slice(0, 120) || ""}
+
+          <div class="small" style="opacity:.9; text-align:right; margin-top:6px; line-height:1.35;">
+            ${
+              ((p.desc || p.description || "") + "").trim() ||
+              "<span style='opacity:.6'>No description</span>"
+            }
           </div>
 
-          <!-- promo & membership -->
           <div class="row" style="justify-content:flex-end; gap:6px; margin-top:10px;">
             <button class="btn-mini btn-outline" data-promo="${
               p.id
@@ -3824,7 +3826,6 @@ document.addEventListener("visibilitychange", () => {
             }">Membership Discount</button>
           </div>
 
-          <!-- bottom buttons -->
           <div class="row" style="justify-content:space-between; margin-top:12px;">
             <button class="btn-mini" data-add="${p.id}">Add to Cart</button>
             <button class="btn-mini btn-outline" data-detail="${
@@ -3837,54 +3838,54 @@ document.addEventListener("visibilitychange", () => {
       grid.appendChild(card);
     }
 
-    // single delegated handler
+    // delegated handlers
     grid.onclick = (e) => {
-      const addBtn = e.target.closest?.("[data-add]");
-      const openBtn = e.target.closest?.("[data-detail],[data-open]");
-      const promoBtn = e.target.closest?.("[data-promo]");
-      const membBtn = e.target.closest?.("[data-member]");
       const leftBtn = e.target.closest?.("[data-thumbs-left]");
       const rightBtn = e.target.closest?.("[data-thumbs-right]");
       const thumbImg = e.target.closest?.("img[data-thumb]");
+      const promoBtn = e.target.closest?.("[data-promo]");
+      const membBtn = e.target.closest?.("[data-member]");
+      const addBtn = e.target.closest?.("[data-add]");
+      const openBtn = e.target.closest?.("[data-detail],[data-open]");
 
-      // thumbs carousel scroll
+      // scroll thumbs
       if (leftBtn || rightBtn) {
         const pid =
           leftBtn?.dataset.thumbsLeft || rightBtn?.dataset.thumbsRight;
         const rail = grid.querySelector(`[data-thumbs="${pid}"]`);
-        if (rail) {
+        if (rail)
           rail.scrollBy({ left: leftBtn ? -100 : 100, behavior: "smooth" });
-        }
         return;
       }
 
-      // click on small thumb => set hero
+      // click small thumb → set hero (contain)
       if (thumbImg) {
         const pid = thumbImg.dataset.thumb;
         const idx = +thumbImg.dataset.index || 0;
         const prod = (items || []).find((x) => x.id === pid);
-        const hero = grid.querySelector(`.thumb[data-open="${pid}"] img`);
-        if (prod && hero) {
+        const heroImg = grid.querySelector(`.thumb[data-open="${pid}"] img`);
+        if (prod && heroImg) {
           const url =
             (Array.isArray(prod.images) && prod.images[idx]) ||
             prod.thumb ||
             "";
-          if (url) hero.src = url;
+          if (url) {
+            heroImg.src = url;
+            heroImg.style.objectFit = "contain";
+            heroImg.style.maxWidth = "100%";
+            heroImg.style.maxHeight = "100%";
+          }
         }
         return;
       }
 
-      // promo button
+      // promo / membership
       if (promoBtn) {
-        if (typeof openPromoModal === "function") openPromoModal();
-        else alert("Promo modal not wired. Implement openPromoModal().");
+        openPromoModal?.();
         return;
       }
-
-      // membership button
       if (membBtn) {
-        if (typeof openMembershipModal === "function") openMembershipModal();
-        else document.getElementById("membershipModal")?.showModal?.();
+        openMembershipModal?.();
         return;
       }
 
@@ -3909,7 +3910,7 @@ document.addEventListener("visibilitychange", () => {
         return;
       }
 
-      // open detail (NOT add-product modal)
+      // view → detail modal
       if (openBtn) {
         const id = openBtn.dataset.detail || openBtn.dataset.open;
         const prod = (items || []).find((x) => x.id === id);
@@ -3918,7 +3919,7 @@ document.addEventListener("visibilitychange", () => {
     };
   }
 
-  // expose globally (module-safe)
+  // module-safe global
   window.renderStorefrontFromCloud =
     window.renderStorefrontFromCloud || renderStorefrontFromCloud;
 
@@ -4505,111 +4506,89 @@ document.addEventListener("visibilitychange", () => {
 // ===== Product Detail Modal (View) =====
 (function setupProductDetail() {
   const dlg = document.getElementById("productDetailModal");
-  if (!dlg) {
-    console.warn("[detail] #productDetailModal not found");
-    return;
-  }
+  if (!dlg) return;
+
   const elTitle = document.getElementById("pdTitle");
   const elHero = document.getElementById("pdHero");
   const elThumbs = document.getElementById("pdThumbs");
   const elPrice = document.getElementById("pdPrice");
-  const elCat = document.getElementById("pdCategory");
-  const elBar = document.getElementById("pdBarcode");
-  const elQty = document.getElementById("pdQty");
+  const elDesc = document.getElementById("pdDesc");
   const elAdd = document.getElementById("pdAdd");
-  const elClose = document.getElementById("pdClose");
+  const elClose = dlg.querySelector("[data-close]");
 
-  let cur = null,
-    idx = 0;
+  function setHero(url) {
+    if (!elHero) return;
+    elHero.src = url || "";
+    // CONTAIN to show all
+    elHero.style.objectFit = "contain";
+    elHero.style.background = "#fff";
+    elHero.style.maxWidth = "100%";
+    elHero.style.maxHeight = "100%";
+  }
 
-  function setHero(i) {
-    const imgs =
-      Array.isArray(cur?.images) && cur.images.length
-        ? cur.images
-        : [cur.thumb];
-    idx = Math.max(0, Math.min(i, imgs.length - 1));
-    if (elHero) elHero.src = imgs[idx] || "";
+  window.openProductDetail = function (prod) {
+    const images =
+      Array.isArray(prod.images) && prod.images.length
+        ? prod.images.slice(0, 6)
+        : [];
+    const hero = images[0] || prod.thumb || "";
+
+    elTitle && (elTitle.textContent = prod.title || "");
+    setHero(hero);
+    elPrice && (elPrice.textContent = `$${(+prod.price || 0).toFixed(2)}`);
+    elDesc &&
+      (elDesc.innerHTML =
+        ((prod.desc || prod.description || "") + "").trim() ||
+        "<span style='opacity:.6'>No description</span>");
+
     if (elThumbs) {
-      elThumbs.querySelectorAll("img").forEach((im, j) => {
-        im.style.outline = j === idx ? "2px solid #63b3ed" : "none";
+      elThumbs.innerHTML = "";
+      // main thumb included?
+      const list = images.length ? images : prod.thumb ? [prod.thumb] : [];
+      list.forEach((u, i) => {
+        const im = document.createElement("img");
+        im.src = u;
+        im.alt = "thumb";
+        im.style.cssText =
+          "width:56px;height:56px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid rgba(0,0,0,.1);background:#fff;";
+        im.addEventListener("click", () => setHero(u));
+        elThumbs.appendChild(im);
       });
     }
-  }
 
-  function renderThumbs() {
-    if (!elThumbs) return;
-    elThumbs.innerHTML = "";
-    const imgs =
-      Array.isArray(cur?.images) && cur.images.length
-        ? cur.images
-        : [cur.thumb];
-    imgs.forEach((u, i) => {
-      const im = document.createElement("img");
-      im.src = u || "";
-      im.alt = cur?.title || "";
-      im.style.cssText =
-        "width:56px;height:56px;border-radius:8px;object-fit:cover;background:#111;border:1px solid rgba(255,255,255,.12);cursor:pointer";
-      im.addEventListener("click", () => setHero(i));
-      elThumbs.appendChild(im);
-    });
-  }
-
-  function open(prod) {
-    cur = prod || null;
-    if (!cur) return;
-
-    if (elTitle) elTitle.textContent = cur.title || "";
-    if (elPrice) elPrice.textContent = `$${(+cur.price || 0).toFixed(2)}`;
-    if (elCat) elCat.textContent = cur.category || "";
-    if (elBar) elBar.textContent = cur.barcode || "";
-
-    renderThumbs();
-    setHero(0);
-
-    if (elQty) elQty.value = "1";
+    if (elAdd) {
+      elAdd.onclick = () => {
+        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        const i = cart.findIndex((x) => x.id === prod.id);
+        if (i >= 0) cart[i].qty += 1;
+        else
+          cart.push({
+            id: prod.id,
+            title: prod.title,
+            price: +prod.price,
+            img: prod.thumb,
+            qty: 1,
+          });
+        localStorage.setItem("cart", JSON.stringify(cart));
+        updateCartCount?.();
+      };
+    }
 
     dlg.showModal ? dlg.showModal() : dlg.setAttribute("open", "");
-  }
+  };
 
-  function close() {
-    dlg.close ? dlg.close() : dlg.removeAttribute("open");
-  }
-
-  elAdd?.addEventListener("click", () => {
-    const q = Math.max(1, parseInt(elQty?.value || "1", 10) || 1);
-    const id = cur.id;
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const i = cart.findIndex((x) => x.id === id);
-    if (i >= 0) cart[i].qty += q;
-    else
-      cart.push({
-        id,
-        title: cur.title,
-        price: +cur.price,
-        img: cur.thumb,
-        qty: q,
-      });
-    localStorage.setItem("cart", JSON.stringify(cart));
-    if (typeof updateCartCount === "function") updateCartCount();
-    // မပိတ်ပါနဲ့ – user က ဆက်ကြည့်နိုင်ရန်
-  });
-
-  dlg.addEventListener("click", (e) => {
-    // backdrop အပေါ်ခေါက်လို့ မပိတ်ချင်ရင် ဒီ handler ကို skip လုပ်ပါ
-    // if (e.target === dlg) close();
-  });
-
-  elClose?.addEventListener("click", close);
-
-  document.getElementById("pdMinus")?.addEventListener("click", () => {
-    const n = Math.max(1, (parseInt(elQty?.value || "1", 10) || 1) - 1);
-    if (elQty) elQty.value = String(n);
-  });
-  document.getElementById("pdPlus")?.addEventListener("click", () => {
-    const n = Math.max(1, (parseInt(elQty?.value || "1", 10) || 1) + 1);
-    if (elQty) elQty.value = String(n);
-  });
-
-  // expose opener
-  window.openProductDetail = open;
+  elClose?.addEventListener("click", () =>
+    dlg.close ? dlg.close() : dlg.removeAttribute("open")
+  );
 })();
+
+// ... other functions
+// e.g. renderStorefrontFromCloud, setupProductDetail, etc.
+
+// ✅ at the bottom of app.js
+window.openPromoModal = window.openPromoModal || function(){
+  document.getElementById("promoModal")?.showModal?.() || alert("Enter promo in promoModal");
+};
+window.openMembershipModal = window.openMembershipModal || function(){
+  document.getElementById("membershipModal")?.showModal?.() || alert("Open membershipModal here");
+};

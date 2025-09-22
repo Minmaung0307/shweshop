@@ -1610,3 +1610,10 @@ body {
 .ana-card {
   min-height: 280px; /* gives room but not huge */
 }
+
+/* product card thumbs hover */
+.thumbs-wrap img { transition: transform .12s ease; }
+.thumbs-wrap img:hover { transform: scale(1.05); }
+
+/* detail hero img keep contain */
+#pdHero { object-fit: contain; background:#fff; }
