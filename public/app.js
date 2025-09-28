@@ -159,23 +159,11 @@ onAuthStateChanged(auth, async (user)=>{
   document.body.dataset.isAdmin = String(isAdmin);
   state.user = user;
 
-  let isAdmin = false;
-  if (user) {
-    const token = await user.getIdTokenResult(true);
-    isAdmin = token.claims?.admin === true;
-  }
-  document.body.dataset.isAdmin = String(isAdmin);
-
   const show = (el, yes)=> el && el.classList.toggle('hidden', !yes);
   show($('#btnAccount'), !!user);
   show($('#btnLogoutHeader'), !!user);
   show($('#btnLogin'), !user);
   show($('#btnSignup'), !user);
-  // toggle admin nav/page visibility
-  const adminLink = document.querySelector('a[href="#admin"]');
-  if (adminLink) adminLink.style.display = isAdmin ? '' : 'none';
-  const adminPage = document.querySelector('#page-admin');
-  if (adminPage) adminPage.style.display = isAdmin ? '' : 'none';
 
   // Admin page/link ကို non-admin မှာ ဖျောက်
   const adminLink = document.querySelector('a[href="#admin"]');
