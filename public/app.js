@@ -73,20 +73,17 @@ let state = {
   promo: null,
 };
 
-// ===== Routing (hash) =====
-const pages = {
-  home: "#page-home",
-  orders: "#page-orders",
-  account: "#page-account",
-  admin: "#page-admin",
-};
-function route() {
-  const hash = location.hash.replace("#", "") || "home";
-  $$(".page").forEach((p) => p.classList.remove("active"));
-  const id = pages[hash] || pages.home;
-  $(id).classList.add("active");
+// === Simple Router ===
+const PAGES = { home:'#page-home', orders:'#page-orders', account:'#page-account', admin:'#page-admin' };
+function route(){
+  document.querySelectorAll('.page').forEach(p=> p.classList.remove('active'));
+  const key = (location.hash.replace('#','') || 'home').split('/')[0];
+  const sel = PAGES[key] || PAGES.home;
+  const el = document.querySelector(sel);
+  if (el) el.classList.add('active');
 }
-window.addEventListener("hashchange", route);
+window.addEventListener('hashchange', route);
+document.addEventListener('DOMContentLoaded', route);
 
 // ----- Auth modal open/close + switch -----
 document.querySelectorAll('[data-close]')?.forEach(btn=>{
@@ -414,7 +411,7 @@ async function loadAds() {
 
 // ====== NAV SHORTCUTS ======
 document.getElementById('btnGoAdmin')?.addEventListener('click', ()=>{
-  location.hash = 'admin';
+  location.hash = 'admin';  // route() က page-admin ကို active လုပ်ပေးမယ်
 });
 
 // ====== ADMIN VISIBILITY (toggle .admin-only controls) ======
@@ -515,67 +512,60 @@ function loadIntoEditor(id){
 
 // ====== SEED DEMO ITEMS ======
 const DEMO_ITEMS = [
-  // men
-  { title: 'Men T-Shirt Classic', category: 'men', price: 14.99, rating: 4.2,
-    description: 'Soft cotton tee for everyday wear.',
-    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
+  { title:'Men T-Shirt Classic', category:'men', price:14.99, rating:4.2,
+    description:'Soft cotton tee for everyday wear.',
+    imageUrl:'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title: 'Men Sneakers Runner', category: 'men', price: 59.00, rating: 4.5,
-    description: 'Lightweight running shoes.',
-    imageUrl: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-
-  // women
-  { title: 'Women Summer Dress', category: 'women', price: 29.90, rating: 4.6,
-    description: 'Breezy floral dress.',
-    imageUrl: 'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title: 'Women Handbag', category: 'women', price: 48.50, rating: 4.4,
-    description: 'Compact crossbody bag.',
-    imageUrl: 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
+  { title:'Men Sneakers Runner', category:'men', price:59.00, rating:4.5,
+    description:'Lightweight running shoes.',
+    imageUrl:'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
 
-  // kids
-  { title: 'Kids Hoodie', category: 'kids', price: 19.90, rating: 4.3,
-    description: 'Cozy hoodie for kids.',
-    imageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop',
+  { title:'Women Summer Dress', category:'women', price:29.90, rating:4.6,
+    description:'Breezy floral dress.',
+    imageUrl:'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title: 'Kids Sneakers', category: 'kids', price: 24.50, rating: 4.4,
-    description: 'Durable kids shoes.',
-    imageUrl: 'https://images.unsplash.com/photo-1603808033192-7f21ad1d8a08?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-
-  // electronics
-  { title: 'Wireless Headphones', category: 'electronics', price: 89.00, rating: 4.5,
-    description: 'Noise-isolating, long battery life.',
-    imageUrl: 'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title: 'Smartwatch S2', category: 'electronics', price: 129.00, rating: 4.4,
-    description: 'Fitness + notifications.',
-    imageUrl: 'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
+  { title:'Women Handbag', category:'women', price:48.50, rating:4.4,
+    description:'Compact crossbody bag.',
+    imageUrl:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
 
-  // home
-  { title: 'Ceramic Mug Set', category: 'home', price: 15.99, rating: 4.2,
-    description: 'Set of 4, dishwasher safe.',
-    imageUrl: 'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop',
+  { title:'Kids Hoodie', category:'kids', price:19.90, rating:4.3,
+    description:'Cozy hoodie for kids.',
+    imageUrl:'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title: 'Throw Pillow Cover', category: 'home', price: 9.99, rating: 4.1,
-    description: '18x18 inch cover.',
-    imageUrl: 'https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?q=80&w=800&auto=format&fit=crop',
+  { title:'Kids Sneakers', category:'kids', price:24.50, rating:4.4,
+    description:'Durable kids shoes.',
+    imageUrl:'https://images.unsplash.com/photo-1603808033192-7f21ad1d8a08?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+
+  { title:'Wireless Headphones', category:'electronics', price:89.00, rating:4.5,
+    description:'Noise-isolating, long battery life.',
+    imageUrl:'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title:'Smartwatch S2', category:'electronics', price:129.00, rating:4.4,
+    description:'Fitness + notifications.',
+    imageUrl:'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+
+  { title:'Ceramic Mug Set', category:'home', price:15.99, rating:4.2,
+    description:'Set of 4, dishwasher safe.',
+    imageUrl:'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title:'Throw Pillow Cover', category:'home', price:9.99, rating:4.1,
+    description:'18x18 inch cover.',
+    imageUrl:'https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
 ];
 
 document.getElementById('btnSeedDemo')?.addEventListener('click', async ()=>{
+  const user = auth.currentUser;
+  if (!user) { alert('Please login first.'); return; }
   try{
-    // DEV only: comment out requireAdmin if you want any signed-in user to seed
-    // await requireAdmin();
-
-    for (const it of DEMO_ITEMS){
+    for(const it of DEMO_ITEMS){
       await addDoc(collection(db,'items'), it);
     }
     alert('Seeded demo items!');
-    await loadItems();
   }catch(e){
     alert(e.message || e);
   }
