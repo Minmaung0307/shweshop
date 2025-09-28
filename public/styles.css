@@ -19,6 +19,7 @@ body {
   font-family: Inter, sans-serif;
   background: #f6f7fb;
 }
+.admin-only { display: none; }
 .container {
   max-width: 1120px;
   margin: auto;

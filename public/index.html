@@ -31,6 +31,7 @@
           <button class="btn" type="submit">Search</button>
         </form>
         <nav class="nav">
+          <a class="link" id="navAdmin" href="#admin">Admin</a>
           <button id="btnLogin" class="link">Login</button>
           <button id="btnSignup" class="link">Sign up</button>
           <button id="btnAccount" class="link hidden">Account</button>
@@ -88,6 +89,15 @@
           </select>
         </div>
 
+        <div class="row" style="margin: 10px 0; gap: 8px; align-items: center">
+          <button id="btnGoAdmin" class="btn">➕ Add Item</button>
+          <button id="btnSeedDemo" class="btn outline">
+            🌱 Seed Demo Items
+          </button>
+          <span class="muted"
+            >Tip: Add Item ကိုနှိပ်ရင် Admin Console သို့သွားပါမယ်</span
+          >
+        </div>
         <div id="grid" class="grid"></div>
       </section>
 

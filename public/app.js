@@ -350,66 +350,241 @@ async function loadAds() {
 }
 
 // ===== Items (Catalog) =====
-async function loadItems() {
-  const snaps = await getDocs(collection(db, "items"));
-  state.items = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
-  renderItems();
-}
-function renderItems() {
-  const q = $("#searchInput").value.trim().toLowerCase();
-  const cat = $("#filterCategory").value;
-  const sort = $("#sortBy").value;
-  let rows = [...state.items];
-  if (cat && cat !== "all")
-    rows = rows.filter(
-      (r) => (r.category || "").toLowerCase() === cat.toLowerCase()
-    );
-  if (q)
-    rows = rows.filter((r) =>
-      (r.title + " " + (r.description || ""))?.toLowerCase().includes(q)
-    );
-  switch (sort) {
-    case "price_asc":
-      rows.sort((a, b) => (a.price || 0) - (b.price || 0));
-      break;
-    case "price_desc":
-      rows.sort((a, b) => (b.price || 0) - (a.price || 0));
-      break;
-    case "newest":
-      rows.sort((a, b) => asDate(b.createdAt) - asDate(a.createdAt));
-      break;
-    case "rating":
-      rows.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      break;
-    default:
-      break;
+// async function loadItems() {
+//   const snaps = await getDocs(collection(db, "items"));
+//   state.items = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+//   renderItems();
+// }
+
+// function renderItems() {
+//   const q = $("#searchInput").value.trim().toLowerCase();
+//   const cat = $("#filterCategory").value;
+//   const sort = $("#sortBy").value;
+//   let rows = [...state.items];
+//   if (cat && cat !== "all")
+//     rows = rows.filter(
+//       (r) => (r.category || "").toLowerCase() === cat.toLowerCase()
+//     );
+//   if (q)
+//     rows = rows.filter((r) =>
+//       (r.title + " " + (r.description || ""))?.toLowerCase().includes(q)
+//     );
+//   switch (sort) {
+//     case "price_asc":
+//       rows.sort((a, b) => (a.price || 0) - (b.price || 0));
+//       break;
+//     case "price_desc":
+//       rows.sort((a, b) => (b.price || 0) - (a.price || 0));
+//       break;
+//     case "newest":
+//       rows.sort((a, b) => asDate(b.createdAt) - asDate(a.createdAt));
+//       break;
+//     case "rating":
+//       rows.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+//       break;
+//     default:
+//       break;
+//   }
+//   const grid = $("#grid");
+//   grid.innerHTML = rows
+//     .map(
+//       (p) => `
+//     <div class="card product">
+//       <img src="${
+//         p.imageUrl || "https://picsum.photos/seed/" + p.id + "/600/400"
+//       }" alt="${p.title}">
+//       <div class="pbody">
+//         <div class="row" style="justify-content:space-between">
+//           <b>${p.title}</b><span class="rating">★ ${p.rating || "—"}</span>
+//         </div>
+//         <div class="row" style="justify-content:space-between">
+//           <span class="muted">${
+//             p.category || ""
+//           }</span><span class="price">${fmt(p.price)}</span>
+//         </div>
+//         <button class="btn" data-open-product="${p.id}">View</button>
+//       </div>
+//     </div>`
+//     )
+//     .join("");
+//   $$("[data-open-product]").forEach((b) =>
+//     b.addEventListener("click", () => openProduct(b.dataset.openProduct))
+//   );
+// }
+
+// ====== NAV SHORTCUTS ======
+document.getElementById('btnGoAdmin')?.addEventListener('click', ()=>{
+  location.hash = 'admin';
+});
+
+// ====== ADMIN VISIBILITY (toggle .admin-only controls) ======
+async function setAdminVisibility(){
+  const u = auth.currentUser;
+  let isAdmin = false;
+  if (u) {
+    try {
+      const t = await u.getIdTokenResult(true);
+      isAdmin = t.claims?.admin === true;
+    } catch {}
   }
-  const grid = $("#grid");
-  grid.innerHTML = rows
-    .map(
-      (p) => `
-    <div class="card product">
-      <img src="${
-        p.imageUrl || "https://picsum.photos/seed/" + p.id + "/600/400"
-      }" alt="${p.title}">
-      <div class="pbody">
-        <div class="row" style="justify-content:space-between">
-          <b>${p.title}</b><span class="rating">★ ${p.rating || "—"}</span>
-        </div>
-        <div class="row" style="justify-content:space-between">
-          <span class="muted">${
-            p.category || ""
-          }</span><span class="price">${fmt(p.price)}</span>
-        </div>
-        <button class="btn" data-open-product="${p.id}">View</button>
-      </div>
-    </div>`
-    )
-    .join("");
-  $$("[data-open-product]").forEach((b) =>
-    b.addEventListener("click", () => openProduct(b.dataset.openProduct))
-  );
+  // Show/hide elements with .admin-only
+  document.querySelectorAll('.admin-only').forEach(el=>{
+    el.style.display = isAdmin ? '' : 'none';
+  });
+  // Admin link/page can also be hidden if you want:
+  // document.getElementById('navAdmin').style.display = isAdmin ? '' : 'none';
 }
+onAuthStateChanged(auth, ()=> setAdminVisibility());
+
+
+// ====== ITEMS: LOAD + RENDER + EDIT ======
+let ITEM_CACHE = [];
+
+async function loadItems(){
+  try{
+    const snaps = await getDocs(collection(db,'items'));
+    ITEM_CACHE = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
+    renderItems();
+  }catch(e){
+    console.warn('loadItems error:', e.message||e);
+    ITEM_CACHE = [];
+    renderItems(); // render empty
+  }
+}
+
+function renderItems(){
+  const grid = document.getElementById('grid');
+  if(!grid) return;
+
+  if(!ITEM_CACHE.length){
+    grid.innerHTML = `<div class="card" style="padding:14px">No items yet. Click <b>Seed Demo Items</b> or go to <b>Admin</b> to add.</div>`;
+    return;
+  }
+
+  grid.innerHTML = ITEM_CACHE.map(p=>`
+    <div class="card product" style="overflow:hidden">
+      <img src="${p.imageUrl || 'https://picsum.photos/seed/'+p.id+'/600/400'}"
+           alt="${p.title}" style="width:100%;height:180px;object-fit:cover">
+      <div class="pbody" style="padding:10px">
+        <div class="row" style="justify-content:space-between">
+          <b>${p.title}</b><span class="muted">${p.category||''}</span>
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:4px">
+          <span class="rating">★ ${(p.rating ?? '—')}</span>
+          <span class="price">$${Number(p.price||0).toFixed(2)}</span>
+        </div>
+        <div class="row" style="margin-top:8px; gap:6px">
+          <button class="btn" data-open-product="${p.id}">View</button>
+          <button class="btn outline admin-only" data-edit-id="${p.id}">Edit</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  // View modal
+  document.querySelectorAll('[data-open-product]').forEach(b=>{
+    b.addEventListener('click', ()=> openProduct(b.dataset.openProduct));
+  });
+
+  // Admin-only edit: load into form
+  document.querySelectorAll('[data-edit-id]').forEach(b=>{
+    b.addEventListener('click', ()=> loadIntoEditor(b.dataset.editId));
+  });
+
+  // Make sure admin-only visibility is correct
+  setAdminVisibility();
+}
+
+function loadIntoEditor(id){
+  const p = ITEM_CACHE.find(x=> x.id === id);
+  if(!p) return alert('Item not found');
+
+  document.getElementById('itemId').value = p.id;
+  document.getElementById('itemTitle').value = p.title || '';
+  document.getElementById('itemCategory').value = p.category || '';
+  document.getElementById('itemPrice').value = p.price || 0;
+  document.getElementById('itemRating').value = p.rating || 0;
+  document.getElementById('itemDesc').value = p.description || '';
+  document.getElementById('itemProCode').value = p.proCode || '';
+  document.getElementById('itemMemberCoupon').value = p.memberCoupon || '';
+
+  // go admin page
+  location.hash = 'admin';
+}
+
+
+// ====== SEED DEMO ITEMS ======
+const DEMO_ITEMS = [
+  // men
+  { title: 'Men T-Shirt Classic', category: 'men', price: 14.99, rating: 4.2,
+    description: 'Soft cotton tee for everyday wear.',
+    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title: 'Men Sneakers Runner', category: 'men', price: 59.00, rating: 4.5,
+    description: 'Lightweight running shoes.',
+    imageUrl: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+
+  // women
+  { title: 'Women Summer Dress', category: 'women', price: 29.90, rating: 4.6,
+    description: 'Breezy floral dress.',
+    imageUrl: 'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title: 'Women Handbag', category: 'women', price: 48.50, rating: 4.4,
+    description: 'Compact crossbody bag.',
+    imageUrl: 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+
+  // kids
+  { title: 'Kids Hoodie', category: 'kids', price: 19.90, rating: 4.3,
+    description: 'Cozy hoodie for kids.',
+    imageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title: 'Kids Sneakers', category: 'kids', price: 24.50, rating: 4.4,
+    description: 'Durable kids shoes.',
+    imageUrl: 'https://images.unsplash.com/photo-1603808033192-7f21ad1d8a08?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+
+  // electronics
+  { title: 'Wireless Headphones', category: 'electronics', price: 89.00, rating: 4.5,
+    description: 'Noise-isolating, long battery life.',
+    imageUrl: 'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title: 'Smartwatch S2', category: 'electronics', price: 129.00, rating: 4.4,
+    description: 'Fitness + notifications.',
+    imageUrl: 'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+
+  // home
+  { title: 'Ceramic Mug Set', category: 'home', price: 15.99, rating: 4.2,
+    description: 'Set of 4, dishwasher safe.',
+    imageUrl: 'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+  { title: 'Throw Pillow Cover', category: 'home', price: 9.99, rating: 4.1,
+    description: '18x18 inch cover.',
+    imageUrl: 'https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?q=80&w=800&auto=format&fit=crop',
+    proCode:'PRO10', memberCoupon:'GOLD5' },
+];
+
+document.getElementById('btnSeedDemo')?.addEventListener('click', async ()=>{
+  try{
+    // DEV only: comment out requireAdmin if you want any signed-in user to seed
+    // await requireAdmin();
+
+    for (const it of DEMO_ITEMS){
+      await addDoc(collection(db,'items'), it);
+    }
+    alert('Seeded demo items!');
+    await loadItems();
+  }catch(e){
+    alert(e.message || e);
+  }
+});
+
+// ====== INIT CALL ======
+(async function initItems(){
+  await loadItems();
+})();
 
 function openProduct(id) {
   const p = state.items.find((x) => x.id === id);
