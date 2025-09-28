@@ -993,6 +993,58 @@ window.addEventListener("load", () => {
   }, 10000);
 });
 
+// ---------- Robust DOM attach for Home buttons + Router kick ----------
+function ready(fn){ if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn, {once:true}); }
+
+ready(()=>{
+  // Router first render (in case script loaded before hash listeners)
+  if (typeof route === 'function') route();
+
+  // +Add Item -> go to Admin
+  const goAdminBtn = document.getElementById('btnGoAdmin');
+  if (goAdminBtn) {
+    goAdminBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      location.hash = 'admin';
+      if (typeof route === 'function') route();
+    }, {once:false});
+  } else {
+    console.warn('btnGoAdmin not found');
+  }
+
+  // 🌱 Seed Demo Items
+  const seedBtn = document.getElementById('btnSeedDemo');
+  if (seedBtn) {
+    seedBtn.addEventListener('click', async ()=>{
+      try{
+        if (!auth.currentUser) { alert('Please login first.'); return; }
+
+        // OPTIONAL: dev-only — allow any signed-in to seed; in prod gate with requireAdmin()
+        // await requireAdmin();
+
+        const batch = DEMO_ITEMS || [];
+        if (!batch.length) { alert('No demo items defined.'); return; }
+
+        // Create items one by one (show progress)
+        let ok = 0;
+        for (const it of batch){
+          await addDoc(collection(db,'items'), it);
+          ok++;
+        }
+        alert(`Seeded ${ok} demo item(s)!`);
+        // Reload items on home
+        if (typeof loadItems === 'function') await loadItems();
+      }catch(err){
+        // Show clear message if rules are blocking writes
+        alert((err && err.message) ? err.message : String(err));
+        console.error('Seed demo error:', err);
+      }
+    }, {once:false});
+  } else {
+    console.warn('btnSeedDemo not found');
+  }
+});
+
 // ===== Init =====
 async function init() {
   restoreCart();
