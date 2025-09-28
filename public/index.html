@@ -1,728 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ShweShop — Mobile-first Store</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <!-- Replace client-id -->
-    <script
-      src="https://www.paypal.com/sdk/js?client-id=AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC&currency=USD"
-      defer
-    ></script>
-
-    <script type="module" src="./config.js"></script>
-  </head>
-  <body>
-    <!-- Topbar -->
-    <header class="topbar">
-      <div class="left">
-        <div class="brand">ShweShop</div>
-        <span id="greet" class="greet small"></span>
-      </div>
-
-      <!-- Desktop center search -->
-      <div class="top-search"></div>
-
-      <div class="top-actions">
-        <button id="btnCart" class="icon-btn badge" aria-label="Cart">
-          🛒 <span id="cartCount" class="badge-dot">0</span>
-        </button>
-        <button
-          id="btnScan"
-          class="icon-btn"
-          type="button"
-          title="Scan barcode"
-          aria-label="Scan"
-        >
-          📷
-        </button>
-        <!-- 🆕 Membership button -->
-        <button id="btnMembership" class="icon-btn" title="Membership">
-          👑
-        </button>
-        <!-- Login/Logout toggle -->
-        <button id="btnAuth" class="icon-btn" title="Sign in">👤</button>
-        <button
-          id="btnLogout"
-          class="icon-btn"
-          title="Sign out"
-          style="display: none"
-        >
-          🚪
-        </button>
-      </div>
-      <button id="btnAnalytics" class="icon-btn" title="Analytics">📈</button>
-      <!-- Topbar: Product Manager buttons -->
-      <button id="btnProductManager" class="icon-btn" title="Products">
-        📦
-      </button>
-      <button id="btnAddProduct" class="icon-btn" title="Add product">
-        ➕
-      </button>
-    </header>
-
-    <!-- Mobile second-line search -->
-    <!-- Unified second-line (search + theme/fonts) -->
-    <div
-      class="top-search-row"
-      style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap"
-    >
-      <input
-        id="searchInput"
-        class="input"
-        placeholder="Search products…"
-        style="flex: 1 1 240px"
-      />
-
-      <div
-        class="quick-prefs"
-        style="display: flex; gap: 0.4rem; align-items: center"
-      >
-        <label class="sr-only" for="themeSelect">Theme</label>
-        <select id="themeSelect" class="input compact" title="Theme">
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-          <option value="midnight">Midnight</option>
-          <option value="ocean">Ocean</option>
-          <option value="forest">Forest</option>
-          <option value="purple">Purple</option>
-          <option value="rose">Rose</option>
-          <option value="solar-light">Solarized Light</option>
-          <option value="solar-dark">Solarized Dark</option>
-          <option value="contrast">High Contrast</option>
-        </select>
-
-        <label class="sr-only" for="fsSelect">Font size</label>
-        <select id="fsSelect" class="input compact" title="Font size">
-          <option value="0.90">XS</option>
-          <option value="1.00" selected>SM</option>
-          <option value="1.10">MD</option>
-          <option value="1.20">LG</option>
-          <option value="1.30">XL</option>
-          <option value="1.40">2XL</option>
-          <option value="1.60">3XL</option>
-        </select>
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MegaShop</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico" />
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <!-- Chart.js for Admin Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Header / Top Nav -->
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="#home">MegaShop</a>
+      <form id="searchForm" class="search">
+        <input id="searchInput" type="search" placeholder="Search products…" />
+        <button class="btn" type="submit">Search</button>
+      </form>
+      <nav class="nav">
+        <button id="btnLogin" class="link">Login</button>
+        <button id="btnSignup" class="link">Sign up</button>
+        <button id="btnAccount" class="link hidden">Account</button>
+        <a class="link" href="#orders">Orders</a>
+        <button id="btnCart" class="link">Cart (<span id="cartCount">0</span>)</button>
+      </nav>
     </div>
+    <!-- Secondary category nav -->
+    <div class="subnav container">
+      <a href="#category/men">Men</a>
+      <a href="#category/women">Women</a>
+      <a href="#category/kids">Kids</a>
+      <a href="#category/electronics">Electronics</a>
+      <a href="#category/home">Home</a>
+      <a href="#category/all">All</a>
+    </div>
+  </header>
 
-    <!-- Horizontal chips / menu -->
-    <nav id="navScroll" class="nav-scroll hscroll">
-      <div class="nav-header">
-        <div class="nav-title">Menu</div>
-        <button id="closeSidebar" class="icon-btn">✕</button>
-      </div>
-      <div class="nav-body">
-        <div class="member-card">
-          <div class="row between">
-            <!-- <div>
-              <div class="member-title">Membership</div>
-              <div class="member-sub">2%/3% cashback all year</div>
-            </div> -->
-          </div>
-          <!-- renamed to match app.js -->
-          <div
-            id="memberBadge"
-            class="member-status"
-            style="display: none"
-          ></div>
-        </div>
-        <hr />
-        <div class="nav-links">
-          <button data-view="shop" class="link active">🛍️ Shop</button>
-          <button data-view="analytics" class="link" type="button">
-            📈 Analytics
-          </button>
-          <button data-view="orders" class="link">🧾 Orders</button>
-          <button data-view="about" class="link">ℹ️ About</button>
-        </div>
-      </div>
-    </nav>
+  <!-- Promotions / Event Days Banner -->
+  <section id="promoBar" class="promo hidden"></section>
 
-    <main id="main">
-      <!-- Hero -->
-      <section class="hero">
+  <!-- Main -->
+  <main class="container">
+    <!-- Home / Catalog -->
+    <section id="page-home" class="page active">
+      <div class="hero">
         <div>
-          <h1>Find your favorites</h1>
-          <p>Modern • Clean • Fast — Mobile first shopping</p>
+          <h1>Shop everything in one place</h1>
+          <p>Fast, affordable, and reliable — like the big guys.</p>
         </div>
-      </section>
+        <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=1200&auto=format&fit=crop" alt="shopping" />
+      </div>
 
-      <section style="padding: 16px">
-        <h2>Shop</h2>
-        <div
-          id="categoryNav"
-          style="display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0"
-        ></div>
-        <div id="productGrid" class="product-grid"></div>
-      </section>
+      <div class="toolbar">
+        <select id="filterCategory">
+          <option value="all">All Categories</option>
+          <option>men</option>
+          <option>women</option>
+          <option>kids</option>
+          <option>electronics</option>
+          <option>home</option>
+        </select>
+        <select id="sortBy">
+          <option value="featured">Featured</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="newest">Newest</option>
+          <option value="rating">Top Rated</option>
+        </select>
+      </div>
 
-      <section style="padding: 16px">
-        <h2>New arrivals</h2>
-        <div id="newArrivalGrid" class="product-grid"></div>
-      </section>
+      <div id="grid" class="grid"></div>
+    </section>
 
-      <!-- Home sections (per-category carousels + ad slots) -->
-      <section id="homeSections" class="home-sections"></section>
-
-      <!-- Analytics -->
-      <section
-        id="adminAnalytics"
-        class="admin-analytics"
-        style="display: none"
-      >
-        <div class="aa-grid">
-          <div class="aa-card">
-            <div class="aa-title">Revenue — last 12 months</div>
-            <canvas id="revChart"></canvas>
+    <!-- Product Details Modal -->
+    <dialog id="productModal" class="modal">
+      <div class="modal-content">
+        <button class="close" data-close>×</button>
+        <div class="pdetail">
+          <img id="pdImg" alt="product" />
+          <div class="pinfo">
+            <h2 id="pdTitle"></h2>
+            <p id="pdDesc" class="muted"></p>
+            <div class="price-line">
+              <span id="pdPrice" class="price"></span>
+              <span id="pdRating" class="rating"></span>
+            </div>
+            <div class="codes">
+              <div>Pro Code: <code id="pdProCode">—</code></div>
+              <div>Member Coupon: <code id="pdMemberCoupon">—</code></div>
+            </div>
+            <div class="qty">
+              <label>Qty</label>
+              <input id="pdQty" type="number" min="1" value="1" />
+            </div>
+            <button id="pdAdd" class="btn primary">Add to Cart</button>
           </div>
-          <div class="aa-card">
-            <div class="aa-title">Orders by Status</div>
-            <canvas id="ordersPieChart"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <!-- Orders -->
-      <section id="view-orders" class="view">
-        <h2 class="pad">My Orders</h2>
-        <div id="ordersList" class="stack"></div>
-      </section>
-
-      <!-- Cart view (show as a full page) -->
-      <!-- CART PAGE -->
-      <section id="view-cart" class="view">
-        <div class="card">
-          <div class="pad">
-            <div class="row between">
-              <h3 class="card-title">Your Cart</h3>
-              <button class="btn-soft" onclick="switchView('shop')">
-                ← Continue shopping
-              </button>
-            </div>
-
-            <div id="cartPageList" class="stack"></div>
-
-            <div
-              class="row between"
-              style="margin-top: 1rem; align-items: flex-end"
-            >
-              <div>
-                <div class="small">Promo (optional)</div>
-                <div class="row" style="gap: 0.5rem">
-                  <input
-                    id="cartPromo"
-                    class="input"
-                    placeholder="Promo code"
-                  />
-                  <button id="applyCartPromo" class="btn-mini">Apply</button>
-                </div>
-              </div>
-              <div style="text-align: right">
-                <div class="small">Subtotal</div>
-                <div id="cartSubtotal" class="price">$0.00</div>
-                <div class="small">Estimated delivery</div>
-                <div id="cartShip" class="price">$0.00</div>
-                <div class="strong" style="margin-top: 0.4rem">Total</div>
-                <div id="cartTotal" class="price" style="font-size: 1.35rem">
-                  $0.00
-                </div>
-                <div class="row" style="gap: 0.5rem; margin-top: 0.6rem">
-                  <select id="cartFulfill" class="input">
-                    <option value="delivery">Delivery</option>
-                    <option value="pickup">Store pickup</option>
-                  </select>
-                  <button id="btnCheckout" class="btn">Checkout</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- About -->
-      <section id="view-about" class="view">
-        <h2 class="pad">About ShweShop</h2>
-        <p class="pad">Demo app built with Firebase + PayPal + EmailJS.</p>
-      </section>
-    </main>
-
-    <!-- === Membership Login / Join Modal === -->
-    <dialog
-      id="memberModal"
-      class="m-modal"
-      aria-labelledby="mTitle"
-      aria-modal="true"
-    >
-      <div class="m-wrap">
-        <div class="m-head">
-          <div id="mTitle" class="m-title">Join Membership</div>
-          <button id="mClose" class="m-btn m-outline" aria-label="Close">
-            ✕
-          </button>
-        </div>
-
-        <!-- Level chooser -->
-        <div class="m-levels">
-          <label class="m-tier m-gold">
-            <input type="radio" name="mTier" value="gold" checked />
-            <div class="m-tier-body">
-              <div class="m-tier-name">Gold Member</div>
-              <div class="m-tier-fee">$29 / year</div>
-              <ul class="m-benefits">
-                <li>5% storewide discount</li>
-                <li>1% cashback points</li>
-                <li>Member-only promos</li>
-              </ul>
-            </div>
-          </label>
-
-          <label class="m-tier m-plat">
-            <input type="radio" name="mTier" value="platinum" />
-            <div class="m-tier-body">
-              <div class="m-tier-name">Platinum Member</div>
-              <div class="m-tier-fee">$59 / year</div>
-              <ul class="m-benefits">
-                <li>10% storewide discount</li>
-                <li>2% cashback points</li>
-                <li>Priority support</li>
-              </ul>
-            </div>
-          </label>
-
-          <label class="m-tier m-diamond">
-            <input type="radio" name="mTier" value="diamond" />
-            <div class="m-tier-body">
-              <div class="m-tier-name">Diamond Member</div>
-              <div class="m-tier-fee">$99 / year</div>
-              <ul class="m-benefits">
-                <li>15% storewide discount</li>
-                <li>3% cashback points</li>
-                <li>Free expedited shipping</li>
-              </ul>
-            </div>
-          </label>
-        </div>
-
-        <!-- Profile fields (for card shipping) -->
-        <div class="m-grid">
-          <input id="mName" class="input" placeholder="Full name" />
-          <input id="mEmail" class="input" placeholder="Email address" />
-          <!-- 🆕 -->
-          <input id="mPhone" class="input" placeholder="Phone" />
-          <input id="mAddr" class="input" placeholder="Address line" />
-          <input id="mCity" class="input" placeholder="City" />
-        </div>
-
-        <div class="m-foot">
-          <div class="m-note">
-            Membership renews yearly. Discount/Cashback apply after joining.
-          </div>
-          <button id="mJoin" class="m-btn">Join Now</button>
         </div>
       </div>
     </dialog>
 
     <!-- Cart Drawer -->
-    <aside id="cartDrawer" class="drawer" aria-label="Cart drawer">
-      <div class="drawer-head">
-        <div class="title">Your Cart</div>
-        <button id="closeCart" class="icon-btn" aria-label="Close cart">
-          ✕
-        </button>
-      </div>
-
-      <div id="cartItems" class="drawer-body"></div>
-      <div class="drawer-foot">
-        <div class="stack pay-stack">
-          <div id="payPanel-paypal" class="pay-panel active">
-            <div id="paypal-button-container"></div>
+    <dialog id="cartDrawer" class="drawer">
+      <div class="drawer-content">
+        <button class="close" data-close>×</button>
+        <h3>Your Cart</h3>
+        <div id="cartItems"></div>
+        <div class="cart-sum">
+          <div>Subtotal: <b id="cartSubtotal">$0.00</b></div>
+          <div class="pay-opts">
+            <button id="btnCheckout" class="btn primary">Checkout</button>
           </div>
-
-          <div id="payPanel-kbz" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="kbzQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with KBZPay app</p>
-              <button id="kbzPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-
-          <div id="payPanel-cb" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="cbQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with CBPay app</p>
-              <button id="cbPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-
-          <div id="payPanel-aya" class="pay-panel">
-            <div class="wallet-box">
-              <canvas id="ayaQR" width="180" height="180"></canvas>
-              <p class="hint">Scan with AyaPay app</p>
-              <button id="ayaPaid" class="btn">I have paid</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Cart modal -->
-    <dialog id="cartModal" class="modal">
-      <div class="modal-body">
-        <button class="close" data-close="cartModal" aria-label="Close">
-          ✕
-        </button>
-        <h3 class="card-title">Your Cart</h3>
-        <div id="cartList" class="stack"></div>
-        <div class="row between" style="margin-top: 0.8rem">
-          <div class="strong">Total</div>
-          <div id="cartTotal" class="price">$0.00</div>
-        </div>
-        <div class="row gap" style="margin-top: 0.8rem">
-          <button id="btnCheckout" class="btn">Checkout</button>
-          <button class="btn btn-soft" data-close="cartModal">Close</button>
-        </div>
-      </div>
-    </dialog>
-
-    <!-- === Barcode Scan Modal === -->
-    <dialog
-      id="scanModal"
-      style="
-        padding: 0;
-        border: none;
-        border-radius: 14px;
-        overflow: hidden;
-        max-width: 96vw;
-        width: 520px;
-      "
-    >
-      <div
-        style="
-          background: #0f131a;
-          color: #e9f1ff;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-        "
-      >
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          "
-        >
-          <div style="font-weight: 800">Scan a barcode</div>
-          <button id="scanClose" class="btn-mini btn-outline">✕</button>
-        </div>
-
-        <div style="padding: 10px 12px; display: grid; gap: 10px">
-          <select
-            id="scanCameraSelect"
-            class="input"
-            style="max-width: 100%"
-          ></select>
-          <div
-            style="
-              display: grid;
-              place-items: center;
-              background: rgba(255, 255, 255, 0.04);
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              border-radius: 12px;
-              padding: 8px;
-            "
-          >
-            <video
-              id="scanVideo"
-              autoplay
-              muted
-              playsinline
-              style="
-                width: 100%;
-                max-height: 320px;
-                border-radius: 10px;
-                background: #000;
-              "
-            ></video>
-          </div>
-          <div id="scanHint" class="small" style="opacity: 0.8">
-            Tip: rear camera / good lighting
-          </div>
-          <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
-            <button id="scanStart" class="btn-mini">Start</button>
-            <button id="scanStop" class="btn-mini btn-outline">Stop</button>
+          <div id="paypalContainer" class="paypal-wrap"></div>
+          <div class="alt-pay">
+            <button class="btn outline" id="kbzPay">KBZPay</button>
+            <button class="btn outline" id="cbPay">CBPay</button>
+            <button class="btn outline" id="ayaPay">AYAPay</button>
           </div>
         </div>
       </div>
     </dialog>
 
-    <!-- Auth mini modal -->
-    <dialog id="authModal" class="modal">
-      <button class="close" data-close="authModal" aria-label="Close">✕</button>
-      <div class="modal-body">
-        <h3 class="card-title">Sign in</h3>
+    <!-- Orders / Re-order -->
+    <section id="page-orders" class="page">
+      <h2>Order History</h2>
+      <div id="ordersList" class="orders"></div>
+    </section>
 
-        <div class="input-group">
-          <label>Email</label>
-          <input
-            id="authEmail"
-            type="email"
-            placeholder="you@example.com"
-            class="input"
-          />
-        </div>
-        <div class="input-group">
-          <label>Password</label>
-          <input
-            id="authPass"
-            type="password"
-            placeholder="••••••••"
-            class="input"
-          />
-        </div>
-
-        <button
-          id="btnEmailLogin"
-          class="btn"
-          style="width: 100%; margin: 0.6rem 0"
-        >
-          Login
-        </button>
-
-        <div class="row between" style="margin-top: 0.4rem">
-          <button id="btnShowSignup" class="btn-soft">Create account</button>
-          <button id="btnShowReset" class="btn-outline">Forgot?</button>
-        </div>
-
-        <div id="signupRow" style="display: none; margin-top: 1rem">
-          <div class="row gap">
-            <button id="btnDoSignup" class="btn">Sign up</button>
-            <button data-close="authModal" class="btn-soft">Close</button>
-          </div>
-        </div>
-
-        <div id="resetRow" style="display: none; margin-top: 1rem">
-          <p class="small">We will email a reset link.</p>
-          <div class="row gap">
-            <button id="btnDoReset" class="btn">Send reset email</button>
-            <button data-close="authModal" class="btn-soft">Close</button>
-          </div>
-        </div>
-      </div>
-    </dialog>
-
-    <!-- === Add / Edit Product Modal === -->
-    <dialog id="productModal" class="pm-modal" aria-modal="true">
-      <div class="pm-wrap">
-        <div class="pm-head">
-          <div class="pm-title"><span id="pmMode">Add</span> Product</div>
-          <button id="pmClose" class="btn-mini btn-outline">✕</button>
-        </div>
-
-        <form id="productForm" class="pm-form">
-          <input id="pId" type="hidden" />
-          <div class="pm-grid">
-            <input
-              id="pTitle"
-              class="input"
-              placeholder="Product title"
-              required
-            />
-            <input
-              id="pCategory"
-              class="input"
-              placeholder="Category (e.g. Men, Women, Bags)"
-              required
-            />
-            <input
-              id="pPrice"
-              class="input"
-              placeholder="Price (e.g. 19.50)"
-              inputmode="decimal"
-              required
-            />
-            <input
-              id="pBarcode"
-              class="input"
-              placeholder="Barcode / SKU"
-              required
-            />
-            <input id="pImgFile" class="input" type="file" accept="image/*" />
-          </div>
-          <textarea
-            id="pDesc"
-            class="input"
-            placeholder="Short description (e.g. material, size…)"
-            rows="3"
-          ></textarea>
-
-          <!-- ▶ Additional gallery (multi) — place AFTER the thumbnail preview row and BEFORE .pm-foot -->
-          <div class="pm-thumbrow">
-            <div class="small" style="opacity: 0.8">
-              Gallery images (up to 6)
-            </div>
-            <input
-              id="pGallery"
-              class="input"
-              type="file"
-              accept="image/*"
-              multiple
-            />
-          </div>
-          <div
-            id="pGalleryPreview"
-            class="row"
-            style="gap: 8px; flex-wrap: wrap"
-          ></div>
-
-          <div class="pm-foot">
-            <button type="submit" class="btn-mini">Save</button>
-            <button type="button" id="pmReset" class="btn-mini btn-outline">
-              Reset
-            </button>
-          </div>
-        </form>
-      </div>
-    </dialog>
-
-    <!-- === Products Manager (list/search/filter/sort) === -->
-    <dialog id="productListModal" class="pm-modal" aria-modal="true">
-      <div class="pm-wrap">
-        <div class="pm-head">
-          <div class="pm-title">Products Manager</div>
-          <button id="plClose" class="btn-mini btn-outline" type="button">
-            ✕
-          </button>
-        </div>
-
-        <div class="pm-toolbar">
-          <input
-            id="plSearch"
-            class="input"
-            placeholder="Search by title or barcode…"
-          />
-          <select id="plCategory" class="input">
-            <option value="">All categories</option>
+    <!-- Account / Membership -->
+    <section id="page-account" class="page">
+      <h2>My Account</h2>
+      <div class="card">
+        <p>Signed in as: <b id="accEmail">—</b></p>
+        <p>Membership: <b id="accMember">free</b></p>
+        <div class="row">
+          <select id="membershipLevel">
+            <option value="free">Free</option>
+            <option value="silver">Silver</option>
+            <option value="gold">Gold</option>
+            <option value="platinum">Platinum</option>
           </select>
-          <select id="plSort" class="input">
-            <option value="new">Newest</option>
-            <option value="title_az">Title A→Z</option>
-            <option value="title_za">Title Z→A</option>
-            <option value="price_low">Price low→high</option>
-            <option value="price_high">Price high→low</option>
-          </select>
+          <button id="btnApplyMembership" class="btn">Apply Membership</button>
         </div>
+        <div class="row">
+          <button id="btnLogout" class="btn danger">Logout</button>
+        </div>
+      </div>
 
-        <div id="plList" class="pm-list"></div>
+      <div class="card">
+        <h3>Email Marketing Opt-in</h3>
+        <p>Get promo emails on event days.</p>
+        <label><input id="emailOptIn" type="checkbox" /> I agree to receive emails.</label>
+        <button id="btnSaveOpt" class="btn">Save</button>
+      </div>
+    </section>
+
+    <!-- Auth Modals -->
+    <dialog id="loginModal" class="modal">
+      <div class="modal-content small">
+        <button class="close" data-close>×</button>
+        <h3>Welcome back</h3>
+        <input id="loginEmail" type="email" placeholder="Email" />
+        <input id="loginPass" type="password" placeholder="Password" />
+        <button id="doLogin" class="btn primary">Login</button>
+        <button id="doGitHub" class="btn dark">Continue with GitHub</button>
+        <button id="openForgot" class="link">Forgot password?</button>
       </div>
     </dialog>
 
-    <!-- Detail modal skeleton (ensure these ids exist) -->
-    <dialog id="productDetailModal" class="pd-modal">
-      <div class="pd-wrap">
-        <button id="pdClose" class="pd-close" aria-label="Close">✕</button>
-
-        <div class="pd-left">
-          <div class="pd-hero"><img id="pdHero" alt="" /></div>
-          <div id="pdThumbs" class="pd-thumbs"></div>
-          <div class="pd-hero-nav">
-            <button id="pdPrev" class="btn-mini">‹ Prev</button>
-            <button id="pdNext" class="btn-mini">Next ›</button>
-          </div>
-        </div>
-
-        <div class="pd-right">
-          <h3 id="pdTitle"></h3>
-          <div class="pd-meta">
-            <span id="pdCategory" class="tag"></span>
-            <span id="pdBarcode" class="small"></span>
-          </div>
-          <div id="pdPrice" class="pd-price"></div>
-          <p id="pdDesc" class="pd-desc"></p>
-
-          <div class="row" style="gap: 0.5rem; align-items: center">
-            <span class="small">Qty</span>
-            <button id="pdDec" class="btn-mini">−</button>
-            <span id="pdQty" class="strong">1</span>
-            <button id="pdInc" class="btn-mini">＋</button>
-          </div>
-
-          <div class="pd-promo-box">
-            <input
-              id="pdPromoInput"
-              class="input"
-              placeholder="Enter promo code…"
-            />
-            <button id="pdApplyPromo" class="btn-mini">Apply</button>
-          </div>
-
-          <div class="pd-member-box">
-            <select id="pdMemberSelect" class="input">
-              <option value="">Membership (optional)</option>
-              <option value="gold">Gold (5% off)</option>
-              <option value="platinum">Platinum (8% off)</option>
-              <option value="diamond">Diamond (12% off)</option>
-            </select>
-          </div>
-
-          <div class="row" style="gap: 0.5rem; margin-top: 0.5rem">
-            <button id="pdAdd" class="btn-mini">Add to Cart</button>
-            <button id="pdBuy" class="btn-mini btn-outline">Buy Now</button>
-          </div>
-        </div>
+    <dialog id="signupModal" class="modal">
+      <div class="modal-content small">
+        <button class="close" data-close>×</button>
+        <h3>Create your account</h3>
+        <input id="signupEmail" type="email" placeholder="Email" />
+        <input id="signupPass" type="password" placeholder="Password (min 6)" />
+        <button id="doSignup" class="btn primary">Sign up</button>
       </div>
     </dialog>
 
-    <!-- App -->
-    <!-- Firebase (Compat CDN) — place these BEFORE app.js -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <dialog id="forgotModal" class="modal">
+      <div class="modal-content small">
+        <button class="close" data-close>×</button>
+        <h3>Reset your password</h3>
+        <input id="forgotEmail" type="email" placeholder="Email" />
+        <button id="doForgot" class="btn">Send reset email</button>
+      </div>
+    </dialog>
 
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyADRM_83skeLeGK4Mf67rzCRTcdDjOptY0",
-        authDomain: "shweshop-mm.firebaseapp.com",
-        projectId: "shweshop-mm",
-        storageBucket: "shweshop-mm.appspot.com", // ✅ ဒီလို (NOT appspot.com)
-        messagingSenderId: "361216212375",
-        appId: "1:361216212375:web:fed19b7fe4072000c298d2",
-        measurementId: "G-WBJJZZNLX6",
-      };
-      firebase.initializeApp(firebaseConfig);
+    <!-- Admin -->
+    <section id="page-admin" class="page">
+      <h2>Admin Console</h2>
+      <div class="grid admin-grid">
+        <!-- Add Item -->
+        <div class="card">
+          <h3>Add / Edit Item</h3>
+          <input id="itemId" placeholder="(auto for new)" />
+          <input id="itemTitle" placeholder="Title" />
+          <input id="itemCategory" placeholder="Category (men/women/kids/electronics/home)" />
+          <input id="itemPrice" type="number" placeholder="Price" />
+          <input id="itemRating" type="number" step="0.1" placeholder="Rating (0-5)" />
+          <textarea id="itemDesc" placeholder="Description"></textarea>
+          <input id="itemProCode" placeholder="Pro Code (e.g., PRO10)" />
+          <input id="itemMemberCoupon" placeholder="Member Coupon (e.g., GOLD5)" />
+          <input id="itemImage" type="file" accept="image/*" />
+          <button id="btnSaveItem" class="btn primary">Save Item</button>
+          <button id="btnDeleteItem" class="btn danger">Delete Item</button>
+        </div>
 
-      // make compat instances
-      window.fdb = firebase.firestore();
-      window.storage = firebase.storage();
+        <!-- Ads / Promotions -->
+        <div class="card">
+          <h3>Promotions & Ads</h3>
+          <input id="promoTitle" placeholder="Event title (e.g., Thingyan Mega Sale)" />
+          <input id="promoMessage" placeholder="Short message" />
+          <input id="promoActive" type="checkbox" /> <label for="promoActive">Active</label>
+          <button id="btnSavePromo" class="btn">Save Promotion</button>
 
-      window.db = window.fdb;
-      document.dispatchEvent(new Event("fb-ready"));
+          <h4 style="margin-top:12px">Ad Card</h4>
+          <input id="adTitle" placeholder="Ad title" />
+          <input id="adImageUrl" placeholder="Image URL" />
+          <input id="adHref" placeholder="Link URL" />
+          <button id="btnSaveAd" class="btn">Save Ad</button>
+          <div id="adsPreview" class="ads"></div>
+        </div>
 
-      // sign-in (works only if Anonymous is enabled)
-      firebase
-        .auth()
-        .signInAnonymously()
-        .then(() => console.log("anon auth ok"))
-        .catch((err) => console.warn("anon signin:", err.message));
-    </script>
-    <!-- ✅ Load EmailJS SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <script>
-      // 🔑 Replace with your real Public Key from EmailJS dashboard
-      emailjs.init({ publicKey: "WT0GOYrL9HnDKvLUf" });
-      console.log("✅ EmailJS initialized");
-    </script>
-    <!-- ZXing browser bundle -->
-    <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-    <!-- <script type="module" src="./config.js"></script> -->
-    <script type="module" src="./app.js"></script>
-  </body>
+        <!-- Analytics -->
+        <div class="card">
+          <h3>Analytics</h3>
+          <div class="row">
+            <button class="btn" data-range="7">Last 7 days</button>
+            <button class="btn" data-range="30">Last 30 days</button>
+            <button class="btn" data-range="365">Last 365 days</button>
+          </div>
+          <canvas id="salesChart" height="220"></canvas>
+        </div>
+
+        <!-- Customer Feedback & Email Blast -->
+        <div class="card">
+          <h3>Customer Feedback</h3>
+          <div id="feedbackList"></div>
+          <hr/>
+          <h3>Email Marketing</h3>
+          <textarea id="emailBlastMsg" placeholder="Promo message to all opted-in users"></textarea>
+          <button id="btnSendBlast" class="btn primary">Send Email Blast</button>
+          <p class="muted">Uses EmailJS to send to users who opted in. Consider rate limits.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>
+        <b>MegaShop</b>
+        <p class="muted">© <span id="year"></span> MegaShop. All rights reserved.</p>
+      </div>
+      <nav>
+        <a href="#home">Home</a>
+        <a href="#orders">Orders</a>
+        <a href="#account">Account</a>
+        <a href="#admin">Admin</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Firebase v10 Modular (CDN) -->
+  <script type="module" src="app.js"></script>
+
+  <!-- PayPal SDK: injected dynamically by app.js (loadPayPal) -->
+</body>
 </html>
