@@ -410,9 +410,9 @@ async function loadAds() {
 //   );
 // }
 
-// ====== NAV SHORTCUTS ======
+// Open modal
 document.getElementById('btnGoAdmin')?.addEventListener('click', ()=>{
-  location.hash = 'admin';  // route() က page-admin ကို active လုပ်ပေးမယ်
+  document.getElementById('itemModal').showModal();
 });
 
 // ====== ADMIN VISIBILITY (toggle .admin-only controls) ======
@@ -923,7 +923,35 @@ $('#btnSeedDemo')?.addEventListener('click', async ()=>{
   loadItems();
 })();
 
-document.getElementById('btnSaveItem')?.addEventListener('click', saveItem);
+// Save item
+document.getElementById('btnSaveItem')?.addEventListener('click', async ()=>{
+  try {
+    const title = document.getElementById('itemTitle').value.trim();
+    const category = document.getElementById('itemCategory').value.trim();
+    const price = parseFloat(document.getElementById('itemPrice').value);
+    const desc = document.getElementById('itemDesc').value.trim();
+    const proCode = document.getElementById('itemProCode').value.trim();
+    const memberCoupon = document.getElementById('itemMemberCoupon').value.trim();
+    const thumb = document.getElementById('itemThumb').value.trim();
+
+    if (!title || !category || isNaN(price)) {
+      alert("Please fill required fields");
+      return;
+    }
+
+    await addDoc(collection(db, "items"), {
+      title, category, price, desc, proCode, memberCoupon, thumb,
+      createdAt: serverTimestamp()
+    });
+    alert("Item saved!");
+    document.getElementById('itemModal').close();
+    await loadItems(); // refresh
+  } catch(e) {
+    console.error("Save item error:", e);
+    alert(e.message || e);
+  }
+});
+
 document.getElementById('btnDeleteItem')?.addEventListener('click', deleteItem);
 
 async function savePromo() {

@@ -370,6 +370,13 @@ body {
 .modal .modal-content{ background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;min-width:min(560px,100%) }
 .modal .modal-content.small{ min-width:min(420px,100%) }
 .modal .close,.drawer .close{ background:transparent;border:0;font-size:20px;float:right;cursor:pointer }
+.modal { max-width: 480px; }
+.modal-content input, 
+.modal-content textarea {
+  width: 100%;
+  margin: 6px 0;
+  padding: 8px;
+}
 
 /* product detail */
 .pdetail{ display:grid;grid-template-columns:1fr 1fr;gap:16px }

@@ -71,35 +71,35 @@
           />
         </div>
 
+        <!-- Toolbar (kept) -->
         <div class="toolbar">
-  <select id="filterCategory">
-    <option value="all">All Categories</option>
-    <option>men</option>
-    <option>women</option>
-    <option>kids</option>
-    <option>electronics</option>
-    <option>home</option>
-  </select>
-  <select id="sortBy">
-    <option value="featured">Featured</option>
-    <option value="price_asc">Price: Low to High</option>
-    <option value="price_desc">Price: High to Low</option>
-    <option value="rating">Top Rated</option>
-    <option value="newest">Newest</option>
-  </select>
-  <button id="btnSeedDemo" class="btn outline" style="margin-left:auto">🌱 Seed Demo Items</button>
-  <button id="btnGoAdmin" class="btn">➕ Add Item</button>
-</div>
-
-        <div class="row" style="margin: 10px 0; gap: 8px; align-items: center">
-          <button id="btnGoAdmin" class="btn">➕ Add Item</button>
-          <button id="btnSeedDemo" class="btn outline">
+          <select id="filterCategory">
+            <option value="all">All Categories</option>
+            <option>men</option>
+            <option>women</option>
+            <option>kids</option>
+            <option>electronics</option>
+            <option>home</option>
+          </select>
+          <select id="sortBy">
+            <option value="featured">Featured</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="rating">Top Rated</option>
+            <option value="newest">Newest</option>
+          </select>
+          <button
+            id="btnSeedDemo"
+            class="btn outline"
+            style="margin-left: auto"
+          >
             🌱 Seed Demo Items
           </button>
-          <span class="muted"
-            >Tip: Add Item ကိုနှိပ်ရင် Admin Console သို့သွားပါမယ်</span
-          >
+          <button id="btnGoAdmin" class="btn">➕ Add Item</button>
         </div>
+
+        <!-- ❌ Removed duplicate row with same buttons to avoid duplicate IDs -->
+
         <div id="grid" class="grid"></div>
       </section>
 
@@ -121,19 +121,26 @@
                 <div>Member Coupon: <code id="pdMemberCoupon">—</code></div>
               </div>
               <!-- thumbnails -->
-        <div id="pdThumbs" class="thumbs"></div>
-        <!-- qty + add -->
+              <div id="pdThumbs" class="thumbs"></div>
+              <!-- qty + add -->
               <div class="qty">
                 <button class="btn" id="qtyMinus">−</button>
-          <input id="pdQty" type="number" min="1" value="1" />
-          <button class="btn" id="qtyPlus">+</button>
-          <button id="pdAdd" class="btn primary" style="margin-left:auto">Add to Cart</button>
+                <input id="pdQty" type="number" min="1" value="1" />
+                <button class="btn" id="qtyPlus">+</button>
+                <button
+                  id="pdAdd"
+                  class="btn primary"
+                  style="margin-left: auto"
+                >
+                  Add to Cart
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </dialog>
 
-      <!-- Cart Drawer -->
+      <!-- Cart Drawer (large) -->
       <dialog id="cartDrawer" class="drawer drawer-lg">
         <div class="drawer-content">
           <button class="close" data-close>×</button>
@@ -154,45 +161,42 @@
         </div>
       </dialog>
 
-      <!-- Add Item MODAL (not page) -->
-<dialog id="addItemModal" class="modal">
-  <div class="modal-content small">
-    <button class="close" data-close>×</button>
-    <h3>Add / Edit Item</h3>
-
-    <label for="itemId">Item ID (leave blank for new)</label>
-    <input id="itemId" placeholder="(auto for new)" />
-
-    <label for="itemTitle">Title</label>
-    <input id="itemTitle" placeholder="e.g., Smartwatch S2" />
-
-    <label for="itemCategory">Category</label>
-    <input id="itemCategory" placeholder="men / women / kids / electronics / home" />
-
-    <label for="itemPrice">Price</label>
-    <input id="itemPrice" type="number" step="0.01" placeholder="e.g., 129.00" />
-
-    <label for="itemRating">Rating (0-5)</label>
-    <input id="itemRating" type="number" step="0.1" placeholder="e.g., 4.5" />
-
-    <label for="itemDesc">Description</label>
-    <textarea id="itemDesc" placeholder="Short product description..."></textarea>
-
-    <label for="itemProCode">Pro Code</label>
-    <input id="itemProCode" placeholder="e.g., PRO10" />
-
-    <label for="itemMemberCoupon">Member Coupon</label>
-    <input id="itemMemberCoupon" placeholder="e.g., GOLD5" />
-
-    <label for="itemImage">Product Image</label>
-    <input id="itemImage" type="file" accept="image/*" />
-
-    <div class="row" style="margin-top:10px">
-      <button id="btnSaveItem" class="btn primary" type="button">Save Item</button>
-      <button id="btnDeleteItem" class="btn danger" type="button">Delete Item</button>
-    </div>
-  </div>
-</dialog>
+      <!-- ✅ Single Add/Edit Item MODAL (keep only this) -->
+      <dialog id="itemModal" class="modal">
+        <div class="modal-content">
+          <button class="close" data-close>×</button>
+          <h3 id="itemModalTitle">Add / Edit Item</h3>
+          <input id="itemId" type="hidden" />
+          <label for="itemTitle">Title</label>
+          <input id="itemTitle" placeholder="e.g., Wireless Headphones" />
+          <label for="itemCategory">Category</label>
+          <input
+            id="itemCategory"
+            placeholder="men / women / kids / electronics / home"
+          />
+          <label for="itemPrice">Price</label>
+          <input
+            id="itemPrice"
+            type="number"
+            step="0.01"
+            placeholder="e.g., 99.99"
+          />
+          <label for="itemProCode">Pro Code</label>
+          <input id="itemProCode" placeholder="e.g., PRO10" />
+          <label for="itemMemberCoupon">Member Coupon</label>
+          <input id="itemMemberCoupon" placeholder="e.g., GOLD5" />
+          <label for="itemDesc">Description</label>
+          <textarea id="itemDesc" placeholder="Product description…"></textarea>
+          <label for="itemThumb">Thumbnail image URL</label>
+          <input id="itemThumb" type="url" placeholder="https://…" />
+          <div class="row" style="margin-top: 10px">
+            <button id="btnSaveItem" class="btn primary">Save Item</button>
+            <button id="btnDeleteItem" class="btn danger" type="button">
+              Delete Item
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       <!-- Orders / Re-order -->
       <section id="page-orders" class="page">
@@ -242,7 +246,6 @@
         >
           <button class="close" data-close>×</button>
           <h3>Sign in to your account</h3>
-
           <label for="loginEmail">Email</label>
           <input
             id="loginEmail"
@@ -250,7 +253,6 @@
             placeholder="you@example.com"
             required
           />
-
           <label for="loginPass">Password</label>
           <input
             id="loginPass"
@@ -258,7 +260,6 @@
             placeholder="Minimum 6 characters"
             required
           />
-
           <div
             class="row"
             style="justify-content: space-between; margin-top: 8px"
@@ -284,7 +285,6 @@
         >
           <button class="close" data-close>×</button>
           <h3>Create an account</h3>
-
           <label for="signupEmail">Email</label>
           <input
             id="signupEmail"
@@ -292,7 +292,6 @@
             placeholder="you@example.com"
             required
           />
-
           <label for="signupPass">Password</label>
           <input
             id="signupPass"
@@ -300,7 +299,6 @@
             placeholder="At least 6 characters"
             required
           />
-
           <div
             class="row"
             style="justify-content: space-between; margin-top: 8px"
@@ -323,7 +321,6 @@
         >
           <button class="close" data-close>×</button>
           <h3>Reset your password</h3>
-
           <label for="forgotEmail">Email</label>
           <input
             id="forgotEmail"
@@ -331,7 +328,6 @@
             placeholder="you@example.com"
             required
           />
-
           <div class="row" style="justify-content: flex-end; margin-top: 8px">
             <button id="doForgot" class="btn" type="button">
               Send reset email
@@ -340,68 +336,18 @@
         </form>
       </dialog>
 
-      <!-- Admin -->
+      <!-- Admin (no inline Add/Edit form to avoid duplicate IDs) -->
       <section id="page-admin" class="page">
         <h2>Admin Console</h2>
         <div class="grid admin-grid">
-          <!-- Add / Edit Item -->
           <div class="card">
-            <h3>Add / Edit Item</h3>
-
-            <label for="itemId">Item ID (leave blank for new)</label>
-            <input id="itemId" placeholder="(auto for new)" />
-
-            <label for="itemTitle">Title</label>
-            <input id="itemTitle" placeholder="e.g., Nike Air Max 270" />
-
-            <label for="itemCategory">Category</label>
-            <input
-              id="itemCategory"
-              placeholder="men / women / kids / electronics / home"
-            />
-
-            <label for="itemPrice">Price</label>
-            <input
-              id="itemPrice"
-              type="number"
-              step="0.01"
-              placeholder="e.g., 99.99"
-            />
-
-            <label for="itemRating">Rating (0-5)</label>
-            <input
-              id="itemRating"
-              type="number"
-              step="0.1"
-              placeholder="e.g., 4.6"
-            />
-
-            <label for="itemDesc">Description</label>
-            <textarea
-              id="itemDesc"
-              placeholder="Short product description..."
-            ></textarea>
-
-            <label for="itemProCode">Pro Code</label>
-            <input id="itemProCode" placeholder="e.g., PRO10" />
-
-            <label for="itemMemberCoupon">Member Coupon</label>
-            <input id="itemMemberCoupon" placeholder="e.g., GOLD5" />
-
-            <label for="itemImage">Product Image</label>
-            <input id="itemImage" type="file" accept="image/*" />
-
-            <div class="row" style="margin-top: 10px">
-              <button id="btnSaveItem" class="btn primary" type="button">
-                Save Item
-              </button>
-              <button id="btnDeleteItem" class="btn danger" type="button">
-                Delete Item
-              </button>
-            </div>
+            <h3>Items</h3>
+            <p class="muted">Use the button below to add or edit items.</p>
+            <button id="btnOpenItemModalAdmin" class="btn">
+              Open Add Item Modal
+            </button>
           </div>
 
-          <!-- Ads / Promotions -->
           <div class="card">
             <h3>Promotions & Ads</h3>
             <input
@@ -409,8 +355,7 @@
               placeholder="Event title (e.g., Thingyan Mega Sale)"
             />
             <input id="promoMessage" placeholder="Short message" />
-            <input id="promoActive" type="checkbox" />
-            <label for="promoActive">Active</label>
+            <label><input id="promoActive" type="checkbox" /> Active</label>
             <button id="btnSavePromo" class="btn">Save Promotion</button>
 
             <h4 style="margin-top: 12px">Ad Card</h4>
@@ -421,7 +366,6 @@
             <div id="adsPreview" class="ads"></div>
           </div>
 
-          <!-- Analytics -->
           <div class="card">
             <h3>Analytics</h3>
             <div class="row">
@@ -432,7 +376,6 @@
             <canvas id="salesChart" height="220"></canvas>
           </div>
 
-          <!-- Customer Feedback & Email Blast -->
           <div class="card">
             <h3>Customer Feedback</h3>
             <div id="feedbackList"></div>
@@ -473,7 +416,6 @@
 
     <!-- Firebase v10 Modular (CDN) -->
     <script type="module" src="app.js"></script>
-
     <!-- PayPal SDK: injected dynamically by app.js (loadPayPal) -->
   </body>
 </html>
