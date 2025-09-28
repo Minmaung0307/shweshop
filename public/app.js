@@ -151,6 +151,12 @@ $('#btnCheckout').addEventListener('click', ()=> startCheckout());
 
 // ===== Auth State =====
 onAuthStateChanged(auth, async (user)=>{
+  // detect admin custom claim (if you set it via server/Functions)
+  let isAdmin = false;
+  if (user) {
+    try { const tok = await user.getIdTokenResult(true); isAdmin = tok.claims?.admin === true; } catch {}
+  }
+  document.body.dataset.isAdmin = String(isAdmin);
   state.user = user;
 
   let isAdmin = false;
@@ -165,6 +171,11 @@ onAuthStateChanged(auth, async (user)=>{
   show($('#btnLogoutHeader'), !!user);
   show($('#btnLogin'), !user);
   show($('#btnSignup'), !user);
+  // toggle admin nav/page visibility
+  const adminLink = document.querySelector('a[href="#admin"]');
+  if (adminLink) adminLink.style.display = isAdmin ? '' : 'none';
+  const adminPage = document.querySelector('#page-admin');
+  if (adminPage) adminPage.style.display = isAdmin ? '' : 'none';
 
   // Admin page/link ကို non-admin မှာ ဖျောက်
   const adminLink = document.querySelector('a[href="#admin"]');
@@ -417,6 +428,7 @@ async function deleteItem(){
   await deleteDoc(doc(db,'items', id)); alert('Deleted'); $('#itemId').value=''; await loadItems();
 }
 async function savePromo(){
+  await requireAdmin();
   await requireAdmin(); // add this guard
   const p = { title: $('#promoTitle').value.trim(),
               message: $('#promoMessage').value.trim(),
@@ -425,6 +437,7 @@ async function savePromo(){
   alert('Promotion saved'); await loadPromo();
 }
 async function saveAd(){
+  await requireAdmin();
   await requireAdmin(); // add this guard
   const a = { title: $('#adTitle').value.trim(),
               imageUrl: $('#adImageUrl').value.trim(),
@@ -436,7 +449,22 @@ async function saveAd(){
 
 async function loadAnalytics(days=7){
   const since = new Date(); since.setDate(since.getDate() - days);
-  const snaps = await getDocs(query(collection(db,'orders'), orderBy('createdAt','desc'), limit(500)));
+  const u = auth.currentUser;
+  let snaps;
+  try {
+    const isAdmin = !!(u && (await u.getIdTokenResult(true)).claims?.admin);
+    if (isAdmin) {
+      // Admin: read all orders (requires security rules to allow admin reads)
+      snaps = await getDocs(query(collection(db,'orders'), orderBy('createdAt','desc'), limit(500)));
+    } else if (u) {
+      // Non-admin: only your orders; no orderBy (avoid composite index)
+      snaps = await getDocs(query(collection(db,'orders'), where('userId','==',u.uid), limit(500)));
+    } else {
+      return; // not signed in
+    }
+  } catch(e) {
+    console.error('Analytics read error', e); return;
+  }
   const buckets = new Map();
   snaps.forEach(d=>{
     const o = d.data(); const dt = asDate(o.createdAt); if(dt < since) return;
@@ -466,6 +494,7 @@ async function listFeedback(){
 }
 
 async function sendEmailBlast(){
+  await requireAdmin();
   await requireAdmin(); // add this guard
   const msg = $('#emailBlastMsg').value.trim(); if(!msg) return alert('Message required');
   const snaps = await getDocs(collection(db,'users'));
