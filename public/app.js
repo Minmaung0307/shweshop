@@ -41,6 +41,10 @@ const fmt = (n) => `$${Number(n||0).toFixed(2)}`;
 const today = () => Timestamp.now();
 const asDate = (ts) => ts?.toDate ? ts.toDate() : new Date(ts);
 
+// Node Admin SDK (run once in a secure environment)
+const admin = require('firebase-admin');
+await admin.auth().setCustomUserClaims('<UID>', { admin: true });
+
 // ===== State =====
 let state = {
   user: null,
@@ -151,11 +155,24 @@ $('#btnCheckout').addEventListener('click', ()=> startCheckout());
 onAuthStateChanged(auth, async (user)=>{
   state.user = user;
 
+  let isAdmin = false;
+  if (user) {
+    const token = await user.getIdTokenResult(true);
+    isAdmin = token.claims?.admin === true;
+  }
+  document.body.dataset.isAdmin = String(isAdmin);
+
   const show = (el, yes)=> el && el.classList.toggle('hidden', !yes);
   show($('#btnAccount'), !!user);
   show($('#btnLogoutHeader'), !!user);
   show($('#btnLogin'), !user);
   show($('#btnSignup'), !user);
+
+  // Admin page/link ကို non-admin မှာ ဖျောက်
+  const adminLink = document.querySelector('a[href="#admin"]');
+  if (adminLink) adminLink.style.display = isAdmin ? '' : 'none';
+  const adminPage = document.querySelector('#page-admin');
+  if (adminPage) adminPage.style.display = isAdmin ? '' : 'none';
 
   if (user) {
     $('#accEmail').textContent = user.email || user.displayName || user.uid;
@@ -332,21 +349,29 @@ async function placeOrder(method, txnId, amount){
 // ===== Orders =====
 async function loadOrders(){
   if(!auth.currentUser) return;
-  const qref = query(collection(db,'orders'),
+
+  // No-index version
+  const qref = query(
+    collection(db,'orders'),
     where('userId','==',auth.currentUser.uid),
-    orderBy('createdAt','desc'), limit(50));
+    limit(50)
+  );
   const snaps = await getDocs(qref);
   const orders = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
+
+  // optional: client-side sort by createdAt desc
+  orders.sort((a,b)=> (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+
   const list = $('#ordersList');
   list.innerHTML = orders.map(o=>{
-    const date = asDate(o.createdAt).toLocaleString();
-    const lines = o.items.map(i=> `${i.title} × ${i.qty} — ${fmt(i.price*i.qty)}`).join('<br/>');
+    const date = (o.createdAt?.toDate?.() ?? new Date()).toLocaleString();
+    const lines = (o.items||[]).map(i=> `${i.title} × ${i.qty} — $${(i.price*i.qty).toFixed(2)}`).join('<br/>');
     return `<div class="order">
       <div class="line"><b>Order #${o.id.slice(-6).toUpperCase()}</b><span>${date}</span></div>
       <div>${lines}</div>
-      <div class="line"><span class="muted">${o.method} • ${o.txnId||''}</span><b>${fmt(o.amount)}</b></div>
+      <div class="line"><span class="muted">${o.method} • ${o.txnId||''}</span><b>$${Number(o.amount||0).toFixed(2)}</b></div>
       <div class="row" style="margin-top:6px">
-        ${o.items.map(i=> `<button class='btn' onclick="reorder('${i.id}')">Re-order ${i.title}</button>`).join('')}
+        ${(o.items||[]).map(i=> `<button class='btn' onclick="reorder('${i.id}')">Re-order ${i.title}</button>`).join('')}
       </div>
     </div>`;
   }).join('');
@@ -394,12 +419,21 @@ async function deleteItem(){
   await deleteDoc(doc(db,'items', id)); alert('Deleted'); $('#itemId').value=''; await loadItems();
 }
 async function savePromo(){
-  const p = { title: $('#promoTitle').value.trim(), message: $('#promoMessage').value.trim(), active: $('#promoActive').checked };
-  await setDoc(doc(db,'promotions','main'), p); alert('Promotion saved'); await loadPromo();
+  await requireAdmin(); // add this guard
+  const p = { title: $('#promoTitle').value.trim(),
+              message: $('#promoMessage').value.trim(),
+              active: $('#promoActive').checked };
+  await setDoc(doc(db,'promotions','main'), p);
+  alert('Promotion saved'); await loadPromo();
 }
 async function saveAd(){
-  const a = { title: $('#adTitle').value.trim(), imageUrl: $('#adImageUrl').value.trim(), href: $('#adHref').value.trim(), createdAt: today() };
-  await addDoc(collection(db,'ads'), a); alert('Ad saved'); await loadAds();
+  await requireAdmin(); // add this guard
+  const a = { title: $('#adTitle').value.trim(),
+              imageUrl: $('#adImageUrl').value.trim(),
+              href: $('#adHref').value.trim(),
+              createdAt: today() };
+  await addDoc(collection(db,'ads'), a);
+  alert('Ad saved'); await loadAds();
 }
 
 async function loadAnalytics(days=7){
@@ -434,9 +468,11 @@ async function listFeedback(){
 }
 
 async function sendEmailBlast(){
+  await requireAdmin(); // add this guard
   const msg = $('#emailBlastMsg').value.trim(); if(!msg) return alert('Message required');
   const snaps = await getDocs(collection(db,'users'));
-  const recipients = snaps.docs.map(d=> ({ id:d.id, ...d.data() })).filter(u=> u.emailOptIn && u.email);
+  const recipients = snaps.docs.map(d=> ({ id:d.id, ...d.data() }))
+    .filter(u=> u.emailOptIn && u.email);
   if(!recipients.length) return alert('No opted-in users');
   let sent = 0, failed = 0;
   for(const u of recipients){
