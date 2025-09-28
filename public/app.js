@@ -57,6 +57,7 @@ const storage = getStorage(app);
 // ===== Helpers =====
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+const money = (n)=> `$${Number(n||0).toFixed(2)}`;
 const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
 const asDate = (ts) => (ts?.toDate ? ts.toDate() : new Date(ts));
@@ -437,60 +438,96 @@ onAuthStateChanged(auth, ()=> setAdminVisibility());
 // ====== ITEMS: LOAD + RENDER + EDIT ======
 let ITEM_CACHE = [];
 
+// ===== LOAD + RENDER ITEMS =====
 async function loadItems(){
   try{
+    // Try Firestore first
     const snaps = await getDocs(collection(db,'items'));
-    ITEM_CACHE = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
-    renderItems();
+    if (snaps.size){
+      STATE.items = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
+    } else {
+      // If empty, keep local demo (until you seed)
+      STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
+    }
   }catch(e){
-    console.warn('loadItems error:', e.message||e);
-    ITEM_CACHE = [];
-    renderItems(); // render empty
+    // If Firestore blocked, fallback to DEMO
+    STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
   }
+  renderItems();
+}
+
+
+// ===== LOAD + RENDER ITEMS =====
+async function loadItems(){
+  try{
+    // Try Firestore first
+    const snaps = await getDocs(collection(db,'items'));
+    if (snaps.size){
+      STATE.items = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
+    } else {
+      // If empty, keep local demo (until you seed)
+      STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
+    }
+  }catch(e){
+    // If Firestore blocked, fallback to DEMO
+    STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
+  }
+  renderItems();
 }
 
 function renderItems(){
-  const grid = document.getElementById('grid');
-  if(!grid) return;
+  const q = ($('#searchInput')?.value||'').toLowerCase().trim();
+  const cat = ($('#filterCategory')?.value || 'all').toLowerCase();
+  const sort = $('#sortBy')?.value || 'featured';
 
-  if(!ITEM_CACHE.length){
-    grid.innerHTML = `<div class="card" style="padding:14px">No items yet. Click <b>Seed Demo Items</b> or go to <b>Admin</b> to add.</div>`;
-    return;
+  let rows = [...STATE.items];
+  if (cat !== 'all') rows = rows.filter(r=> (r.category||'').toLowerCase()===cat);
+  if (q) rows = rows.filter(r=> (r.title+' '+(r.description||'')).toLowerCase().includes(q));
+
+  switch(sort){
+    case 'price_asc':  rows.sort((a,b)=> (a.price||0)-(b.price||0)); break;
+    case 'price_desc': rows.sort((a,b)=> (b.price||0)-(a.price||0)); break;
+    case 'rating':     rows.sort((a,b)=> (b.rating||0)-(a.rating||0)); break;
+    case 'newest':     rows.sort((a,b)=> (b.createdAt||0)-(a.createdAt||0)); break;
+    default: break;
   }
 
-  grid.innerHTML = ITEM_CACHE.map(p=>`
-    <div class="card product" style="overflow:hidden">
-      <img src="${p.imageUrl || 'https://picsum.photos/seed/'+p.id+'/600/400'}"
-           alt="${p.title}" style="width:100%;height:180px;object-fit:cover">
+  const grid = $('#grid');
+  grid.innerHTML = rows.map(p=>`
+    <div class="card product">
+      <img src="${p.imageUrl || (p.gallery?.[0]) || `https://picsum.photos/seed/${p.id}/600/400`}" alt="${p.title}" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0">
       <div class="pbody" style="padding:10px">
-        <div class="row" style="justify-content:space-between">
-          <b>${p.title}</b><span class="muted">${p.category||''}</span>
-        </div>
+        <div class="row" style="justify-content:space-between"><b>${p.title}</b><span class="muted">${p.category||''}</span></div>
         <div class="row" style="justify-content:space-between;margin-top:4px">
           <span class="rating">★ ${(p.rating ?? '—')}</span>
-          <span class="price">$${Number(p.price||0).toFixed(2)}</span>
+          <span class="price">${money(p.price)}</span>
         </div>
-        <div class="row" style="margin-top:8px; gap:6px">
-          <button class="btn" data-open-product="${p.id}">View</button>
-          <button class="btn outline admin-only" data-edit-id="${p.id}">Edit</button>
+        <div class="row" style="gap:6px;margin-top:8px">
+          <button class="btn" data-open="${p.id}">View</button>
+          <button class="btn outline" data-add="${p.id}">Add</button>
         </div>
       </div>
     </div>
   `).join('');
 
-  // View modal
-  document.querySelectorAll('[data-open-product]').forEach(b=>{
-    b.addEventListener('click', ()=> openProduct(b.dataset.openProduct));
-  });
-
-  // Admin-only edit: load into form
-  document.querySelectorAll('[data-edit-id]').forEach(b=>{
-    b.addEventListener('click', ()=> loadIntoEditor(b.dataset.editId));
-  });
-
-  // Make sure admin-only visibility is correct
-  setAdminVisibility();
+  // bind
+  $$('[data-open]').forEach(b=> b.addEventListener('click', ()=> openProduct(b.dataset.open)));
+  $$('[data-add]').forEach(b=> b.addEventListener('click', ()=> addToCartId(b.dataset.add, 1)));
 }
+
+// ===== SUBNAV (hash like #category/men) =====
+window.addEventListener('hashchange', ()=>{
+  const m = location.hash.match(/^#category\/(.+)$/i);
+  if (m && $('#filterCategory')){
+    $('#filterCategory').value = m[1].toLowerCase();
+    renderItems();
+  }
+});
+
+// Home toolbar bindings
+$('#filterCategory')?.addEventListener('change', renderItems);
+$('#sortBy')?.addEventListener('change', renderItems);
+$('#searchForm')?.addEventListener('submit', (e)=>{ e.preventDefault(); renderItems(); });
 
 function loadIntoEditor(id){
   const p = ITEM_CACHE.find(x=> x.id === id);
@@ -510,8 +547,9 @@ function loadIntoEditor(id){
 }
 
 
-// ====== SEED DEMO ITEMS ======
+// ===== DEMO ITEMS (all categories) =====
 const DEMO_ITEMS = [
+  // men
   { title:'Men T-Shirt Classic', category:'men', price:14.99, rating:4.2,
     description:'Soft cotton tee for everyday wear.',
     imageUrl:'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
@@ -521,6 +559,7 @@ const DEMO_ITEMS = [
     imageUrl:'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
 
+  // women
   { title:'Women Summer Dress', category:'women', price:29.90, rating:4.6,
     description:'Breezy floral dress.',
     imageUrl:'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?q=80&w=800&auto=format&fit=crop',
@@ -530,6 +569,7 @@ const DEMO_ITEMS = [
     imageUrl:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
 
+  // kids
   { title:'Kids Hoodie', category:'kids', price:19.90, rating:4.3,
     description:'Cozy hoodie for kids.',
     imageUrl:'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop',
@@ -539,15 +579,27 @@ const DEMO_ITEMS = [
     imageUrl:'https://images.unsplash.com/photo-1603808033192-7f21ad1d8a08?q=80&w=800&auto=format&fit=crop',
     proCode:'PRO10', memberCoupon:'GOLD5' },
 
+  // electronics  (➡️ သင်ပြောတဲ့ ၂ခု)
   { title:'Wireless Headphones', category:'electronics', price:89.00, rating:4.5,
     description:'Noise-isolating, long battery life.',
     imageUrl:'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
+    proCode:'PRO10', memberCoupon:'GOLD5',
+    gallery:[
+      'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=800&auto=format&fit=crop'
+    ]},
   { title:'Smartwatch S2', category:'electronics', price:129.00, rating:4.4,
     description:'Fitness + notifications.',
     imageUrl:'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
+    proCode:'PRO10', memberCoupon:'GOLD5',
+    gallery:[
+      'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1516570161787-2fd917215a3d?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1485727749690-d091e8284ef2?q=80&w=800&auto=format&fit=crop'
+    ]},
 
+  // home
   { title:'Ceramic Mug Set', category:'home', price:15.99, rating:4.2,
     description:'Set of 4, dishwasher safe.',
     imageUrl:'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop',
@@ -576,21 +628,36 @@ document.getElementById('btnSeedDemo')?.addEventListener('click', async ()=>{
   await loadItems();
 })();
 
-function openProduct(id) {
-  const p = state.items.find((x) => x.id === id);
+// ===== PRODUCT MODAL =====
+function openProduct(id){
+  const p = STATE.items.find(x=> x.id===id);
   if (!p) return;
-  $("#pdImg").src =
-    p.imageUrl || "https://picsum.photos/seed/" + p.id + "/600/400";
-  $("#pdTitle").textContent = p.title;
-  $("#pdDesc").textContent = p.description || "";
-  $("#pdPrice").textContent = fmt(p.price);
-  $("#pdRating").textContent = `★ ${p.rating || "—"}`;
-  $("#pdProCode").textContent = p.proCode || "—";
-  $("#pdMemberCoupon").textContent = p.memberCoupon || "—";
-  $("#pdQty").value = 1;
-  $("#pdAdd").onclick = () =>
-    addToCart(p, parseInt($("#pdQty").value || "1", 10));
-  $("#productModal").showModal();
+
+  $('#pdImg').src = p.imageUrl || p.gallery?.[0] || `https://picsum.photos/seed/${p.id}/800/600`;
+  $('#pdTitle').textContent = p.title || '';
+  $('#pdDesc').textContent  = p.description || '';
+  $('#pdPrice').textContent = money(p.price);
+  $('#pdRating').textContent= `★ ${p.rating ?? '—'}`;
+  $('#pdQty').value = 1;
+
+  // thumbnails
+  const thumbs = p.gallery && p.gallery.length ? p.gallery : [p.imageUrl].filter(Boolean);
+  const wrap = $('#pdThumbs');
+  wrap.innerHTML = (thumbs||[]).map((src,i)=> `<img src="${src}" class="${i===0?'active':''}" data-src="${src}" />`).join('');
+  wrap.querySelectorAll('img').forEach(img=>{
+    img.addEventListener('click', ()=>{
+      wrap.querySelectorAll('img').forEach(x=> x.classList.remove('active'));
+      img.classList.add('active');
+      $('#pdImg').src = img.dataset.src;
+    });
+  });
+
+  // qty buttons
+  $('#qtyMinus').onclick = ()=> $('#pdQty').value = Math.max(1, (+$('#pdQty').value||1)-1);
+  $('#qtyPlus').onclick  = ()=> $('#pdQty').value = (+$('#pdQty').value||1)+1;
+  $('#pdAdd').onclick    = ()=> addToCartId(id, +$('#pdQty').value||1);
+
+  $('#productModal').showModal();
 }
 
 // ===== Cart =====
@@ -614,48 +681,50 @@ function removeFromCart(id) {
   persistCart();
   renderCart();
 }
-function changeQty(id, delta) {
-  const it = state.cart.find((x) => x.id === id);
-  if (!it) return;
-  it.qty = Math.max(1, it.qty + delta);
-  persistCart();
-  renderCart();
+
+// ===== CART =====
+function persistCart(){ localStorage.setItem('cart', JSON.stringify(STATE.cart)); }
+function restoreCart(){ try{ STATE.cart = JSON.parse(localStorage.getItem('cart')||'[]'); }catch{} }
+function addToCartId(id, qty=1){
+  const p = STATE.items.find(x=> x.id===id); if(!p) return;
+  const ex = STATE.cart.find(x=> x.id===id);
+  if (ex) ex.qty += qty; else STATE.cart.push({ id, title:p.title, price:p.price, imageUrl: p.imageUrl || p.gallery?.[0], qty });
+  renderCart(); persistCart();
+  $('#cartDrawer').showModal();
 }
-function persistCart() {
-  localStorage.setItem("megashop_cart", JSON.stringify(state.cart));
+
+function changeQty(id, delta){
+  const it = STATE.cart.find(x=> x.id===id); if(!it) return;
+  it.qty = Math.max(1, it.qty + delta); renderCart(); persistCart();
 }
-function restoreCart() {
-  try {
-    state.cart = JSON.parse(localStorage.getItem("megashop_cart") || "[]");
-  } catch {}
+function removeItem(id){
+  STATE.cart = STATE.cart.filter(x=> x.id!==id); renderCart(); persistCart();
 }
-function renderCart() {
-  $("#cartCount").textContent = state.cart.reduce((a, b) => a + b.qty, 0);
-  const wrap = $("#cartItems");
-  wrap.innerHTML = state.cart
-    .map(
-      (c) => `
-    <div class="cart-item">
-      <img src="${
-        c.imageUrl || "https://picsum.photos/seed/" + c.id + "/80/80"
-      }">
-      <div><b>${c.title}</b><div class="muted">${fmt(c.price)} × ${
-        c.qty
-      }</div></div>
+
+function renderCart(){
+  const list = $('#cartItems');
+  list.innerHTML = STATE.cart.map(c=> `
+    <div class="cart-item" style="display:grid;grid-template-columns:70px 1fr auto auto;gap:10px;align-items:center;margin:8px 0">
+      <img src="${c.imageUrl || `https://picsum.photos/seed/${c.id}/100/100`}" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
+      <div><b>${c.title}</b><div class="muted">${money(c.price)} × ${c.qty}</div></div>
       <div class="qty">
         <button class="btn" onclick="changeQty('${c.id}',-1)">−</button>
         <span>${c.qty}</span>
         <button class="btn" onclick="changeQty('${c.id}',1)">+</button>
       </div>
-      <button class="btn" onclick="removeFromCart('${c.id}')">Remove</button>
-    </div>`
-    )
-    .join("");
-  const sub = state.cart.reduce((s, c) => s + c.price * c.qty, 0);
-  $("#cartSubtotal").textContent = fmt(sub);
+      <button class="btn" onclick="removeItem('${c.id}')">Remove</button>
+    </div>
+  `).join('');
+
+  const sub = STATE.cart.reduce((s,c)=> s + c.price*c.qty, 0);
+  $('#cartSubtotal').textContent = money(sub);
 }
-window.changeQty = changeQty;
-window.removeFromCart = removeFromCart;
+window.changeQty = changeQty; window.removeItem = removeItem;
+
+// ===== ADD ITEM MODAL (button) =====
+$('#btnGoAdmin')?.addEventListener('click', ()=>{
+  $('#addItemModal').showModal();
+});
 
 // ===== Checkout (PayPal) =====
 async function startCheckout() {
@@ -792,53 +861,67 @@ async function requireAdmin() {
   if (!t.claims?.admin) throw new Error('Admin only');
 }
 
+// ===== SAVE / DELETE ITEM (modal) =====
+$('#btnSaveItem')?.addEventListener('click', saveItem);
+$('#btnDeleteItem')?.addEventListener('click', deleteItem);
+
 async function saveItem(){
   try{
-    // await requireAdmin(); // <-- DEV: comment this line if you want to test without admin claim
+    const id    = $('#itemId').value.trim();
+    const title = $('#itemTitle').value.trim();
+    const category = $('#itemCategory').value.trim().toLowerCase();
+    const price = Number($('#itemPrice').value||0);
+    const rating = Number($('#itemRating').value||0);
+    const description = $('#itemDesc').value.trim();
+    const proCode = $('#itemProCode').value.trim();
+    const memberCoupon = $('#itemMemberCoupon').value.trim();
+    const file = $('#itemImage').files[0];
 
-    const id    = document.getElementById('itemId').value.trim();
-    const title = document.getElementById('itemTitle').value.trim();
-    const category = document.getElementById('itemCategory').value.trim().toLowerCase();
-    const price = Number(document.getElementById('itemPrice').value || 0);
-    const rating = Number(document.getElementById('itemRating')?.value || 0);
-    const description = document.getElementById('itemDesc').value.trim();
-    const proCode = document.getElementById('itemProCode')?.value.trim() || '';
-    const memberCoupon = document.getElementById('itemMemberCoupon')?.value.trim() || '';
-    const file = document.getElementById('itemImage').files[0];
-
-    if(!title) return alert('Title is required');
+    if(!title){ alert('Title required'); return; }
 
     const payload = { title, category, price, rating, description, proCode, memberCoupon, createdAt: Date.now() };
 
-    // Image upload (optional)
-    if(file){
+    if (file){
       const rid = id || crypto.randomUUID();
       const r = ref(storage, `items/${rid}/${file.name}`);
       await uploadBytes(r, file);
       payload.imageUrl = await getDownloadURL(r);
-      if(!id) document.getElementById('itemId').value = rid;
+      if(!id) $('#itemId').value = rid;
     }
 
-    if(id){
-      await setDoc(doc(db,'items', id), payload, { merge:true });
-    }else{
-      const newDoc = await addDoc(collection(db,'items'), payload);
-      document.getElementById('itemId').value = newDoc.id;
-    }
-    alert('Item saved');
-  }catch(e){ alert(e.message || e); }
+    if (id){ await setDoc(doc(db,'items', id), payload, {merge:true}); }
+    else { const refDoc = await addDoc(collection(db,'items'), payload); $('#itemId').value = refDoc.id; }
+
+    alert('Saved item');
+    $('#addItemModal').close();
+    await loadItems();
+  }catch(e){ alert(e.message||e); }
 }
-
 async function deleteItem(){
   try{
-    // await requireAdmin(); // <-- DEV: comment this line if you want to test without admin claim
-    const id = document.getElementById('itemId').value.trim();
-    if(!id) return alert('No ID to delete');
+    const id = $('#itemId').value.trim(); if(!id){ alert('No ID'); return; }
     await deleteDoc(doc(db,'items', id));
-    alert('Item deleted');
-    document.getElementById('itemId').value = '';
-  }catch(e){ alert(e.message || e); }
+    alert('Deleted'); $('#addItemModal').close(); await loadItems();
+  }catch(e){ alert(e.message||e); }
 }
+
+// ===== SEED DEMO =====
+$('#btnSeedDemo')?.addEventListener('click', async ()=>{
+  try{
+    // login required if your rules need it; otherwise remove this check
+    // if (!auth.currentUser) { alert('Please login first.'); return; }
+    for (const it of DEMO_ITEMS) await addDoc(collection(db,'items'), it);
+    alert('Seeded demo items!');
+    await loadItems();
+  }catch(e){ alert(e.message||e); }
+});
+
+// ===== INIT =====
+(function init(){
+  restoreCart();
+  renderCart();
+  loadItems();
+})();
 
 document.getElementById('btnSaveItem')?.addEventListener('click', saveItem);
 document.getElementById('btnDeleteItem')?.addEventListener('click', deleteItem);
