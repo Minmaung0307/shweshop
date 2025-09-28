@@ -99,8 +99,14 @@ $('#doForgot').addEventListener('click', async ()=>{
   catch(e){ alert(e.message); }
 });
 $('#btnLogout').addEventListener('click', ()=> signOut(auth));
+// Header logout (visible only when signed in)
+const hdrLogout = $('#btnLogoutHeader');
+if (hdrLogout) hdrLogout.addEventListener('click', ()=> signOut(auth));
 
-$('#btnAccount').addEventListener('click', ()=> location.hash = 'account');
+$('#btnAccount').addEventListener('click', ()=>{
+  if (location.hash !== '#account') { location.hash = 'account'; }
+  else { route(); } // already on #account? force rerender
+});
 
 // Membership
 $('#btnApplyMembership').addEventListener('click', async ()=>{
@@ -144,23 +150,31 @@ $('#btnCheckout').addEventListener('click', ()=> startCheckout());
 // ===== Auth State =====
 onAuthStateChanged(auth, async (user)=>{
   state.user = user;
-  $('#btnAccount').classList.toggle('hidden', !user);
-  $('#btnLogin').classList.toggle('hidden', !!user);
-  $('#btnSignup').classList.toggle('hidden', !!user);
-  if(user){
+
+  const show = (el, yes)=> el && el.classList.toggle('hidden', !yes);
+  show($('#btnAccount'), !!user);
+  show($('#btnLogoutHeader'), !!user);
+  show($('#btnLogin'), !user);
+  show($('#btnSignup'), !user);
+
+  if (user) {
     $('#accEmail').textContent = user.email || user.displayName || user.uid;
+
     const uref = doc(db,'users', user.uid);
     const snap = await getDoc(uref);
     const data = snap.exists()? snap.data() : { membership:'free', emailOptIn:false };
+
     state.membership = data.membership || 'free';
     $('#accMember').textContent = state.membership;
-    $('#membershipLevel').value = state.membership;
-    $('#emailOptIn').checked = !!data.emailOptIn;
+
+    const ml = $('#membershipLevel'); if (ml) ml.value = state.membership;
+    const eo = $('#emailOptIn'); if (eo) eo.checked = !!data.emailOptIn;
+
     loadOrders();
   } else {
     $('#accEmail').textContent = '—';
     $('#accMember').textContent = 'free';
-    $('#emailOptIn').checked = false;
+    const eo = $('#emailOptIn'); if (eo) eo.checked = false;
     $('#ordersList').innerHTML = '';
   }
 });
