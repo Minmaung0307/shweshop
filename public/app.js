@@ -415,6 +415,16 @@ document.getElementById('btnGoAdmin')?.addEventListener('click', ()=>{
   document.getElementById('itemModal').showModal();
 });
 
+// open from Admin card button
+document.getElementById('btnOpenItemModalAdmin')?.addEventListener('click', () => {
+  document.getElementById('itemModal').showModal();
+});
+
+// universal close for dialogs with [data-close]
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.addEventListener('click', (e)=> e.target.closest('dialog')?.close());
+});
+
 // ====== ADMIN VISIBILITY (toggle .admin-only controls) ======
 async function setAdminVisibility(){
   const u = auth.currentUser;
@@ -437,24 +447,6 @@ onAuthStateChanged(auth, ()=> setAdminVisibility());
 
 // ====== ITEMS: LOAD + RENDER + EDIT ======
 let ITEM_CACHE = [];
-
-// ===== LOAD + RENDER ITEMS =====
-async function loadItems(){
-  try{
-    // Try Firestore first
-    const snaps = await getDocs(collection(db,'items'));
-    if (snaps.size){
-      STATE.items = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
-    } else {
-      // If empty, keep local demo (until you seed)
-      STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
-    }
-  }catch(e){
-    // If Firestore blocked, fallback to DEMO
-    STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
-  }
-  renderItems();
-}
 
 
 // ===== LOAD + RENDER ITEMS =====
