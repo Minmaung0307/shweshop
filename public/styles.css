@@ -354,3 +354,8 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* SPA routing */
+.page{display:none}
+.page.active{display:block}

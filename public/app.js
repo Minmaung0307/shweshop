@@ -40,10 +40,8 @@ const $$ = (sel) => document.querySelectorAll(sel);
 const fmt = (n) => `$${Number(n||0).toFixed(2)}`;
 const today = () => Timestamp.now();
 const asDate = (ts) => ts?.toDate ? ts.toDate() : new Date(ts);
-
-// Node Admin SDK (run once in a secure environment)
-const admin = require('firebase-admin');
-await admin.auth().setCustomUserClaims('<UID>', { admin: true });
+// NOTE: Admin custom claims must be set on a secure server (do not use require() in browser).
+// Remove server-side code from client. Proceed without here.
 
 // ===== State =====
 let state = {
