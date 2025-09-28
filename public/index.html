@@ -180,69 +180,170 @@
 
       <!-- Auth Modals -->
       <dialog id="loginModal" class="modal">
-        <div class="modal-content small">
+        <form
+          method="dialog"
+          class="modal-content small"
+          onsubmit="return false;"
+        >
           <button class="close" data-close>×</button>
-          <h3>Welcome back</h3>
-          <input id="loginEmail" type="email" placeholder="Email" />
-          <input id="loginPass" type="password" placeholder="Password" />
-          <button id="doLogin" class="btn primary">Login</button>
-          <button id="doGitHub" class="btn dark">Continue with GitHub</button>
-          <button id="openForgot" class="link">Forgot password?</button>
-        </div>
+          <h3>Sign in to your account</h3>
+
+          <label for="loginEmail">Email</label>
+          <input
+            id="loginEmail"
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+
+          <label for="loginPass">Password</label>
+          <input
+            id="loginPass"
+            type="password"
+            placeholder="Minimum 6 characters"
+            required
+          />
+
+          <div
+            class="row"
+            style="justify-content: space-between; margin-top: 8px"
+          >
+            <button id="doLogin" class="btn primary" type="button">
+              Login
+            </button>
+            <button id="openSignup" class="link" type="button">
+              Create account
+            </button>
+            <button id="openForgot" class="link" type="button">
+              Forgot password?
+            </button>
+          </div>
+        </form>
       </dialog>
 
       <dialog id="signupModal" class="modal">
-        <div class="modal-content small">
+        <form
+          method="dialog"
+          class="modal-content small"
+          onsubmit="return false;"
+        >
           <button class="close" data-close>×</button>
-          <h3>Create your account</h3>
-          <input id="signupEmail" type="email" placeholder="Email" />
+          <h3>Create an account</h3>
+
+          <label for="signupEmail">Email</label>
+          <input
+            id="signupEmail"
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+
+          <label for="signupPass">Password</label>
           <input
             id="signupPass"
             type="password"
-            placeholder="Password (min 6)"
+            placeholder="At least 6 characters"
+            required
           />
-          <button id="doSignup" class="btn primary">Sign up</button>
-        </div>
+
+          <div
+            class="row"
+            style="justify-content: space-between; margin-top: 8px"
+          >
+            <button id="doSignup" class="btn primary" type="button">
+              Sign up
+            </button>
+            <button id="openLoginFromSignup" class="link" type="button">
+              Back to login
+            </button>
+          </div>
+        </form>
       </dialog>
 
       <dialog id="forgotModal" class="modal">
-        <div class="modal-content small">
+        <form
+          method="dialog"
+          class="modal-content small"
+          onsubmit="return false;"
+        >
           <button class="close" data-close>×</button>
           <h3>Reset your password</h3>
-          <input id="forgotEmail" type="email" placeholder="Email" />
-          <button id="doForgot" class="btn">Send reset email</button>
-        </div>
+
+          <label for="forgotEmail">Email</label>
+          <input
+            id="forgotEmail"
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+
+          <div class="row" style="justify-content: flex-end; margin-top: 8px">
+            <button id="doForgot" class="btn" type="button">
+              Send reset email
+            </button>
+          </div>
+        </form>
       </dialog>
 
       <!-- Admin -->
       <section id="page-admin" class="page">
         <h2>Admin Console</h2>
         <div class="grid admin-grid">
-          <!-- Add Item -->
+          <!-- Add / Edit Item -->
           <div class="card">
             <h3>Add / Edit Item</h3>
+
+            <label for="itemId">Item ID (leave blank for new)</label>
             <input id="itemId" placeholder="(auto for new)" />
-            <input id="itemTitle" placeholder="Title" />
+
+            <label for="itemTitle">Title</label>
+            <input id="itemTitle" placeholder="e.g., Nike Air Max 270" />
+
+            <label for="itemCategory">Category</label>
             <input
               id="itemCategory"
-              placeholder="Category (men/women/kids/electronics/home)"
+              placeholder="men / women / kids / electronics / home"
             />
-            <input id="itemPrice" type="number" placeholder="Price" />
+
+            <label for="itemPrice">Price</label>
+            <input
+              id="itemPrice"
+              type="number"
+              step="0.01"
+              placeholder="e.g., 99.99"
+            />
+
+            <label for="itemRating">Rating (0-5)</label>
             <input
               id="itemRating"
               type="number"
               step="0.1"
-              placeholder="Rating (0-5)"
+              placeholder="e.g., 4.6"
             />
-            <textarea id="itemDesc" placeholder="Description"></textarea>
-            <input id="itemProCode" placeholder="Pro Code (e.g., PRO10)" />
-            <input
-              id="itemMemberCoupon"
-              placeholder="Member Coupon (e.g., GOLD5)"
-            />
+
+            <label for="itemDesc">Description</label>
+            <textarea
+              id="itemDesc"
+              placeholder="Short product description..."
+            ></textarea>
+
+            <label for="itemProCode">Pro Code</label>
+            <input id="itemProCode" placeholder="e.g., PRO10" />
+
+            <label for="itemMemberCoupon">Member Coupon</label>
+            <input id="itemMemberCoupon" placeholder="e.g., GOLD5" />
+
+            <label for="itemImage">Product Image</label>
             <input id="itemImage" type="file" accept="image/*" />
-            <button id="btnSaveItem" class="btn primary">Save Item</button>
-            <button id="btnDeleteItem" class="btn danger">Delete Item</button>
+
+            <div class="row" style="margin-top: 10px">
+              <button id="btnSaveItem" class="btn primary" type="button">
+                Save Item
+              </button>
+              <button id="btnDeleteItem" class="btn danger" type="button">
+                Delete Item
+              </button>
+            </div>
           </div>
 
           <!-- Ads / Promotions -->
