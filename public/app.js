@@ -33,13 +33,6 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// Global application state
-const STATE = {
-  items: [],     // all items loaded from Firestore or demo seed
-  cart: [],      // user’s shopping cart
-  user: null     // logged in user object
-};
-
 // ===== EmailJS init (replace with your keys) =====
 const EMAILJS_PUBLIC_KEY = "WT0GOYrL9HnDKvLUf";
 const EMAILJS_SERVICE_ID = "service_z9tkmvr";
@@ -61,10 +54,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// ===== Helpers =====
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
+// ---- Global state (declare once at the very top) ----
+const STATE = { items: [], cart: [], user: null };
+const $ = (s)=> document.querySelector(s);
+const $$ = (s)=> document.querySelectorAll(s);
 const money = (n)=> `$${Number(n||0).toFixed(2)}`;
+// ===== Helpers =====
+// const $ = (sel) => document.querySelector(sel);
+// const $$ = (sel) => document.querySelectorAll(sel);
+// const money = (n)=> `$${Number(n||0).toFixed(2)}`;
 const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
 const asDate = (ts) => (ts?.toDate ? ts.toDate() : new Date(ts));
@@ -510,8 +508,8 @@ function renderItems(){
   `).join('');
 
   // bind
-  $$('[data-open]').forEach(b=> b.addEventListener('click', ()=> openProduct(b.dataset.open)));
-  $$('[data-add]').forEach(b=> b.addEventListener('click', ()=> addToCartId(b.dataset.add, 1)));
+  document.querySelectorAll('[data-open]')?.forEach(b=> b.addEventListener('click', ()=> openProduct(b.dataset.open)));
+  document.querySelectorAll('[data-add]')?.forEach(b=> b.addEventListener('click', ()=> addToCartId(b.dataset.add, 1)));
 }
 
 // ===== SUBNAV (hash like #category/men) =====
@@ -622,12 +620,7 @@ document.getElementById('btnSeedDemo')?.addEventListener('click', async ()=>{
   }
 });
 
-// ====== INIT CALL ======
-(async function initItems(){
-  await loadItems();
-})();
-
-// ===== PRODUCT MODAL =====
+// ---- Product modal (ensure this is the only implementation) ----
 function openProduct(id){
   const p = STATE.items.find(x=> x.id===id);
   if (!p) return;
@@ -638,11 +631,12 @@ function openProduct(id){
   $('#pdPrice').textContent = money(p.price);
   $('#pdRating').textContent= `★ ${p.rating ?? '—'}`;
   $('#pdQty').value = 1;
+  $('#pdProCode').textContent = p.proCode || '—';
+  $('#pdMemberCoupon').textContent = p.memberCoupon || '—';
 
   // thumbnails
-  const thumbs = p.gallery && p.gallery.length ? p.gallery : [p.imageUrl].filter(Boolean);
-  const wrap = $('#pdThumbs');
-  wrap.innerHTML = (thumbs||[]).map((src,i)=> `<img src="${src}" class="${i===0?'active':''}" data-src="${src}" />`).join('');
+  const thumbs = p.gallery?.length ? p.gallery : [p.imageUrl].filter(Boolean);
+  const wrap = $('#pdThumbs'); wrap.innerHTML = (thumbs||[]).map((src,i)=> `<img src="${src}" class="${i===0?'active':''}" data-src="${src}" />`).join('');
   wrap.querySelectorAll('img').forEach(img=>{
     img.addEventListener('click', ()=>{
       wrap.querySelectorAll('img').forEach(x=> x.classList.remove('active'));
@@ -651,10 +645,11 @@ function openProduct(id){
     });
   });
 
-  // qty buttons
+  // qty & add
   $('#qtyMinus').onclick = ()=> $('#pdQty').value = Math.max(1, (+$('#pdQty').value||1)-1);
   $('#qtyPlus').onclick  = ()=> $('#pdQty').value = (+$('#pdQty').value||1)+1;
-  $('#pdAdd').onclick    = ()=> addToCartId(id, +$('#pdQty').value||1);
+  // ✅ Add to cart (no redirect)
+  $('#pdAdd').onclick = ()=> addToCartId(id, +$('#pdQty').value||1);
 
   $('#productModal').showModal();
 }
@@ -684,24 +679,41 @@ function removeFromCart(id) {
 // ===== CART =====
 function persistCart(){ localStorage.setItem('cart', JSON.stringify(STATE.cart)); }
 function restoreCart(){ try{ STATE.cart = JSON.parse(localStorage.getItem('cart')||'[]'); }catch{} }
+function updateCartCount(){
+  const count = STATE.cart.reduce((s,c)=> s + (c.qty||0), 0);
+  const el = $('#cartCount'); if (el) el.textContent = count;
+}
+
+// ---- Cart ops ----
 function addToCartId(id, qty=1){
-  const p = STATE.items.find(x=> x.id===id); if(!p) return;
+  const p = STATE.items.find(x=> x.id===id);
+  if(!p) return;
   const ex = STATE.cart.find(x=> x.id===id);
   if (ex) ex.qty += qty; else STATE.cart.push({ id, title:p.title, price:p.price, imageUrl: p.imageUrl || p.gallery?.[0], qty });
-  renderCart(); persistCart();
-  $('#cartDrawer').showModal();
+  renderCart();
+  persistCart();
+  updateCartCount();
+  // ✅ Open cart drawer (not checkout)
+  $('#cartDrawer')?.showModal();
 }
 
 function changeQty(id, delta){
   const it = STATE.cart.find(x=> x.id===id); if(!it) return;
-  it.qty = Math.max(1, it.qty + delta); renderCart(); persistCart();
-}
-function removeItem(id){
-  STATE.cart = STATE.cart.filter(x=> x.id!==id); renderCart(); persistCart();
+  it.qty = Math.max(1, (it.qty||1) + delta);
+  renderCart(); persistCart(); updateCartCount();
 }
 
+function removeItem(id){
+  STATE.cart = STATE.cart.filter(x=> x.id!==id);
+  renderCart(); persistCart(); updateCartCount();
+}
+
+// expose for inline onclick (if any)
+window.changeQty = changeQty;
+window.removeItem = removeItem;
+
 function renderCart(){
-  const list = $('#cartItems');
+  const list = $('#cartItems'); if(!list) return;
   list.innerHTML = STATE.cart.map(c=> `
     <div class="cart-item" style="display:grid;grid-template-columns:70px 1fr auto auto;gap:10px;align-items:center;margin:8px 0">
       <img src="${c.imageUrl || `https://picsum.photos/seed/${c.id}/100/100`}" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
@@ -714,10 +726,13 @@ function renderCart(){
       <button class="btn" onclick="removeItem('${c.id}')">Remove</button>
     </div>
   `).join('');
-
-  const sub = STATE.cart.reduce((s,c)=> s + c.price*c.qty, 0);
+  const sub = STATE.cart.reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0);
   $('#cartSubtotal').textContent = money(sub);
 }
+
+// Header cart button opens drawer
+$('#btnCart')?.addEventListener('click', ()=> $('#cartDrawer')?.showModal());
+
 window.changeQty = changeQty; window.removeItem = removeItem;
 
 // ===== ADD ITEM MODAL (button) =====
@@ -914,13 +929,6 @@ $('#btnSeedDemo')?.addEventListener('click', async ()=>{
     await loadItems();
   }catch(e){ alert(e.message||e); }
 });
-
-// ===== INIT =====
-(function init(){
-  restoreCart();
-  renderCart();
-  loadItems();
-})();
 
 // Save item
 document.getElementById('btnSaveItem')?.addEventListener('click', async ()=>{
@@ -1155,13 +1163,37 @@ ready(()=>{
   }
 });
 
-// ===== Init =====
+// ============= SINGLE, SAFE INIT (use this only) =============
 async function init() {
-  restoreCart();
-  renderCart();
-  route();
-  await Promise.all([loadPromo(), loadAds(), loadItems()]);
-  loadAnalytics(7);
-  listFeedback();
+  // 1) Cart first (local state) — no network
+  restoreCart?.();
+  renderCart?.();
+  updateCartCount?.();
+
+  // 2) Router once
+  route?.();
+  window.addEventListener('hashchange', route, { once: false });
+
+  // 3) Load data (parallel where safe)
+  await Promise.allSettled([
+    loadItems?.(),   // renders grid inside
+    loadPromo?.(),
+    loadAds?.()
+  ]);
+
+  // 4) Secondary loads (non-blocking)
+  loadAnalytics?.(7);
+  listFeedback?.();
+
+  // 5) Universal dialog close buttons
+  document.querySelectorAll('[data-close]').forEach(b=>{
+    b.addEventListener('click', (e)=> e.target.closest('dialog')?.close());
+  });
 }
-init();
+
+// Kick off after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}
