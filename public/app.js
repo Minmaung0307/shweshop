@@ -1070,8 +1070,8 @@ let paypalRendering = false;
 let paypalRendered  = false;
 
 // Helper: show/hide utilities
-function show(el){ if (el) el.classList.remove('hidden'); }
-function hide(el){ if (el) el.classList.add('hidden'); }
+// function show(el){ if (el) el.classList.remove('hidden'); }
+// function hide(el){ if (el) el.classList.add('hidden'); }
 
 // ---------- tiny helpers ----------
 const isVisible = (el)=>{
