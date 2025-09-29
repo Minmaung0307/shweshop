@@ -33,6 +33,15 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
+// -------- helpers (ensure $ exists) ----------
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+const money = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+const raf2 = () => new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
+const show = el => el && el.classList.remove('hidden');
+const hide = el => el && el.classList.add('hidden');
+
 // ===== EmailJS init (replace with your keys) =====
 const EMAILJS_PUBLIC_KEY = "WT0GOYrL9HnDKvLUf";
 const EMAILJS_SERVICE_ID = "service_z9tkmvr";
@@ -203,15 +212,6 @@ window.STATE = window.STATE ||
     promo: null,
   };
 window.state = window.STATE; // alias to avoid old references
-
-// -------- helpers (ensure $ exists) ----------
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-const money = (n) => `$${Number(n || 0).toFixed(2)}`;
-
-const raf2 = () => new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
-const show = el => el && el.classList.remove('hidden');
-const hide = el => el && el.classList.add('hidden');
 
 // const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
