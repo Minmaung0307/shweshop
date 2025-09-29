@@ -1033,10 +1033,10 @@ $("#btnGoAdmin")?.addEventListener("click", () => {
 // ===== Checkout (PayPal) =====
 async function startCheckout() {
   const amount = state.cart.reduce((s, c) => s + c.price * c.qty, 0).toFixed(2);
-  if (amount <= 0) {
-    alert("Cart empty");
-    return;
-  }
+  // if (amount <= 0) {
+  //   alert("Cart empty");
+  //   return;
+  // }
   await loadPayPal();
   if (window.paypal) {
     $("#paypalContainer").innerHTML = "";
