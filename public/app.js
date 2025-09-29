@@ -37,7 +37,145 @@ import {
 const EMAILJS_PUBLIC_KEY = "WT0GOYrL9HnDKvLUf";
 const EMAILJS_SERVICE_ID = "service_z9tkmvr";
 const EMAILJS_TEMPLATE_ID = "template_q5q471f";
-emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+// emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+try { emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY }); } catch {}
+
+/* ==== Email helpers ==== */
+async function sendEmail({ to, subject, html, fromName = 'MegaShop' }) {
+  if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+    console.warn('EmailJS not configured'); 
+    return;
+  }
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: to,
+      subject,
+      message_html: html,
+      from_name: fromName,
+    });
+  } catch (e) {
+    console.error('EmailJS send failed', e);
+  }
+}
+
+function orderHtml({ items = [], amount = 0, method = 'PayPal', orderId = '' }) {
+  const rows = items.map(i => `
+    <tr>
+      <td style="padding:6px 8px;border:1px solid #eee">${i.title}</td>
+      <td style="padding:6px 8px;border:1px solid #eee">${i.qty}</td>
+      <td style="padding:6px 8px;border:1px solid #eee">${(i.price||0).toFixed(2)}</td>
+    </tr>`).join('');
+  return `
+    <div style="font-family:Inter,Arial,sans-serif">
+      <h2 style="margin:0 0 8px">Thanks for your purchase!</h2>
+      <p><b>Order ID:</b> ${orderId || ('ORD-'+Date.now())}</p>
+      <p><b>Payment Method:</b> ${method}</p>
+      <table style="border-collapse:collapse;margin:8px 0">
+        <thead>
+          <tr>
+            <th style="padding:6px 8px;border:1px solid #eee;text-align:left">Item</th>
+            <th style="padding:6px 8px;border:1px solid #eee;text-align:left">Qty</th>
+            <th style="padding:6px 8px;border:1px solid #eee;text-align:left">Price</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p><b>Total:</b> $${Number(amount).toFixed(2)}</p>
+    </div>`;
+}
+
+/* ==== Membership Apply → email user ==== */
+$('#btnApplyMembership')?.addEventListener('click', async () => {
+  const level = $('#membershipLevel')?.value || 'free';
+  const user  = (window.firebaseAuth && firebaseAuth.currentUser) || null;
+  const email = user?.email || $('#accEmail')?.textContent || '';
+
+  // (optional) save to Firestore users/{uid} if you already wired it
+  try {
+    if (window.db && user?.uid) {
+      const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+      await setDoc(doc(db, 'users', user.uid), { membership: level }, { merge: true });
+    }
+    $('#accMember') && ($('#accMember').textContent = level);
+  } catch (e) {
+    console.warn('Membership save skipped (Firestore not available)', e);
+  }
+
+  // send confirmation email
+  if (email) {
+    await sendEmail({
+      to: email,
+      subject: `Your MegaShop membership is now ${level.toUpperCase()}`,
+      html: `
+        <div style="font-family:Inter,Arial,sans-serif">
+          <h3 style="margin:0 0 6px">Membership Updated</h3>
+          <p>Hi, your membership level is now <b>${level.toUpperCase()}</b>.</p>
+          <p>Enjoy exclusive coupons and faster checkout!</p>
+        </div>`
+    });
+    alert('Membership applied and email sent.');
+  } else {
+    alert('Membership applied. (Email not sent: no email found)');
+  }
+});
+
+// inside your existing PayPal Buttons config:
+onApprove: async (_d, actions)=>{
+  const details = await actions.order.capture();
+  const amount  = (STATE.cart||[]).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0);
+  const user    = (window.firebaseAuth && firebaseAuth.currentUser) || null;
+  const email   = user?.email || $('#accEmail')?.textContent || '';
+
+  // send order email
+  if (email) {
+    await sendEmail({
+      to: email,
+      subject: `MegaShop receipt – $${amount.toFixed(2)}`,
+      html: orderHtml({ items: STATE.cart||[], amount, method: 'PayPal', orderId: details?.id || '' })
+    });
+  }
+
+  alert('Payment success!');
+  STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
+  resetCheckoutUI(); $('#cartDrawer')?.close();
+},
+
+// where you add: $('#qrDone')?.addEventListener('click', ()=> { ... });
+$('#qrDone')?.addEventListener('click', async ()=>{
+  const user  = (window.firebaseAuth && firebaseAuth.currentUser) || null;
+  const email = user?.email || $('#accEmail')?.textContent || '';
+  const amount= (STATE.cart||[]).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0);
+
+  if (email) {
+    await sendEmail({
+      to: email,
+      subject: `MegaShop receipt – $${amount.toFixed(2)}`,
+      html: orderHtml({ items: STATE.cart||[], amount, method: 'Wallet (QR)' })
+    });
+  }
+  // clear cart & close like PayPal success
+  STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
+  resetCheckoutUI(); $('#cartDrawer')?.close();
+}, { once:true });
+
+/* ==== Unified logout ==== */
+async function doLogout(){
+  try {
+    if (window.firebaseAuth) {
+      const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
+      await signOut(firebaseAuth);
+    }
+  } catch (e) {
+    console.warn('signOut failed/skip', e);
+  }
+  // UI refresh
+  hide($('#btnLogoutHeader')); show($('#btnLogin')); show($('#btnSignup'));
+  $('#btnAccount')?.classList.add('hidden');
+  alert('Logged out.');
+}
+
+$('#btnLogoutHeader')?.addEventListener('click', doLogout);
+$('#btnLogout')?.addEventListener('click', doLogout);
 
 // ===== Firebase Config (replace with your project keys) =====
 const firebaseConfig = {
