@@ -1041,21 +1041,6 @@ $('#cartDrawer')?.addEventListener('close', ()=>{
   resetCheckoutUI();
 });
 
-function isVisible(el) {
-  if (!el) return false;
-  const style = getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) return false;
-  if (el.offsetParent === null && style.position !== 'fixed') return false;
-  // check ancestors
-  let p = el.parentElement;
-  while (p) {
-    const ps = getComputedStyle(p);
-    if (ps.display === 'none' || ps.visibility === 'hidden') return false;
-    p = p.parentElement;
-  }
-  return true;
-}
-
 function waitNextFrame() {
   return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 }
