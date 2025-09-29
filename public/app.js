@@ -252,13 +252,13 @@ $("#sortBy").addEventListener("change", renderItems);
 $("#btnCheckout").addEventListener("click", () => startCheckout());
 
 // Alt payments stubs
-["kbzPay", "cbPay", "ayaPay"].forEach((id) => {
-  const el = $("#" + id);
-  if (el)
-    el.addEventListener("click", () => {
-      alert(`${id} stub: integrate provider SDK or QR flow here.`);
-    });
-});
+// ["kbzPay", "cbPay", "ayaPay"].forEach((id) => {
+//   const el = $("#" + id);
+//   if (el)
+//     el.addEventListener("click", () => {
+//       alert(`${id} stub: integrate provider SDK or QR flow here.`);
+//     });
+// });
 
 // Login
 document.getElementById("doLogin")?.addEventListener("click", async () => {
