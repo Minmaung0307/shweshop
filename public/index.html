@@ -162,16 +162,16 @@
 
   <!-- Delivery: address mini-form / preview -->
   <div id="shipForm" style="margin-top:8px">
-    <div id="shipPreview" class="muted" style="margin-bottom:6px"></div>
-    <div class="row" style="gap:6px;flex-wrap:wrap">
-      <input id="shipNameCart"  placeholder="Full name" />
-      <input id="shipPhoneCart" placeholder="Phone" />
-      <input id="shipLine1Cart" placeholder="Street / House / Block" style="flex:1" />
-      <input id="shipCityCart"  placeholder="City / Township" />
-      <input id="shipZipCart"   placeholder="Postal code" />
-    </div>
-    <button id="btnUseAccountAddr" class="btn outline" style="margin-top:6px">Use account address</button>
+  <div id="shipPreview" class="muted" style="margin-bottom:6px"></div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <input id="shipNameCart"  placeholder="Full name" required/>
+    <input id="shipPhoneCart" placeholder="Phone" required/>
+    <input id="shipLine1Cart" placeholder="Street / House / Block" required/>
+    <input id="shipCityCart"  placeholder="City / Township" required/>
+    <input id="shipZipCart"   placeholder="Postal code" />
   </div>
+  <button id="btnUseAccountAddr" class="btn outline" style="margin-top:8px">Use account address</button>
+</div>
 
   <!-- Pickup: locations -->
   <div id="pickupList" style="display:none;margin-top:8px">
