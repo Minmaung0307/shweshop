@@ -1810,20 +1810,20 @@ async function sendEmailBlast() {
 }
 
 // ===== Feedback prompt (optional) =====
-window.addEventListener("load", () => {
-  setTimeout(() => {
-    if (confirm("Enjoying MegaShop? Send quick feedback?")) {
-      const message = prompt("Your feedback");
-      if (message) {
-        addDoc(collection(db, "feedback"), {
-          message,
-          createdAt: today(),
-          name: state.user?.email || "Anon",
-        });
-      }
-    }
-  }, 25000);
-});
+// window.addEventListener("load", () => {
+//   setTimeout(() => {
+//     if (confirm("Enjoying MegaShop? Send quick feedback?")) {
+//       const message = prompt("Your feedback");
+//       if (message) {
+//         addDoc(collection(db, "feedback"), {
+//           message,
+//           createdAt: today(),
+//           name: state.user?.email || "Anon",
+//         });
+//       }
+//     }
+//   }, 25000);
+// });
 
 // ---------- Robust DOM attach for Home buttons + Router kick ----------
 function ready(fn) {
