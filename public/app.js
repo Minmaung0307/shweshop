@@ -128,43 +128,67 @@ $('#btnApplyMembership')?.addEventListener('click', async () => {
   }
 });
 
-// inside your existing PayPal Buttons config:
+function currentFulfillment(){
+  const isDelivery = $('#optDelivery')?.checked;
+  if (isDelivery){
+    // prefer cart mini form; fallback to saved
+    const a = readCartAddress();
+    const filled = Object.values(a).some(Boolean);
+    return { mode:'delivery', address: filled ? a : restoreAddress() };
+  }else{
+    return { mode:'pickup', location: $('#pickupSelect')?.value || 'PICKUP' };
+  }
+}
+
+// ==== in PayPal Buttons onApprove ====
 onApprove: async (_d, actions)=>{
   const details = await actions.order.capture();
   const amount  = (STATE.cart||[]).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0);
   const user    = (window.firebaseAuth && firebaseAuth.currentUser) || null;
   const email   = user?.email || $('#accEmail')?.textContent || '';
 
-  // send order email
+  const fulfill = currentFulfillment();
+  let extraRow  = '';
+  if (fulfill.mode === 'delivery') {
+    extraRow = `<tr><td style="padding:6px 8px;border:1px solid #eee"><b>Shipping</b></td><td style="padding:6px 8px;border:1px solid #eee">${addressToLines(fulfill.address)||'—'}</td></tr>`;
+  } else {
+    extraRow = `<tr><td style="padding:6px 8px;border:1px solid #eee"><b>Pickup</b></td><td style="padding:6px 8px;border:1px solid #eee">${fulfill.location}</td></tr>`;
+  }
+
   if (email) {
-    await sendEmail({
-      to: email,
-      subject: `MegaShop receipt – $${amount.toFixed(2)}`,
-      html: orderHtml({ items: STATE.cart||[], amount, method: 'PayPal', orderId: details?.id || '' })
-    });
+    const base = orderHtml({ items: STATE.cart||[], amount, method: 'PayPal', orderId: details?.id || '' });
+    // inject fulfillment row after table open
+    const html = base.replace('</tbody></table>', `${extraRow}</tbody></table>`);
+    await sendEmail({ to: email, subject: `MegaShop receipt – $${amount.toFixed(2)}`, html });
   }
 
   alert('Payment success!');
   STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
-  resetCheckoutUI(); $('#cartDrawer')?.close();
-},
+  resetCheckoutUI?.(); $('#cartDrawer')?.close();
+}
 
-// where you add: $('#qrDone')?.addEventListener('click', ()=> { ... });
+// ==== in QR Done (wallet) handler ====
 $('#qrDone')?.addEventListener('click', async ()=>{
   const user  = (window.firebaseAuth && firebaseAuth.currentUser) || null;
   const email = user?.email || $('#accEmail')?.textContent || '';
   const amount= (STATE.cart||[]).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0);
 
-  if (email) {
-    await sendEmail({
-      to: email,
-      subject: `MegaShop receipt – $${amount.toFixed(2)}`,
-      html: orderHtml({ items: STATE.cart||[], amount, method: 'Wallet (QR)' })
-    });
+  const fulfill = currentFulfillment();
+  let extraRow  = '';
+  if (fulfill.mode === 'delivery') {
+    extraRow = `<tr><td style="padding:6px 8px;border:1px solid #eee"><b>Shipping</b></td><td style="padding:6px 8px;border:1px solid #eee">${addressToLines(fulfill.address)||'—'}</td></tr>`;
+  } else {
+    extraRow = `<tr><td style="padding:6px 8px;border:1px solid #eee"><b>Pickup</b></td><td style="padding:6px 8px;border:1px solid #eee">${fulfill.location}</td></tr>`;
   }
-  // clear cart & close like PayPal success
+
+  if (email) {
+    const base = orderHtml({ items: STATE.cart||[], amount, method: 'Wallet (QR)' });
+    const html = base.replace('</tbody></table>', `${extraRow}</tbody></table>`);
+    await sendEmail({ to: email, subject: `MegaShop receipt – $${amount.toFixed(2)}`, html });
+  }
+
   STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
-  resetCheckoutUI(); $('#cartDrawer')?.close();
+  resetCheckoutUI?.(); $('#cartDrawer')?.close();
 }, { once:true });
 
 /* ==== Unified logout ==== */
@@ -1802,6 +1826,164 @@ ready(() => {
     console.warn("btnSeedDemo not found");
   }
 });
+
+/* ===========================
+   MEMBERSHIP META + HELPERS
+=========================== */
+const MEMBERSHIP_META = {
+  free:     { annualFee: 0,   discount: '0%',   cashback: '0%'  },
+  silver:   { annualFee: 10,  discount: '3%',   cashback: '1%'  },
+  gold:     { annualFee: 25,  discount: '5%',   cashback: '2%'  },
+  platinum: { annualFee: 49,  discount: '8%',   cashback: '3%'  },
+};
+
+// build a simple member id (uid last 6 or timestamp)
+function buildMemberId(uid) {
+  if (uid && uid.length >= 6) return 'MS-' + uid.slice(-6).toUpperCase();
+  return 'MS-' + String(Date.now()).slice(-6);
+}
+
+// address store/load (localStorage)
+const ADDRESS_KEY = 'megashop_address';
+
+function persistAddress(addr){
+  localStorage.setItem(ADDRESS_KEY, JSON.stringify(addr||{}));
+}
+function restoreAddress(){
+  try { return JSON.parse(localStorage.getItem(ADDRESS_KEY) || '{}'); } catch { return {}; }
+}
+function addressToLines(addr){
+  if (!addr) return '';
+  const { name, phone, line1, city, zip } = addr;
+  return [name, phone, line1, city, zip].filter(Boolean).join(' • ');
+}
+
+// sync Account form -> storage
+function readAccountAddress(){
+  return {
+    name:  $('#shipName')?.value?.trim()  || '',
+    phone: $('#shipPhone')?.value?.trim() || '',
+    line1: $('#shipLine1')?.value?.trim() || '',
+    city:  $('#shipCity')?.value?.trim()  || '',
+    zip:   $('#shipZip')?.value?.trim()   || '',
+  };
+}
+function writeAccountAddress(addr){
+  if (!addr) return;
+  if ($('#shipName'))  $('#shipName').value  = addr.name  || '';
+  if ($('#shipPhone')) $('#shipPhone').value = addr.phone || '';
+  if ($('#shipLine1')) $('#shipLine1').value = addr.line1 || '';
+  if ($('#shipCity'))  $('#shipCity').value  = addr.city  || '';
+  if ($('#shipZip'))   $('#shipZip').value   = addr.zip   || '';
+}
+
+// load address on Account page open (call in your route/account render if needed)
+(function preloadAddressToAccount(){
+  const a = restoreAddress();
+  writeAccountAddress(a);
+})();
+
+// Account: Save Address
+$('#btnSaveAddress')?.addEventListener('click', ()=>{
+  const a = readAccountAddress();
+  persistAddress(a);
+  const msg = $('#addrSavedMsg');
+  if (msg){ msg.style.display='block'; setTimeout(()=> msg.style.display='none', 1200); }
+});
+
+// Cart mini form helpers
+function readCartAddress(){
+  return {
+    name:  $('#shipNameCart')?.value?.trim()  || '',
+    phone: $('#shipPhoneCart')?.value?.trim() || '',
+    line1: $('#shipLine1Cart')?.value?.trim() || '',
+    city:  $('#shipCityCart')?.value?.trim()  || '',
+    zip:   $('#shipZipCart')?.value?.trim()   || '',
+  };
+}
+function writeCartAddress(addr){
+  if (!addr) return;
+  if ($('#shipNameCart'))  $('#shipNameCart').value  = addr.name  || '';
+  if ($('#shipPhoneCart')) $('#shipPhoneCart').value = addr.phone || '';
+  if ($('#shipLine1Cart')) $('#shipLine1Cart').value = addr.line1 || '';
+  if ($('#shipCityCart'))  $('#shipCityCart').value  = addr.city  || '';
+  if ($('#shipZipCart'))   $('#shipZipCart').value   = addr.zip   || '';
+  // preview line
+  if ($('#shipPreview')) $('#shipPreview').textContent = addressToLines(addr) || 'No address saved yet.';
+}
+
+// “Use account address” → copy to cart mini form
+$('#btnUseAccountAddr')?.addEventListener('click', ()=>{
+  const a = restoreAddress();
+  writeCartAddress(a);
+});
+
+// show/hide delivery vs pickup
+function updateFulfillmentUI(){
+  const isDelivery = $('#optDelivery')?.checked;
+  if ($('#shipForm'))   $('#shipForm').style.display   = isDelivery ? '' : 'none';
+  if ($('#pickupList')) $('#pickupList').style.display = isDelivery ? 'none' : '';
+}
+$('#optDelivery')?.addEventListener('change', updateFulfillmentUI);
+$('#optPickup')  ?.addEventListener('change', updateFulfillmentUI);
+updateFulfillmentUI();
+
+// init cart mini preview
+writeCartAddress(restoreAddress());
+
+/* ===========================
+   MEMBERSHIP EMAIL CONTENT
+=========================== */
+function membershipHtml({ level, memberId, meta, address }){
+  const addrHtml = addressToLines(address) || '—';
+  return `
+  <div style="font-family:Inter,Arial,sans-serif">
+    <h2 style="margin:0 0 8px">Welcome to MegaShop ${level.toUpperCase()}!</h2>
+    <p>Thank you for joining as a <b>${level.toUpperCase()}</b> member.</p>
+    <table style="border-collapse:collapse;margin:8px 0">
+      <tbody>
+        <tr><td style="padding:6px 8px;border:1px solid #eee"><b>Member ID</b></td><td style="padding:6px 8px;border:1px solid #eee">${memberId}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #eee"><b>Annual Fee</b></td><td style="padding:6px 8px;border:1px solid #eee">$${Number(meta.annualFee||0).toFixed(2)}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #eee"><b>Discount</b></td><td style="padding:6px 8px;border:1px solid #eee">${meta.discount}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #eee"><b>Cashback</b></td><td style="padding:6px 8px;border:1px solid #eee">${meta.cashback}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #eee"><b>Shipping Address</b></td><td style="padding:6px 8px;border:1px solid #eee">${addrHtml}</td></tr>
+      </tbody>
+    </table>
+    <p>Enjoy exclusive coupons and faster checkout!</p>
+  </div>`;
+}
+
+// Apply membership click → send rich email (replace your existing handler if needed)
+$('#btnApplyMembership')?.addEventListener('click', async ()=>{
+  const level = $('#membershipLevel')?.value || 'free';
+  const meta  = MEMBERSHIP_META[level] || MEMBERSHIP_META.free;
+
+  // resolve user + memberId
+  const user    = (window.firebaseAuth && firebaseAuth.currentUser) || null;
+  const email   = user?.email || $('#accEmail')?.textContent || '';
+  const memberId= buildMemberId(user?.uid);
+
+  // keep latest address (prefer account form; fallback to saved)
+  let addr = readAccountAddress();
+  if (!addr.line1 && !addr.city) addr = restoreAddress();
+  persistAddress(addr); // keep it
+
+  if (email) {
+    await sendEmail({
+      to: email,
+      subject: `Your MegaShop membership: ${level.toUpperCase()}`,
+      html: membershipHtml({ level, memberId, meta, address: addr })
+    });
+    alert('Membership applied and email sent.');
+  } else {
+    alert('Membership applied. (No email: user not signed in / no email)');
+  }
+
+  // UI reflect
+  if ($('#accMember')) $('#accMember').textContent = level;
+});
+
+
 
 // ============= SINGLE, SAFE INIT (use this only) =============
 async function init() {
