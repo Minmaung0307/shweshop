@@ -54,16 +54,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// ---- Global state (declare once at the very top) ----
-const STATE = { items: [], cart: [], user: null };
-const $ = (s)=> document.querySelector(s);
+// helpers
+const $  = (s)=> document.querySelector(s);
 const $$ = (s)=> document.querySelectorAll(s);
 const money = (n)=> `$${Number(n||0).toFixed(2)}`;
-// ===== Helpers =====
-// const $ = (sel) => document.querySelector(sel);
-// const $$ = (sel) => document.querySelectorAll(sel);
-// const money = (n)=> `$${Number(n||0).toFixed(2)}`;
-const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+// global state (one time only)
+const STATE = window.STATE || { items: [], cart: [], user: null };
+
+// const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
 const asDate = (ts) => (ts?.toDate ? ts.toDate() : new Date(ts));
 // NOTE: Admin custom claims must be set on a secure server (do not use require() in browser).
@@ -620,23 +619,21 @@ document.getElementById('btnSeedDemo')?.addEventListener('click', async ()=>{
   }
 });
 
-// ---- Product modal (ensure this is the only implementation) ----
+// open product modal (ensure single impl)
 function openProduct(id){
-  const p = STATE.items.find(x=> x.id===id);
-  if (!p) return;
-
+  const p = STATE.items.find(x=> x.id===id); if(!p) return;
   $('#pdImg').src = p.imageUrl || p.gallery?.[0] || `https://picsum.photos/seed/${p.id}/800/600`;
-  $('#pdTitle').textContent = p.title || '';
-  $('#pdDesc').textContent  = p.description || '';
+  $('#pdTitle').textContent = p.title||'';
+  $('#pdDesc').textContent  = p.description||'';
   $('#pdPrice').textContent = money(p.price);
   $('#pdRating').textContent= `★ ${p.rating ?? '—'}`;
-  $('#pdQty').value = 1;
   $('#pdProCode').textContent = p.proCode || '—';
   $('#pdMemberCoupon').textContent = p.memberCoupon || '—';
+  $('#pdQty').value = 1;
 
-  // thumbnails
   const thumbs = p.gallery?.length ? p.gallery : [p.imageUrl].filter(Boolean);
-  const wrap = $('#pdThumbs'); wrap.innerHTML = (thumbs||[]).map((src,i)=> `<img src="${src}" class="${i===0?'active':''}" data-src="${src}" />`).join('');
+  const wrap = $('#pdThumbs');
+  wrap.innerHTML = (thumbs||[]).map((src,i)=> `<img src="${src}" class="${i===0?'active':''}" data-src="${src}">`).join('');
   wrap.querySelectorAll('img').forEach(img=>{
     img.addEventListener('click', ()=>{
       wrap.querySelectorAll('img').forEach(x=> x.classList.remove('active'));
@@ -645,11 +642,15 @@ function openProduct(id){
     });
   });
 
-  // qty & add
-  $('#qtyMinus').onclick = ()=> $('#pdQty').value = Math.max(1, (+$('#pdQty').value||1)-1);
+  $('#qtyMinus').onclick = ()=> $('#pdQty').value = Math.max(1,(+$('#pdQty').value||1)-1);
   $('#qtyPlus').onclick  = ()=> $('#pdQty').value = (+$('#pdQty').value||1)+1;
-  // ✅ Add to cart (no redirect)
-  $('#pdAdd').onclick = ()=> addToCartId(id, +$('#pdQty').value||1);
+
+  // ✅ Add to cart ⇒ add & close modal (do NOT open cart here)
+  $('#pdAdd').onclick = ()=>{
+    addToCartId(id, +$('#pdQty').value||1);
+    $('#productModal')?.close();        // close product modal
+    resetCheckoutUI();                  // reset checkout UI (hide payment buttons until user clicks Checkout)
+  };
 
   $('#productModal').showModal();
 }
@@ -680,35 +681,31 @@ function removeFromCart(id) {
 function persistCart(){ localStorage.setItem('cart', JSON.stringify(STATE.cart)); }
 function restoreCart(){ try{ STATE.cart = JSON.parse(localStorage.getItem('cart')||'[]'); }catch{} }
 function updateCartCount(){
-  const count = STATE.cart.reduce((s,c)=> s + (c.qty||0), 0);
-  const el = $('#cartCount'); if (el) el.textContent = count;
+  const c = STATE.cart.reduce((s,x)=> s + (x.qty||0), 0);
+  const el = $('#cartCount'); if (el) el.textContent = c;
 }
 
 // ---- Cart ops ----
 function addToCartId(id, qty=1){
-  const p = STATE.items.find(x=> x.id===id);
-  if(!p) return;
+  const p = STATE.items.find(x=> x.id===id); if(!p) return;
   const ex = STATE.cart.find(x=> x.id===id);
-  if (ex) ex.qty += qty; else STATE.cart.push({ id, title:p.title, price:p.price, imageUrl: p.imageUrl || p.gallery?.[0], qty });
+  if (ex) ex.qty += qty;
+  else STATE.cart.push({ id, title:p.title, price:p.price, imageUrl: p.imageUrl || p.gallery?.[0], qty });
+
   renderCart();
   persistCart();
   updateCartCount();
-  // ✅ Open cart drawer (not checkout)
-  $('#cartDrawer')?.showModal();
 }
 
-function changeQty(id, delta){
+function changeQty(id, d){
   const it = STATE.cart.find(x=> x.id===id); if(!it) return;
-  it.qty = Math.max(1, (it.qty||1) + delta);
+  it.qty = Math.max(1, (it.qty||1)+d);
   renderCart(); persistCart(); updateCartCount();
 }
-
 function removeItem(id){
   STATE.cart = STATE.cart.filter(x=> x.id!==id);
   renderCart(); persistCart(); updateCartCount();
 }
-
-// expose for inline onclick (if any)
 window.changeQty = changeQty;
 window.removeItem = removeItem;
 
@@ -731,7 +728,80 @@ function renderCart(){
 }
 
 // Header cart button opens drawer
-$('#btnCart')?.addEventListener('click', ()=> $('#cartDrawer')?.showModal());
+$('#btnCart')?.addEventListener('click', ()=>{
+  $('#cartDrawer')?.showModal();
+});
+
+// Hide payment UI until user actually clicks Checkout
+function resetCheckoutUI(){
+  const pc = $('#paypalContainer'); if (pc){ pc.innerHTML = ''; pc.style.display = 'none'; }
+  const alt = document.querySelector('.alt-pay'); if (alt){ alt.style.display = 'none'; }
+}
+resetCheckoutUI();
+
+// Checkout click → show options (and render PayPal if SDK available)
+$('#btnCheckout')?.addEventListener('click', async ()=>{
+  if (!STATE.cart.length){
+    alert('Your cart is empty.');
+    return;
+  }
+  // reveal options
+  const pc = $('#paypalContainer'); const alt = document.querySelector('.alt-pay');
+  if (pc) pc.style.display = '';
+  if (alt) alt.style.display = '';
+
+  // lazy-load PayPal SDK if not loaded yet (replace YOUR_PAYPAL_CLIENT_ID)
+  if (!window.paypal){
+    await loadPayPalSdk('YOUR_PAYPAL_CLIENT_ID'); // <- put real client id
+  }
+  renderPayPalButton();  // (idempotent)
+});
+
+// wallet stubs
+$('#kbzPay')?.addEventListener('click', ()=> alert('KBZPay flow goes here.'));
+$('#cbPay')?.addEventListener('click', ()=> alert('CBPay flow goes here.'));
+$('#ayaPay')?.addEventListener('click', ()=> alert('AYAPay flow goes here.'));
+
+// load PayPal SDK dynamically
+function loadPayPalSdk(clientId){
+  return new Promise((resolve,reject)=>{
+    const exists = document.querySelector('script[data-paypal-sdk]');
+    if (exists){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`;
+    s.dataset.paypalSdk = '1';
+    s.onload = resolve; s.onerror = reject;
+    document.body.appendChild(s);
+  });
+}
+
+// render PayPal
+let paypalRendered = false;
+function renderPayPalButton(){
+  if (paypalRendered || !window.paypal) return;
+  const wrap = $('#paypalContainer'); if (!wrap) return;
+  wrap.innerHTML = ''; // clear
+  window.paypal.Buttons({
+    createOrder: (_data, actions)=>{
+      const amount = STATE.cart.reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0).toFixed(2);
+      return actions.order.create({ purchase_units: [{ amount: { value: amount } }] });
+    },
+    onApprove: async (_data, actions)=>{
+      try{
+        await actions.order.capture();
+        alert('Payment success!');
+        // you can save order to Firestore here
+        // clear cart AFTER success:
+        STATE.cart = []; persistCart(); renderCart(); updateCartCount();
+        resetCheckoutUI();
+        $('#cartDrawer')?.close();
+      }catch(e){
+        alert(e?.message || 'Payment error');
+      }
+    }
+  }).render('#paypalContainer');
+  paypalRendered = true;
+}
 
 window.changeQty = changeQty; window.removeItem = removeItem;
 
@@ -1165,10 +1235,22 @@ ready(()=>{
 
 // ============= SINGLE, SAFE INIT (use this only) =============
 async function init() {
+  // close buttons on dialogs
+  $$('[data-close]').forEach(b=> b.addEventListener('click', (e)=> e.target.closest('dialog')?.close()));
+
   // 1) Cart first (local state) — no network
   restoreCart?.();
   renderCart?.();
   updateCartCount?.();
+
+  // your route() if you have SPA
+  if (typeof route === 'function'){
+    route();
+    window.addEventListener('hashchange', route);
+  }
+
+  // load items last (don’t clear cart inside!)
+  if (typeof loadItems === 'function') await loadItems();
 
   // 2) Router once
   route?.();
@@ -1192,8 +1274,5 @@ async function init() {
 }
 
 // Kick off after DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init, { once: true });
-} else {
-  init();
-}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+else init();
