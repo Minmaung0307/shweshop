@@ -67,11 +67,13 @@ window.STATE = window.STATE ||
 window.state = window.STATE; // alias to avoid old references
 
 // -------- helpers (ensure $ exists) ----------
-const $ = window.$ || ((s) => document.querySelector(s));
-const $$ = window.$$ || ((s) => document.querySelectorAll(s));
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
-const nextFrame = ()=> new Promise(r=> requestAnimationFrame(()=> requestAnimationFrame(r)));
+const next2Frames = () => new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
+const show = el => el && el.classList.remove('hidden');
+const hide = el => el && el.classList.add('hidden');
 
 // const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
@@ -954,35 +956,28 @@ const PAYPAL_CLIENT_ID =
 
 // ==== HELPERS ====
 function resetCheckoutUI(){
-  const area = document.getElementById('paymentArea');
-  const pc   = document.getElementById('paypalContainer');
-  const slot = document.getElementById('paypalSlot');
-  const qr   = document.getElementById('walletQR');
-
-  if (slot) slot.replaceChildren();     // clear children (iframe removed safely)
+  const slot = $('#paypalSlot');
+  const pc   = $('#paypalContainer');
+  const qr   = $('#walletQR');
+  const area = $('#paymentArea');
+  $('#btnCheckout') && ($('#btnCheckout').style.display = ''); // show the button again
+  if (slot) slot.replaceChildren(); // clear only the slot
   if (pc){ pc.style.display='none'; pc.style.visibility=''; }
   if (qr){ qr.innerHTML=''; hide(qr); }
   if (area) hide(area);
-
-  paypalRendered  = false;
-  paypalRendering = false;
+  paypalRendered = false; paypalRendering = false;
 }
 // resetCheckoutUI();
 
 // main render (slot မဟုတ်ဘဲ parent ပြောင်းမလုပ်!)
 async function renderPayPalButtons(){
   if (paypalRendering || paypalRendered) return;
-  const pc   = document.getElementById('paypalContainer');
-  const slot = document.getElementById('paypalSlot');
-  if (!pc || !slot) return;
+  const ok = await ensureStableSlot();
+  if (!ok || !window.paypal) return;
 
-  // parent visible first; give layout time
-  pc.style.display = 'block';
-  await new Promise(r=> requestAnimationFrame(()=> requestAnimationFrame(r)));
-
-  if (!window.paypal) return;
-  paypalRendering = true;
+  const slot = $('#paypalSlot');
   slot.replaceChildren();
+  paypalRendering = true;
 
   try{
     const amount = (STATE.cart||[]).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0).toFixed(2);
@@ -995,13 +990,13 @@ async function renderPayPalButtons(){
         alert('Payment success!');
         STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
         resetCheckoutUI();
-        document.getElementById('cartDrawer')?.close();
+        $('#cartDrawer')?.close();
       },
       onError: (err)=>{
         console.error('PayPal error', err);
         alert('PayPal error. Try again or choose a wallet.');
       }
-    }).render('#paypalSlot');  // render to CHILD slot
+    }).render('#paypalSlot');
     paypalRendered = true;
   }catch(e){
     console.error('PayPal render error', e);
@@ -1027,26 +1022,28 @@ document.getElementById('btnCheckout')?.addEventListener('click', async ()=>{
 });
 
 // Payment method change handler
-document.querySelectorAll('input[name="payMethod"]').forEach(r=>{
+// Radio change → render PayPal or show QR
+$$('input[name="payMethod"]').forEach(r=>{
   r.addEventListener('change', async (e)=>{
-    const val = e.target.value;
-    const pc  = document.getElementById('paypalContainer');
-    const qr  = document.getElementById('walletQR');
+    const method = e.target.value;
+    const pc = $('#paypalContainer');
+    const qr = $('#walletQR');
 
-    if (val === 'paypal'){
-      // Ensure PayPal visible; hide QR
+    if (method === 'paypal'){
+      // hide QR & show PayPal parent
       if (qr){ qr.innerHTML=''; hide(qr); }
       if (pc){ pc.style.visibility=''; pc.style.display='block'; }
+
       try{
         await loadPayPalSdk(PAYPAL_CLIENT_ID);
         await renderPayPalButtons();
       }catch(err){
         console.warn('PayPal SDK problem', err);
-        alert('PayPal not available. Choose a local wallet.');
+        alert('PayPal unavailable. Choose a wallet.');
       }
-    }else{
-      // Local wallets → show QR, hide PayPal visually (keep container in DOM!)
-      showWalletQR(val);
+    } else {
+      // wallet path
+      showWalletQR(method);
     }
   });
 });
@@ -1091,15 +1088,45 @@ const isVisible = (el)=>{
   return true;
 };
 
+// Ensure dialog & containers are stable/visible BEFORE render
+async function ensureStableSlot(){
+  const drawer = $('#cartDrawer');
+  const area   = $('#paymentArea');
+  const pc     = $('#paypalContainer');
+  const slot   = $('#paypalSlot');
+
+  if (!drawer) return false;
+  // dialog must be open
+  if (!drawer.open) drawer.showModal();
+
+  // DO NOT let Esc/backdrop close during render
+  const preventClose = e => { e.preventDefault(); };
+  drawer.addEventListener('cancel', preventClose, { once: true });
+
+  // show area & paypal parent (for PayPal only; wallet case will hide later)
+  show(area);
+  if (pc) { pc.style.display = 'block'; pc.style.visibility=''; }
+
+  await next2Frames(); // give layout time (avoids zoid teardown)
+
+  // verify still in DOM & visible
+  const visible = el => {
+    if (!el) return false;
+    const st = getComputedStyle(el);
+    return st.display !== 'none' && st.visibility !== 'hidden';
+  };
+  return !!(drawer.open && visible(area) && pc && slot && visible(pc));
+}
+
 // ---------- SDK loader ----------
 function loadPayPalSdk(clientId){
   return new Promise((resolve,reject)=>{
     if (window.paypal) return resolve();
     if (!clientId){ console.warn('Missing PayPal client id'); return resolve(); }
     const s = document.createElement('script');
-    s.src   = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&components=buttons`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&components=buttons`;
     s.onload = resolve;
-    s.onerror = ()=> reject(new Error('PayPal SDK load failed'));
+    s.onerror = () => reject(new Error('PayPal SDK load failed'));
     document.body.appendChild(s);
   });
 }
@@ -1187,12 +1214,10 @@ document.querySelector('#btnCheckout')?.addEventListener('click', async () => {
 function showWalletQR(kind){
   const map = { kbz:'KBZPay', cb:'CBPay', aya:'AYAPay' };
   const name = map[kind] || 'Wallet';
-  const qr = document.getElementById('walletQR');
+  const pc = $('#paypalContainer');
+  const qr = $('#walletQR');
+  if (pc) pc.style.visibility = 'hidden'; // keep DOM alive
   if (!qr) return;
-
-  // Hide PayPal visually (keep iframe alive to avoid zoid errors)
-  const pc = document.getElementById('paypalContainer');
-  if (pc) pc.style.visibility = 'hidden';
 
   const src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(name+' Invoice '+Date.now())}`;
   qr.innerHTML = `
@@ -1203,16 +1228,15 @@ function showWalletQR(kind){
     </div>`;
   show(qr);
 
-  document.getElementById('qrDone')?.addEventListener('click', ()=>{
-    // back to method choose
-    if (pc) pc.style.visibility = '';
+  $('#qrDone')?.addEventListener('click', ()=>{
+    if (pc){ pc.style.visibility=''; }
     qr.innerHTML=''; hide(qr);
   }, { once:true });
 }
 
-$('#kbzPay')?.addEventListener('click', ()=> showWalletQR('kbz'));
-$('#cbPay') ?.addEventListener('click', ()=> showWalletQR('cb'));
-$('#ayaPay')?.addEventListener('click', ()=> showWalletQR('aya'));
+// $('#kbzPay')?.addEventListener('click', ()=> showWalletQR('kbz'));
+// $('#cbPay') ?.addEventListener('click', ()=> showWalletQR('cb'));
+// $('#ayaPay')?.addEventListener('click', ()=> showWalletQR('aya'));
 
 function hideWalletQR() {
   const wrap = document.querySelector('#walletQR'); if (wrap){ wrap.style.display='none'; wrap.innerHTML=''; }

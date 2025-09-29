@@ -152,43 +152,16 @@
               <button id="btnCheckout" class="btn primary">Checkout</button>
             </div>
             <!-- Payment Area (hidden until user clicks Checkout) -->
-            <div id="paymentArea" class="hidden" style="margin-top: 12px">
-              <div
-                class="pay-choose"
-                style="
-                  display: flex;
-                  gap: 12px;
-                  align-items: center;
-                  flex-wrap: wrap;
-                  margin-bottom: 8px;
-                "
-              >
-                <label
-                  ><input type="radio" name="payMethod" value="paypal" />
-                  PayPal</label
-                >
-                <label
-                  ><input type="radio" name="payMethod" value="kbz" />
-                  KBZPay</label
-                >
-                <label
-                  ><input type="radio" name="payMethod" value="cb" />
-                  CBPay</label
-                >
-                <label
-                  ><input type="radio" name="payMethod" value="aya" />
-                  AYAPay</label
-                >
-              </div>
-
-              <!-- PayPal parent must stay in DOM; render only into the slot -->
-              <div id="paypalContainer" style="display: none">
-                <div id="paypalSlot" style="min-height: 48px"></div>
-              </div>
-
-              <!-- Local wallet QR goes here -->
-              <div id="walletQR" class="hidden"></div>
-            </div>
+            <div id="paymentArea" class="hidden" style="margin-top:12px">
+  <div class="pay-choose" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+    <label><input type="radio" name="payMethod" value="paypal"> PayPal</label>
+    <label><input type="radio" name="payMethod" value="kbz"> KBZPay</label>
+    <label><input type="radio" name="payMethod" value="cb"> CBPay</label>
+    <label><input type="radio" name="payMethod" value="aya"> AYAPay</label>
+  </div>
+  <div id="paypalContainer" style="display:none"><div id="paypalSlot" style="min-height:48px"></div></div>
+  <div id="walletQR" class="hidden"></div>
+</div>
           </div>
         </div>
       </dialog>
