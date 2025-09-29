@@ -389,3 +389,19 @@ body {
 
 /* responsive */
 @media (max-width: 960px){ .pdetail{ grid-template-columns:1fr } .drawer-lg .drawer-content{ min-width:100% } }
+
+/* Keep PayPal container always in DOM (no display:none) */
+#paypalContainer {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  min-height: 48px;
+}
+#paypalContainer.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Wallet QR area hidden helper */
+#walletQR { display: none; }
+#walletQR.active { display: block; }

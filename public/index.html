@@ -159,8 +159,12 @@
     <label><input type="radio" name="payMethod" value="cb"> CBPay</label>
     <label><input type="radio" name="payMethod" value="aya"> AYAPay</label>
   </div>
-  <div id="paypalContainer" style="display:none"><div id="paypalSlot" style="min-height:48px"></div></div>
-  <div id="walletQR" class="hidden"></div>
+
+  <!-- DO NOT remove this container; we only toggle .active -->
+  <div id="paypalContainer"><div id="paypalSlot"></div></div>
+
+  <!-- Wallet QR -->
+  <div id="walletQR"></div>
 </div>
           </div>
         </div>
