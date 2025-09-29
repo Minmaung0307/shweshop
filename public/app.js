@@ -750,6 +750,28 @@ function renderItems() {
     );
 }
 
+document.querySelectorAll(".btn-feedback").forEach(btn=>{
+  btn.addEventListener("click", async e=>{
+    const card = e.target.closest(".item-card");
+    const itemId = card.dataset.id;
+    const message = prompt("Your feedback for this item?");
+    if (!message) return;
+
+    await addDoc(collection(db, "feedback"), {
+      itemId,
+      message,
+      createdAt: today(),
+      name: state.user?.email || "Anon",
+    });
+
+    // UI update
+    const list = card.querySelector(".feedback-list");
+    const div = document.createElement("div");
+    div.textContent = `${state.user?.email || "Anon"}: ${message}`;
+    list.appendChild(div);
+  });
+});
+
 // ===== SUBNAV (hash like #category/men) =====
 window.addEventListener("hashchange", () => {
   const m = location.hash.match(/^#category\/(.+)$/i);
@@ -1800,7 +1822,7 @@ window.addEventListener("load", () => {
         });
       }
     }
-  }, 10000);
+  }, 25000);
 });
 
 // ---------- Robust DOM attach for Home buttons + Router kick ----------
