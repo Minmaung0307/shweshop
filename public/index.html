@@ -31,21 +31,29 @@
           <button class="btn" type="submit">Search</button>
         </form>
         <nav class="nav">
-  <a class="link pill" id="navAdmin" href="#admin">🛠️ <span>Admin</span></a>
+          <a class="link pill" id="navAdmin" href="#admin"
+            >🛠️ <span>Admin</span></a
+          >
 
-  <button id="btnLogin"  class="link pill">🔑 <span>Login</span></button>
-  <button id="btnSignup" class="link pill">✨ <span>Sign up</span></button>
+          <button id="btnLogin" class="link pill">🔑 <span>Login</span></button>
+          <button id="btnSignup" class="link pill">
+            ✨ <span>Sign up</span>
+          </button>
 
-  <button id="btnAccount" class="link pill hidden">👤 <span>Account</span></button>
-  <button id="btnLogoutHeader" class="link pill danger hidden">🚪 <span>Logout</span></button>
+          <button id="btnAccount" class="link pill hidden">
+            👤 <span>Account</span>
+          </button>
+          <button id="btnLogoutHeader" class="link pill danger hidden">
+            🚪 <span>Logout</span>
+          </button>
 
-  <a class="link pill" href="#orders">📦 <span>Orders</span></a>
+          <a class="link pill" href="#orders">📦 <span>Orders</span></a>
 
-  <button id="btnCart" class="link pill has-badge">
-    🛒 <span>Cart</span>
-    <span id="cartBadge" class="badge">0</span>
-  </button>
-</nav>
+          <button id="btnCart" class="link pill has-badge">
+            🛒 <span>Cart</span>
+            <span id="cartBadge" class="badge">0</span>
+          </button>
+        </nav>
       </div>
       <!-- Secondary category nav -->
       <div class="subnav container">
@@ -76,7 +84,7 @@
           />
         </div>
 
-  <!-- <div class="item-card" data-id="1">
+        <!-- <div class="item-card" data-id="1">
     <h3>Wireless Headphones</h3>
     <button class="btn-feedback">Leave Feedback</button>
     <div class="feedback-list"></div>
@@ -166,58 +174,123 @@
           <div class="cart-sum">
             <div>Subtotal: <b id="cartSubtotal">$0.00</b></div>
             <!-- Delivery / Pickup options -->
-<div class="card" style="margin:10px 0">
-  <h4>Fulfillment</h4>
-  <label style="display:flex;align-items:center;gap:6px;margin:6px 0">
-    <input type="radio" name="fulfill" id="optDelivery" value="delivery" checked />
-    Delivery to shipping address
-  </label>
-  <label style="display:flex;align-items:center;gap:6px;margin:6px 0">
-    <input type="radio" name="fulfill" id="optPickup" value="pickup" />
-    Store pickup
-  </label>
+            <div class="card" style="margin: 10px 0">
+              <h4>Fulfillment</h4>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  margin: 6px 0;
+                "
+              >
+                <input
+                  type="radio"
+                  name="fulfill"
+                  id="optDelivery"
+                  value="delivery"
+                  checked
+                />
+                Delivery to shipping address
+              </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  margin: 6px 0;
+                "
+              >
+                <input
+                  type="radio"
+                  name="fulfill"
+                  id="optPickup"
+                  value="pickup"
+                />
+                Store pickup
+              </label>
 
-  <!-- Delivery: address mini-form / preview -->
-  <div id="shipForm" style="margin-top:8px">
-  <div id="shipPreview" class="muted" style="margin-bottom:6px"></div>
-  <div style="display:flex;flex-direction:column;gap:8px">
-    <input id="shipNameCart"  placeholder="Full name" required/>
-    <input id="shipPhoneCart" placeholder="Phone" required/>
-    <input id="shipLine1Cart" placeholder="Street / House / Block" required/>
-    <input id="shipCityCart"  placeholder="City / Township" required/>
-    <input id="shipZipCart"   placeholder="Postal code" />
-  </div>
-  <button id="btnUseAccountAddr" class="btn outline" style="margin-top:8px">Use account address</button>
-</div>
+              <!-- Delivery: address mini-form / preview -->
+              <div id="shipForm" style="margin-top: 8px">
+                <div
+                  id="shipPreview"
+                  class="muted"
+                  style="margin-bottom: 6px"
+                ></div>
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <input id="shipNameCart" placeholder="Full name" required />
+                  <input id="shipPhoneCart" placeholder="Phone" required />
+                  <input
+                    id="shipLine1Cart"
+                    placeholder="Street / House / Block"
+                    required
+                  />
+                  <input
+                    id="shipCityCart"
+                    placeholder="City / Township"
+                    required
+                  />
+                  <input id="shipZipCart" placeholder="Postal code" />
+                </div>
+                <button
+                  id="btnUseAccountAddr"
+                  class="btn outline"
+                  style="margin-top: 8px"
+                >
+                  Use account address
+                </button>
+              </div>
 
-  <!-- Pickup: locations -->
-  <div id="pickupList" style="display:none;margin-top:8px">
-    <div class="muted">Choose a pickup location:</div>
-    <select id="pickupSelect" style="margin-top:6px">
-      <option value="YGN-01">Yangon • Junction City Counter</option>
-      <option value="MDY-02">Mandalay • Diamond Plaza Counter</option>
-      <option value="NPT-03">Nay Pyi Taw • Central Counter</option>
-    </select>
-  </div>
-</div>
-            <div class="row pay-opts">
-              <button id="btnCheckout" class="btn primary">Checkout</button>
+              <!-- Pickup: locations -->
+              <div id="pickupList" style="display: none; margin-top: 8px">
+                <div class="muted">Choose a pickup location:</div>
+                <select id="pickupSelect" style="margin-top: 6px">
+                  <option value="YGN-01">Yangon • Junction City Counter</option>
+                  <option value="MDY-02">
+                    Mandalay • Diamond Plaza Counter
+                  </option>
+                  <option value="NPT-03">Nay Pyi Taw • Central Counter</option>
+                </select>
+              </div>
             </div>
+            <div class="row pay-opts">
+  <label class="method"><input type="radio" name="paym" id="optPayPal"> PayPal</label>
+  <label class="method"><input type="radio" name="paym" id="optKBZ"> KBZPay</label>
+  <label class="method"><input type="radio" name="paym" id="optCB"> CBPay</label>
+  <label class="method"><input type="radio" name="paym" id="optAYA"> AYAPay</label>
+  <button id="btnShowMethods" class="btn primary">Checkout</button>
+</div>
+<div id="paypalContainer" class="paypal-wrap" style="display:none"></div>
+<div id="walletQR" style="display:none"></div>
             <!-- Payment Area (hidden until user clicks Checkout) -->
             <div id="paymentArea" class="hidden">
-  <div class="pay-choose">
-    <label><input type="radio" name="payMethod" value="paypal"> PayPal</label>
-    <label><input type="radio" name="payMethod" value="kbz"> KBZPay</label>
-    <label><input type="radio" name="payMethod" value="cb"> CBPay</label>
-    <label><input type="radio" name="payMethod" value="aya"> AYAPay</label>
-  </div>
+              <div class="pay-choose">
+                <label
+                  ><input type="radio" name="payMethod" value="paypal" />
+                  PayPal</label
+                >
+                <label
+                  ><input type="radio" name="payMethod" value="kbz" />
+                  KBZPay</label
+                >
+                <label
+                  ><input type="radio" name="payMethod" value="cb" />
+                  CBPay</label
+                >
+                <label
+                  ><input type="radio" name="payMethod" value="aya" />
+                  AYAPay</label
+                >
+              </div>
 
-  <!-- Shared panel: both layers overlap here -->
-  <div class="pay-panel">
-    <div id="paypalContainer" class="pay-layer"><div id="paypalSlot"></div></div>
-    <div id="walletQR" class="pay-layer"></div>
-  </div>
-</div>
+              <!-- Shared panel: both layers overlap here -->
+              <!-- <div class="pay-panel">
+                <div id="paypalContainer" class="pay-layer">
+                  <div id="paypalSlot"></div>
+                </div>
+                <div id="walletQR" class="pay-layer"></div>
+              </div> -->
+            </div>
           </div>
         </div>
       </dialog>
@@ -250,6 +323,11 @@
           <textarea id="itemDesc" placeholder="Product description…"></textarea>
           <label for="itemThumb">Thumbnail image URL</label>
           <input id="itemThumb" type="url" placeholder="https://…" />
+          <label for="itemGallery">Gallery image URLs (comma-separated)</label>
+          <textarea
+            id="itemGallery"
+            placeholder="https://.../img1.jpg, https://.../img2.jpg"
+          ></textarea>
           <div class="row" style="margin-top: 10px">
             <button id="btnSaveItem" class="btn primary">Save Item</button>
             <button id="btnDeleteItem" class="btn danger" type="button">
@@ -286,17 +364,29 @@
             <button id="btnLogout" class="btn danger">Logout</button>
           </div>
           <div class="card">
-  <h3>Shipping Address</h3>
-  <div class="row" style="gap:8px;flex-wrap:wrap">
-    <input id="shipName"  placeholder="Full name" />
-    <input id="shipPhone" placeholder="Phone" />
-    <input id="shipLine1" placeholder="Street / House / Block" style="flex:1" />
-    <input id="shipCity"  placeholder="City / Township" />
-    <input id="shipZip"   placeholder="Postal code" />
-  </div>
-  <button id="btnSaveAddress" class="btn" style="margin-top:8px">Save Address</button>
-  <p id="addrSavedMsg" class="muted" style="display:none;margin-top:6px">Saved ✅</p>
-</div>
+            <h3>Shipping Address</h3>
+            <div class="row" style="gap: 8px; flex-wrap: wrap">
+              <input id="shipName" placeholder="Full name" />
+              <input id="shipPhone" placeholder="Phone" />
+              <input
+                id="shipLine1"
+                placeholder="Street / House / Block"
+                style="flex: 1"
+              />
+              <input id="shipCity" placeholder="City / Township" />
+              <input id="shipZip" placeholder="Postal code" />
+            </div>
+            <button id="btnSaveAddress" class="btn" style="margin-top: 8px">
+              Save Address
+            </button>
+            <p
+              id="addrSavedMsg"
+              class="muted"
+              style="display: none; margin-top: 6px"
+            >
+              Saved ✅
+            </p>
+          </div>
         </div>
 
         <div class="card">

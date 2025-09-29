@@ -487,8 +487,16 @@ body {
   pointer-events: auto;
 }
 
+.pay-opts {
+  display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+}
+.pay-opts .method {
+  display:flex; align-items:center; gap:6px;
+}
+
 /* QR layer toggled similarly */
 #walletQR {
+  margin-top:8px;
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s ease;

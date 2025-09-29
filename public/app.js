@@ -14,6 +14,7 @@ import {
   getFirestore,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   addDoc,
@@ -25,6 +26,7 @@ import {
   orderBy,
   limit,
   Timestamp,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getStorage,
@@ -621,8 +623,19 @@ async function loadAds() {
 // }
 
 // Open modal
-document.getElementById("btnGoAdmin")?.addEventListener("click", () => {
-  document.getElementById("itemModal").showModal();
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Home toolbar “➕ Add Item”
+  $('#btnGoAdmin')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    location.hash = 'admin';
+    // admin page visible ဖြစ်တဲ့အချိန် modal ဖွင့် (ရှိရင်သာ)
+    setTimeout(()=> { $('#itemModal')?.showModal(); }, 150);
+  });
+
+  // Admin page card ထဲက Open Add Item Modal
+  $('#btnOpenItemModalAdmin')?.addEventListener('click', ()=>{
+    $('#itemModal')?.showModal();
+  });
 });
 
 // open from Admin card button
@@ -956,53 +969,110 @@ document.getElementById("btnSeedDemo")?.addEventListener("click", async () => {
 });
 
 // open product modal (ensure single impl)
-function openProduct(id) {
-  const p = STATE.items.find((x) => x.id === id);
-  if (!p) return;
-  $("#pdImg").src =
-    p.imageUrl ||
-    p.gallery?.[0] ||
-    `https://picsum.photos/seed/${p.id}/800/600`;
-  $("#pdTitle").textContent = p.title || "";
-  $("#pdDesc").textContent = p.description || "";
-  $("#pdPrice").textContent = money(p.price);
-  $("#pdRating").textContent = `★ ${p.rating ?? "—"}`;
-  $("#pdProCode").textContent = p.proCode || "—";
-  $("#pdMemberCoupon").textContent = p.memberCoupon || "—";
-  $("#pdQty").value = 1;
+// function openProduct(id) {
+//   const p = STATE.items.find((x) => x.id === id);
+//   if (!p) return;
+//   $("#pdImg").src =
+//     p.imageUrl ||
+//     p.gallery?.[0] ||
+//     `https://picsum.photos/seed/${p.id}/800/600`;
+//   $("#pdTitle").textContent = p.title || "";
+//   $("#pdDesc").textContent = p.description || "";
+//   $("#pdPrice").textContent = money(p.price);
+//   $("#pdRating").textContent = `★ ${p.rating ?? "—"}`;
+//   $("#pdProCode").textContent = p.proCode || "—";
+//   $("#pdMemberCoupon").textContent = p.memberCoupon || "—";
+//   $("#pdQty").value = 1;
 
-  const thumbs = p.gallery?.length ? p.gallery : [p.imageUrl].filter(Boolean);
-  const wrap = $("#pdThumbs");
-  wrap.innerHTML = (thumbs || [])
-    .map(
-      (src, i) =>
-        `<img src="${src}" class="${
-          i === 0 ? "active" : ""
-        }" data-src="${src}">`
-    )
-    .join("");
-  wrap.querySelectorAll("img").forEach((img) => {
-    img.addEventListener("click", () => {
-      wrap.querySelectorAll("img").forEach((x) => x.classList.remove("active"));
-      img.classList.add("active");
-      $("#pdImg").src = img.dataset.src;
+//   const thumbs = p.gallery?.length ? p.gallery : [p.imageUrl].filter(Boolean);
+//   const wrap = $("#pdThumbs");
+//   wrap.innerHTML = (thumbs || [])
+//     .map(
+//       (src, i) =>
+//         `<img src="${src}" class="${
+//           i === 0 ? "active" : ""
+//         }" data-src="${src}">`
+//     )
+//     .join("");
+//   wrap.querySelectorAll("img").forEach((img) => {
+//     img.addEventListener("click", () => {
+//       wrap.querySelectorAll("img").forEach((x) => x.classList.remove("active"));
+//       img.classList.add("active");
+//       $("#pdImg").src = img.dataset.src;
+//     });
+//   });
+
+//   $("#qtyMinus").onclick = () =>
+//     ($("#pdQty").value = Math.max(1, (+$("#pdQty").value || 1) - 1));
+//   $("#qtyPlus").onclick = () =>
+//     ($("#pdQty").value = (+$("#pdQty").value || 1) + 1);
+
+//   // ✅ Add to cart ⇒ add & close modal (do NOT open cart here)
+//   $("#pdAdd").onclick = () => {
+//     addToCartId(id, +$("#pdQty").value || 1);
+//     $("#productModal")?.close(); // close after adding
+//     resetCheckoutUI(); // hide payment options until user clicks Checkout
+//   };
+
+//   $("#productModal").showModal();
+// }
+
+function openProductModal(p){
+  const dlg = $('#productModal'); if (!dlg) return;
+
+  $('#pdTitle') .textContent = p.title || '';
+  $('#pdDesc')  .textContent = p.desc  || '';
+  $('#pdPrice') .textContent = money(p.price || 0);
+  $('#pdRating').textContent = p.rating ? `⭐ ${p.rating}` : '';
+
+  const images = [
+    p.imageUrl,
+    ...(Array.isArray(p.gallery) ? p.gallery : [])
+  ].filter(Boolean);
+
+  const main = $('#pdImg');
+  main.src = images[0] || 'https://via.placeholder.com/600x400?text=No+Image';
+
+  const thumbs = $('#pdThumbs');
+  if (thumbs){
+    thumbs.innerHTML = images.map((src,i)=>`
+      <img data-i="${i}" src="${src}"
+           style="width:56px;height:56px;object-fit:cover;border-radius:8px;cursor:pointer;outline:${i===0?'2px solid #3b82f6':'none'}" />
+    `).join('');
+    thumbs.querySelectorAll('img').forEach(img=>{
+      img.addEventListener('click', e=>{
+        const i = +e.currentTarget.dataset.i;
+        main.src = images[i];
+        // outline active
+        thumbs.querySelectorAll('img').forEach(x=> x.style.outline='none');
+        e.currentTarget.style.outline='2px solid #3b82f6';
+      });
     });
-  });
+  }
 
-  $("#qtyMinus").onclick = () =>
-    ($("#pdQty").value = Math.max(1, (+$("#pdQty").value || 1) - 1));
-  $("#qtyPlus").onclick = () =>
-    ($("#pdQty").value = (+$("#pdQty").value || 1) + 1);
+  // Qty +/- & Add to cart
+  const qtyEl = $('#pdQty');
+  $('#qtyPlus')?.addEventListener('click', ()=> qtyEl.value = Math.max(1,(+qtyEl.value||1)+1));
+  $('#qtyMinus')?.addEventListener('click', ()=> qtyEl.value = Math.max(1,(+qtyEl.value||1)-1));
+  $('#pdAdd')?.addEventListener('click', ()=>{
+    addToCart(p, Math.max(1, +qtyEl.value||1));
+    dlg.close();                 // add to cart કર્યા પછી modal ပိတ်
+    $('#cartDrawer')?.showModal(); // user ကို cart ကို ပြပါ
+  }, { once:true });
 
-  // ✅ Add to cart ⇒ add & close modal (do NOT open cart here)
-  $("#pdAdd").onclick = () => {
-    addToCartId(id, +$("#pdQty").value || 1);
-    $("#productModal")?.close(); // close after adding
-    resetCheckoutUI(); // hide payment options until user clicks Checkout
-  };
-
-  $("#productModal").showModal();
+  dlg.showModal();
 }
+
+document.querySelectorAll(".item-card").forEach(card => {
+  card.addEventListener("click", () => {
+    const product = {
+      title: card.querySelector("h3")?.textContent,
+      price: card.getAttribute("data-price"),
+      thumbnail: card.querySelector("img")?.src
+    };
+    openProductModal(product);
+  });
+});
 
 // ===== Cart =====
 
@@ -1413,11 +1483,6 @@ document.querySelector('#kbzPay')?.addEventListener('click', () => showWalletQR(
 document.querySelector('#cbPay')?.addEventListener('click',  () => showWalletQR('cb'));
 document.querySelector('#ayaPay')?.addEventListener('click', () => showWalletQR('aya'));
 
-// ===== ADD ITEM MODAL (button) =====
-$("#btnGoAdmin")?.addEventListener("click", () => {
-  $("#addItemModal").showModal();
-});
-
 // ===== Checkout (PayPal) =====
 async function startCheckout() {
   const amount = state.cart.reduce((s, c) => s + c.price * c.qty, 0).toFixed(2);
@@ -1536,8 +1601,74 @@ window.reorder = async function (id) {
 };
 
 // ===== Admin: Save Item, Promo, Ad, Analytics, Feedback list, Email blast =====
-$("#btnSaveItem").addEventListener("click", saveItem);
-$("#btnDeleteItem").addEventListener("click", deleteItem);
+// ====== SAVE / DELETE ITEM (Modal scope) ======
+document.addEventListener('DOMContentLoaded', ()=>{
+  const modal = $('#itemModal');
+  const by = (sel)=> modal?.querySelector(sel);
+
+  // SAVE
+  by('#btnSaveItem')?.addEventListener('click', async ()=>{
+    if (!modal) return;
+
+    const id      = (by('#itemId')?.value || '').trim();
+    const title   = (by('#itemTitle')?.value || '').trim();
+    const category= (by('#itemCategory')?.value || '').trim().toLowerCase();
+    const price   = parseFloat(by('#itemPrice')?.value || '0') || 0;
+    const proCode = (by('#itemProCode')?.value || '').trim();
+    const memberCoupon = (by('#itemMemberCoupon')?.value || '').trim();
+    const desc    = (by('#itemDesc')?.value || '').trim();
+    const thumb   = (by('#itemThumb')?.value || '').trim();
+    const gallery = (by('#itemGallery')?.value || '')
+                      .split(',')
+                      .map(s=>s.trim())
+                      .filter(Boolean);
+
+    if (!title)   return alert('Title is required');
+    if (!category)return alert('Category is required');
+
+    const payload = {
+      title, category, price, proCode, memberCoupon, desc,
+      imageUrl: thumb || (gallery[0] || ''),
+      gallery,
+      updatedAt: serverTimestamp(),
+    };
+    if (!id) payload.createdAt = serverTimestamp();
+
+    try {
+      if (id) {
+        await updateDoc(doc(db,'items',id), payload);
+      } else {
+        const ref = await addDoc(collection(db,'items'), payload);
+        by('#itemId').value = ref.id;
+      }
+      alert('Item saved!');
+      // refresh grid/list if you have a loader
+      if (typeof loadItems === 'function') await loadItems();
+      modal.close();
+    } catch (e) {
+      console.error('Save item error:', e);
+      alert(e?.message || String(e));
+    }
+  });
+
+  // DELETE
+  by('#btnDeleteItem')?.addEventListener('click', async ()=>{
+    const id = (by('#itemId')?.value || '').trim();
+    if (!id) return alert('No item id');
+    if (!confirm('Delete this item?')) return;
+    try {
+      await deleteDoc(doc(db,'items',id));
+      alert('Deleted');
+      if (typeof loadItems === 'function') await loadItems();
+      modal.close();
+    } catch(e){
+      console.error(e);
+      alert(e?.message || String(e));
+    }
+  });
+});
+// $("#btnSaveItem").addEventListener("click", saveItem);
+// $("#btnDeleteItem").addEventListener("click", deleteItem);
 $("#btnSavePromo").addEventListener("click", savePromo);
 $("#btnSaveAd").addEventListener("click", saveAd);
 $$("#page-admin [data-range]").forEach((b) =>
