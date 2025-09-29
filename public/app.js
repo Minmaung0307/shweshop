@@ -1025,7 +1025,7 @@ function markActiveNav(){
 window.addEventListener('hashchange', markActiveNav);
 document.addEventListener('DOMContentLoaded', markActiveNav, { once:true });
 
-function show(el, yes=true){ if (!el) return; el.classList.toggle('hidden', !yes); }
+function show2(el, yes=true){ if (!el) return; el.classList.toggle('hidden', !yes); }
 
 function applyAuthNavUI(user){
   const btnLogin  = document.getElementById('btnLogin');
