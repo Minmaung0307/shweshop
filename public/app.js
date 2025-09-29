@@ -1016,50 +1016,72 @@ document.getElementById("btnSeedDemo")?.addEventListener("click", async () => {
 //   $("#productModal").showModal();
 // }
 
+function openAddItemModal(prefill = null) {
+  const m = document.getElementById('itemModal');
+  if (!m) return;
+  const set = (sel, v='') => { const el = m.querySelector(sel); if (el) el.value = v; };
+
+  // clear or prefill
+  set('#itemId',            prefill?.id || '');
+  set('#itemTitle',         prefill?.title || '');
+  set('#itemCategory',      prefill?.category || '');
+  set('#itemPrice',         prefill?.price || '');
+  set('#itemDesc',          prefill?.description || '');
+  set('#itemProCode',       prefill?.proCode || '');
+  set('#itemMemberCoupon',  prefill?.memberCoupon || '');
+  set('#itemThumb',         prefill?.imageUrl || '');
+  // if you add #itemGallery input later:
+  // set('#itemGallery', (prefill?.gallery || []).join(', '));
+
+  m.showModal();
+}
+
+// Home toolbar button
+document.getElementById('btnGoAdmin')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  // (1) သင် Admin page သို့ပြောင်းချင်ရင် — location.hash = 'admin';
+  // (2) သင် modal ကိုတန်းဖွင့်ချင်ရင် —
+  openAddItemModal();
+});
+
+// Admin page button
+document.getElementById('btnOpenItemModalAdmin')?.addEventListener('click', ()=>{
+  openAddItemModal();
+});
+
 function openProductModal(p){
-  const dlg = $('#productModal'); if (!dlg) return;
+  const modal = document.querySelector('#productModal');
+  if (!modal) return;
 
-  $('#pdTitle') .textContent = p.title || '';
-  $('#pdDesc')  .textContent = p.desc  || '';
-  $('#pdPrice') .textContent = money(p.price || 0);
-  $('#pdRating').textContent = p.rating ? `⭐ ${p.rating}` : '';
+  // fill basic fields...
+  modal.querySelector('#pdTitle').textContent = p.title || '—';
+  modal.querySelector('#pdDesc').textContent  = p.description || '';
+  modal.querySelector('#pdPrice').textContent = money(p.price || 0);
+  modal.querySelector('#pdImg').src = p.imageUrl || p.gallery?.[0] || 'https://picsum.photos/seed/'+(p.id||'x')+'/600/400';
 
-  const images = [
-    p.imageUrl,
-    ...(Array.isArray(p.gallery) ? p.gallery : [])
-  ].filter(Boolean);
-
-  const main = $('#pdImg');
-  main.src = images[0] || 'https://via.placeholder.com/600x400?text=No+Image';
-
-  const thumbs = $('#pdThumbs');
+  // thumbnails
+  const thumbs = modal.querySelector('#pdThumbs');
   if (thumbs){
-    thumbs.innerHTML = images.map((src,i)=>`
-      <img data-i="${i}" src="${src}"
-           style="width:56px;height:56px;object-fit:cover;border-radius:8px;cursor:pointer;outline:${i===0?'2px solid #3b82f6':'none'}" />
-    `).join('');
+    const imgs = [p.imageUrl, ...(p.gallery||[])].filter(Boolean);
+    thumbs.innerHTML = imgs.map(u=>`<img class="thumb" src="${u}" alt="">`).join('');
     thumbs.querySelectorAll('img').forEach(img=>{
-      img.addEventListener('click', e=>{
-        const i = +e.currentTarget.dataset.i;
-        main.src = images[i];
-        // outline active
-        thumbs.querySelectorAll('img').forEach(x=> x.style.outline='none');
-        e.currentTarget.style.outline='2px solid #3b82f6';
-      });
+      img.addEventListener('click', ()=> { modal.querySelector('#pdImg').src = img.src; });
     });
   }
 
-  // Qty +/- & Add to cart
-  const qtyEl = $('#pdQty');
-  $('#qtyPlus')?.addEventListener('click', ()=> qtyEl.value = Math.max(1,(+qtyEl.value||1)+1));
-  $('#qtyMinus')?.addEventListener('click', ()=> qtyEl.value = Math.max(1,(+qtyEl.value||1)-1));
-  $('#pdAdd')?.addEventListener('click', ()=>{
-    addToCart(p, Math.max(1, +qtyEl.value||1));
-    dlg.close();                 // add to cart કર્યા પછી modal ပိတ်
-    $('#cartDrawer')?.showModal(); // user ကို cart ကို ပြပါ
+  // qty controls
+  const qtyEl = modal.querySelector('#pdQty');
+  modal.querySelector('#qtyPlus')?.addEventListener('click', ()=> qtyEl.value = (+qtyEl.value||1)+1);
+  modal.querySelector('#qtyMinus')?.addEventListener('click', ()=> qtyEl.value = Math.max(1, (+qtyEl.value||1)-1));
+
+  // add to cart
+  modal.querySelector('#pdAdd')?.addEventListener('click', ()=>{
+    addToCartId(p.id, +qtyEl.value || 1);
+    modal.close();                         // <<— ADD THIS to close after add
+    // user then can open cart via header “Cart”
   }, { once:true });
 
-  dlg.showModal();
+  modal.showModal();
 }
 
 document.querySelectorAll(".item-card").forEach(card => {
@@ -1072,6 +1094,13 @@ document.querySelectorAll(".item-card").forEach(card => {
     openProductModal(product);
   });
 });
+
+// === Fix: legacy calls to openProduct(...) ===
+window.openProduct = function (id) {
+  if (!id) return;
+  const p = (STATE.items || []).find(x => x.id === id);
+  if (p) openProductModal(p);
+};
 
 // ===== Cart =====
 
@@ -1685,7 +1714,65 @@ async function requireAdmin() {
 }
 
 // ===== SAVE / DELETE ITEM (modal) =====
-$("#btnSaveItem")?.addEventListener("click", saveItem);
+// ==== Save Item (Add/Edit) null-safe ====
+document.getElementById('btnSaveItem')?.addEventListener('click', async () => {
+  const modal = document.getElementById('itemModal');
+  if (!modal) return;
+
+  // read from the modal scope only
+  const $m = (sel) => modal.querySelector(sel);
+
+  const id    = $m('#itemId')?.value.trim();
+  const title = $m('#itemTitle')?.value.trim() || '';
+  const cat   = ($m('#itemCategory')?.value || '').trim().toLowerCase();
+  const price = parseFloat($m('#itemPrice')?.value || '0') || 0;
+  const desc  = $m('#itemDesc')?.value || '';
+  const pro   = $m('#itemProCode')?.value || '';
+  const mem   = $m('#itemMemberCoupon')?.value || '';
+  const thumb = $m('#itemThumb')?.value || '';
+
+  // OPTIONAL gallery: comma-separated URLs in a hidden/extra field
+  const galleryRaw = $m('#itemGallery')?.value || '';
+  const gallery = galleryRaw
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (!title)  return alert('Please enter a title');
+  if (!cat)    return alert('Please enter a category (men/women/kids/electronics/home)');
+
+  const payload = {
+    title, category: cat, price,
+    description: desc,
+    proCode: pro, memberCoupon: mem,
+    imageUrl: thumb,             // main thumbnail
+    gallery,                     // optional more images
+    updatedAt: (typeof serverTimestamp === 'function') ? serverTimestamp() : new Date().toISOString(),
+  };
+
+  try {
+    if (id) {
+      // update existing
+      await setDoc(doc(db, 'items', id), payload, { merge: true });
+      alert('Item updated!');
+    } else {
+      // create new
+      payload.createdAt = (typeof serverTimestamp === 'function') ? serverTimestamp() : new Date().toISOString();
+      const ref = await addDoc(collection(db, 'items'), payload);
+      $m('#itemId').value = ref.id; // write back id so user can edit next time
+      alert('Item created!');
+    }
+    // refresh list
+    if (typeof loadItems === 'function') await loadItems();
+
+    // close modal safely
+    if (typeof modal.close === 'function') modal.close();
+  } catch (e) {
+    console.error('Save item error:', e);
+    alert(e?.message || String(e));
+  }
+});
+// $("#btnSaveItem")?.addEventListener("click", saveItem);
 $("#btnDeleteItem")?.addEventListener("click", deleteItem);
 
 async function saveItem() {
