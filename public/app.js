@@ -910,18 +910,7 @@ $("#btnCart")?.addEventListener("click", () => {
   $("#cartDrawer")?.showModal();
 });
 
-// ================= CHECKOUT UI =================
-function resetCheckoutUI() {
-  const pc = $("#paypalContainer");
-  if (pc) {
-    pc.style.display = "none";
-    pc.innerHTML = "";
-  }
-  const alt = document.querySelector(".alt-pay");
-  if (alt) alt.style.display = "none";
-  hideWalletQR();
-}
-resetCheckoutUI();
+// ================= CHECKOUT UI ================
 
 // One (and only one) Checkout handler
 $("#btnCheckout")?.addEventListener("click", async () => {
@@ -956,110 +945,161 @@ const WALLET_QR = {
     Date.now(),
 };
 
-function showWalletQR(kind) {
-  const wrap = document.querySelector("#walletQR");
-  if (!wrap) return;
-  const map = { kbz: "KBZPay", cb: "CBPay", aya: "AYAPay" };
-  const title = map[kind] || "Wallet";
-  const src = WALLET_QR[kind];
-
-  // Hide PayPal area when choosing wallet
-  const pc = $("#paypalContainer");
-  if (pc) pc.style.display = "none";
-
-  wrap.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-      <div style="font-weight:600">${title} — Scan to pay</div>
-      <img src="${src}" alt="${title} QR" style="width:220px;height:220px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#fff"/>
-      <div class="muted">After payment, press “Done” to close.</div>
-    </div>`;
-  wrap.style.display = "";
-}
-function hideWalletQR() {
-  const wrap = document.querySelector("#walletQR");
-  if (wrap) {
-    wrap.style.display = "none";
-    wrap.innerHTML = "";
-  }
-}
-
-// Wallet buttons → show QR (✅ remove old alert stubs)
-document.querySelector("#kbzPay")?.addEventListener("click", () => showWalletQR("kbz"));
-document.querySelector("#cbPay")?.addEventListener("click", () => showWalletQR("cb"));
-document.querySelector("#ayaPay")?.addEventListener("click", () => showWalletQR("aya"));
-
 // ================= PAYPAL =================
 // Put your real client id here
 const PAYPAL_CLIENT_ID =
   "AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC";
 
+// ==== HELPERS ====
+function resetCheckoutUI() {
+  const pc = document.querySelector('#paypalContainer');
+  if (pc) { pc.style.display = 'none'; pc.style.visibility = ''; pc.innerHTML=''; }
+  const alt = document.querySelector('.alt-pay');
+  if (alt) alt.style.display = 'none';
+  hideWalletQR?.();
+}
+resetCheckoutUI();
+
+function isVisible(el) {
+  if (!el) return false;
+  const style = getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) return false;
+  if (el.offsetParent === null && style.position !== 'fixed') return false;
+  // check ancestors
+  let p = el.parentElement;
+  while (p) {
+    const ps = getComputedStyle(p);
+    if (ps.display === 'none' || ps.visibility === 'hidden') return false;
+    p = p.parentElement;
+  }
+  return true;
+}
+
+function waitNextFrame() {
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
 function loadPayPalSdk(clientId) {
   return new Promise((resolve, reject) => {
     if (window.paypal) return resolve();
-    if (!clientId) {
-      console.warn("PayPal client id missing; SDK not loaded");
-      return resolve();
-    }
-    const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
-      clientId
-    )}&currency=USD`;
+    if (!clientId) { console.warn('PayPal client id missing'); return resolve(); }
+    const s = document.createElement('script');
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&components=buttons`;
     s.onload = resolve;
-    s.onerror = () => reject(new Error("PayPal SDK load failed"));
+    s.onerror = () => reject(new Error('PayPal SDK load failed'));
     document.body.appendChild(s);
   });
 }
 
 let paypalRendered = false;
+let paypalRendering = false;
+
+// ==== RENDER BUTTONS (guarded) ====
 async function renderPayPalButton() {
-  if (paypalRendered) return;
-  const wrap = document.querySelector("#paypalContainer");
+  const wrap = document.querySelector('#paypalContainer');
   if (!wrap) return;
-  wrap.style.display = "";
-  wrap.innerHTML = "";
+  if (paypalRendered || paypalRendering) return;       // avoid double render
+  // ensure container and dialog are visible before render
+  wrap.style.display = 'block';
+  wrap.style.minHeight = '48px'; // give space so zoid doesn't kill itself
+  await waitNextFrame();
+  if (!isVisible(wrap)) return;                        // still hidden? skip
+
   if (!window.paypal) return;
+  paypalRendering = true;
+  wrap.innerHTML = '';
 
   try {
     const amount = (STATE.cart || [])
       .reduce((s, c) => s + (c.price || 0) * (c.qty || 1), 0)
       .toFixed(2);
-    window.paypal
-      .Buttons({
-        createOrder: (_data, actions) =>
-          actions.order.create({
-            purchase_units: [{ amount: { value: amount } }],
-          }),
-        onApprove: async (_data, actions) => {
-          await actions.order.capture();
-          alert("Payment success!");
-          STATE.cart = [];
-          persistCart();
-          renderCart();
-          updateCartCount();
-          resetCheckoutUI();
-          hideWalletQR();
-          document.querySelector("#cartDrawer")?.close();
-        },
-        onError: (err) => {
-          console.error("PayPal error", err);
-          alert("PayPal error. Try again or use a local wallet.");
-        },
-      })
-      .render("#paypalContainer");
+
+    await window.paypal.Buttons({
+      createOrder: (_d, actions) =>
+        actions.order.create({ purchase_units: [{ amount: { value: amount } }] }),
+      onApprove: async (_d, actions) => {
+        await actions.order.capture();
+        alert('Payment success!');
+        STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
+        resetCheckoutUI(); document.querySelector('#cartDrawer')?.close();
+      },
+      onError: (err) => {
+        console.error('PayPal error', err);
+        alert('PayPal error. Try again or use a local wallet.');
+      }
+    }).render('#paypalContainer');
+
     paypalRendered = true;
   } catch (e) {
-    console.error("PayPal render error", e);
+    console.error('PayPal render error', e);
+  } finally {
+    paypalRendering = false;
   }
 }
 
-// Drawer close → cleanup (prevents “zoid destroyed...”)
-document.querySelector("#cartDrawer")?.addEventListener("close", () => {
-  const el = document.querySelector("#paypalContainer");
-  if (el) el.innerHTML = "";
-  paypalRendered = false;
-  resetCheckoutUI();
-  hideWalletQR();
+// ==== OPEN/CLOSE CART DRAWER ====
+document.querySelector('#btnCart')?.addEventListener('click', () => {
+  document.querySelector('#cartDrawer')?.showModal();
 });
+
+document.querySelector('#cartDrawer')?.addEventListener('close', () => {
+  // Cleanup to avoid “zoid destroyed...”
+  const el = document.querySelector('#paypalContainer');
+  if (el) el.innerHTML = '';
+  paypalRendered = false; paypalRendering = false;
+  resetCheckoutUI();
+});
+
+// ==== CHECKOUT CLICK ====
+document.querySelector('#btnCheckout')?.addEventListener('click', async () => {
+  if (!(STATE.cart && STATE.cart.length)) {
+    alert('Your cart is empty.');
+    return;
+  }
+  // show options first
+  const pc = document.querySelector('#paypalContainer');
+  const alt = document.querySelector('.alt-pay');
+  if (pc) pc.style.display = 'block';
+  if (alt) alt.style.display = '';
+
+  // load SDK then render (only if visible)
+  try {
+    await loadPayPalSdk(PAYPAL_CLIENT_ID);
+    await waitNextFrame();
+    await renderPayPalButton();
+  } catch (e) {
+    console.warn('PayPal not available, local wallets only.', e);
+  }
+});
+
+// ==== LOCAL WALLETS (QR) ====
+// keep your existing QR helpers, but when showing QR hide PayPal using visibility
+function showWalletQR(kind) {
+  const wrap = document.querySelector('#walletQR'); if (!wrap) return;
+  const map = { kbz:'KBZPay', cb:'CBPay', aya:'AYAPay' };
+  const srcs = {
+    kbz: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=KBZPay%20Invoice%20${Date.now()}`,
+    cb:  `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=CBPay%20Invoice%20${Date.now()}`,
+    aya: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=AYAPay%20Invoice%20${Date.now()}`
+  };
+  // ⚠️ Don’t destroy PayPal iframe; just hide visually
+  const pc = document.querySelector('#paypalContainer'); if (pc) pc.style.visibility = 'hidden';
+
+  wrap.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="font-weight:600">${map[kind] || 'Wallet'} — Scan to pay</div>
+      <img src="${srcs[kind]}" style="width:220px;height:220px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#fff"/>
+      <div class="muted">After payment, press “Done” to close.</div>
+    </div>`;
+  wrap.style.display = '';
+}
+function hideWalletQR() {
+  const wrap = document.querySelector('#walletQR'); if (wrap){ wrap.style.display='none'; wrap.innerHTML=''; }
+  const pc = document.querySelector('#paypalContainer'); if (pc) pc.style.visibility = '';
+}
+document.querySelector('#kbzPay')?.addEventListener('click', () => showWalletQR('kbz'));
+document.querySelector('#cbPay')?.addEventListener('click',  () => showWalletQR('cb'));
+document.querySelector('#ayaPay')?.addEventListener('click', () => showWalletQR('aya'));
 
 // ===== ADD ITEM MODAL (button) =====
 $("#btnGoAdmin")?.addEventListener("click", () => {
