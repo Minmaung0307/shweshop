@@ -71,6 +71,8 @@ const $ = window.$ || ((s) => document.querySelector(s));
 const $$ = window.$$ || ((s) => document.querySelectorAll(s));
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
+const nextFrame = ()=> new Promise(r=> requestAnimationFrame(()=> requestAnimationFrame(r)));
+
 // const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
 const asDate = (ts) => (ts?.toDate ? ts.toDate() : new Date(ts));
@@ -951,14 +953,93 @@ const PAYPAL_CLIENT_ID =
   "AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC";
 
 // ==== HELPERS ====
-function resetCheckoutUI() {
-  const pc = document.querySelector('#paypalContainer');
-  if (pc) { pc.style.display = 'none'; pc.style.visibility = ''; pc.innerHTML=''; }
+function resetCheckoutUI(){
+  const pc  = $('#paypalContainer');  // parent
+  const slot= $('#paypalSlot');       // child
+  if (pc){ pc.style.display='none'; pc.style.visibility=''; }
+  if (!paypalRendering && !paypalRendered && slot){
+    // slot ကို render မရှိသေး/ပြီးသွားပြီး cleanup ပြုစုပြီးမှပဲ clear
+    slot.replaceChildren();
+  }
   const alt = document.querySelector('.alt-pay');
   if (alt) alt.style.display = 'none';
-  hideWalletQR?.();
+  const qr  = $('#walletQR');
+  if (qr){ qr.style.display='none'; qr.innerHTML=''; }
 }
 resetCheckoutUI();
+
+// main render (slot မဟုတ်ဘဲ parent ပြောင်းမလုပ်!)
+async function renderPayPalButtons() {
+  if (paypalRendering || paypalRendered) return;
+  const pc   = $('#paypalContainer');
+  const slot = $('#paypalSlot');
+  if (!pc || !slot) return;
+
+  // parent visible + 2 frames 기다리기 (zoid 안정)
+  ensureVisible(pc);
+  slot.style.minHeight = '48px'; // layout space
+  await nextFrame();
+
+  if (!window.paypal) return;
+  paypalRendering = true;
+  slot.replaceChildren(); // clear children only (parent 유지)
+
+  try {
+    const amount = (STATE.cart || []).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0).toFixed(2);
+    await window.paypal.Buttons({
+      createOrder: (_d, actions)=> actions.order.create({
+        purchase_units: [{ amount: { value: amount } }]
+      }),
+      onApprove: async (_d, actions)=>{
+        await actions.order.capture();
+        alert('Payment success!');
+        STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
+        resetCheckoutUI();
+        $('#cartDrawer')?.close();
+      },
+      onError: (err)=>{
+        console.error('PayPal error', err);
+        alert('PayPal error. Try again or use a local wallet.');
+      }
+    }).render('#paypalSlot');          // ✅ render to child slot
+    paypalRendered = true;
+  } catch(e){
+    console.error('PayPal render error', e);
+  } finally {
+    paypalRendering = false;
+  }
+}
+
+// Checkout click → options show → load SDK → render
+$('#btnCheckout')?.addEventListener('click', async ()=>{
+  if (!(STATE.cart && STATE.cart.length)){
+    alert('Your cart is empty.');
+    return;
+  }
+  const pc  = $('#paypalContainer');
+  const alt = document.querySelector('.alt-pay');
+  if (pc) pc.style.display = 'block';
+  if (alt) alt.style.display = '';
+
+  try{
+    await loadPayPalSdk(PAYPAL_CLIENT_ID);
+    await renderPayPalButtons();
+  }catch(e){
+    console.warn('PayPal not available. Local wallets only.', e);
+  }
+});
+
+// Drawer open/close
+$('#btnCart')?.addEventListener('click', ()=> $('#cartDrawer')?.showModal());
+
+// ❗ close 时 cleanup — parent မဖျက်ဘဲ child only
+$('#cartDrawer')?.addEventListener('close', ()=>{
+  const slot = $('#paypalSlot');
+  if (slot) slot.replaceChildren();
+  paypalRendered = false;
+  paypalRendering = false;
+  resetCheckoutUI();
+});
 
 function isVisible(el) {
   if (!el) return false;
@@ -979,20 +1060,37 @@ function waitNextFrame() {
   return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 }
 
-function loadPayPalSdk(clientId) {
-  return new Promise((resolve, reject) => {
+// ---------- flags ----------
+let paypalRendering = false;
+let paypalRendered  = false;
+
+// ---------- tiny helpers ----------
+const isVisible = (el)=>{
+  if (!el) return false;
+  const st = getComputedStyle(el);
+  if (st.display === 'none' || st.visibility === 'hidden' || parseFloat(st.opacity) === 0) return false;
+  if (el.offsetParent === null && st.position !== 'fixed') return false;
+  let p = el.parentElement;
+  while (p) {
+    const ps = getComputedStyle(p);
+    if (ps.display === 'none' || ps.visibility === 'hidden') return false;
+    p = p.parentElement;
+  }
+  return true;
+};
+
+// ---------- SDK loader ----------
+function loadPayPalSdk(clientId){
+  return new Promise((resolve,reject)=>{
     if (window.paypal) return resolve();
-    if (!clientId) { console.warn('PayPal client id missing'); return resolve(); }
+    if (!clientId){ console.warn('Missing PayPal client id'); return resolve(); }
     const s = document.createElement('script');
     s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&components=buttons`;
     s.onload = resolve;
-    s.onerror = () => reject(new Error('PayPal SDK load failed'));
+    s.onerror = ()=> reject(new Error('PayPal SDK load failed'));
     document.body.appendChild(s);
   });
 }
-
-let paypalRendered = false;
-let paypalRendering = false;
 
 // ==== RENDER BUTTONS (guarded) ====
 async function renderPayPalButton() {
@@ -1074,25 +1172,31 @@ document.querySelector('#btnCheckout')?.addEventListener('click', async () => {
 
 // ==== LOCAL WALLETS (QR) ====
 // keep your existing QR helpers, but when showing QR hide PayPal using visibility
-function showWalletQR(kind) {
-  const wrap = document.querySelector('#walletQR'); if (!wrap) return;
+function showWalletQR(kind){
+  const qr  = $('#walletQR'); if (!qr) return;
   const map = { kbz:'KBZPay', cb:'CBPay', aya:'AYAPay' };
-  const srcs = {
-    kbz: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=KBZPay%20Invoice%20${Date.now()}`,
-    cb:  `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=CBPay%20Invoice%20${Date.now()}`,
-    aya: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=AYAPay%20Invoice%20${Date.now()}`
-  };
-  // ⚠️ Don’t destroy PayPal iframe; just hide visually
-  const pc = document.querySelector('#paypalContainer'); if (pc) pc.style.visibility = 'hidden';
+  const src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent((map[kind]||'Wallet')+' Invoice '+Date.now())}`;
+  // hide visually (iframe stays alive)
+  const pc = $('#paypalContainer'); if (pc) pc.style.visibility = 'hidden';
 
-  wrap.innerHTML = `
+  qr.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-      <div style="font-weight:600">${map[kind] || 'Wallet'} — Scan to pay</div>
-      <img src="${srcs[kind]}" style="width:220px;height:220px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#fff"/>
-      <div class="muted">After payment, press “Done” to close.</div>
+      <div style="font-weight:600">${map[kind]||'Wallet'} — Scan to pay</div>
+      <img src="${src}" style="width:220px;height:220px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#fff"/>
+      <button class="btn" id="qrDone" style="margin-top:8px">Done</button>
     </div>`;
-  wrap.style.display = '';
+  qr.style.display = '';
+  $('#qrDone')?.addEventListener('click', ()=>{
+    // show back paypal area if user wants to switch
+    const pc = $('#paypalContainer'); if (pc) pc.style.visibility = '';
+    qr.style.display='none'; qr.innerHTML='';
+  }, { once:true });
 }
+
+$('#kbzPay')?.addEventListener('click', ()=> showWalletQR('kbz'));
+$('#cbPay') ?.addEventListener('click', ()=> showWalletQR('cb'));
+$('#ayaPay')?.addEventListener('click', ()=> showWalletQR('aya'));
+
 function hideWalletQR() {
   const wrap = document.querySelector('#walletQR'); if (wrap){ wrap.style.display='none'; wrap.innerHTML=''; }
   const pc = document.querySelector('#paypalContainer'); if (pc) pc.style.visibility = '';
