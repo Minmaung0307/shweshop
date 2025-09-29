@@ -31,16 +31,21 @@
           <button class="btn" type="submit">Search</button>
         </form>
         <nav class="nav">
-          <a class="link" id="navAdmin" href="#admin">Admin</a>
-          <button id="btnLogin" class="link">Login</button>
-          <button id="btnSignup" class="link">Sign up</button>
-          <button id="btnAccount" class="link hidden">Account</button>
-          <button id="btnLogoutHeader" class="link hidden">Logout</button>
-          <a class="link" href="#orders">Orders</a>
-          <button id="btnCart" class="link">
-            Cart (<span id="cartCount">0</span>)
-          </button>
-        </nav>
+  <a class="link pill" id="navAdmin" href="#admin">🛠️ <span>Admin</span></a>
+
+  <button id="btnLogin"  class="link pill">🔑 <span>Login</span></button>
+  <button id="btnSignup" class="link pill">✨ <span>Sign up</span></button>
+
+  <button id="btnAccount" class="link pill hidden">👤 <span>Account</span></button>
+  <button id="btnLogoutHeader" class="link pill danger hidden">🚪 <span>Logout</span></button>
+
+  <a class="link pill" href="#orders">📦 <span>Orders</span></a>
+
+  <button id="btnCart" class="link pill has-badge">
+    🛒 <span>Cart</span>
+    <span id="cartBadge" class="badge">0</span>
+  </button>
+</nav>
       </div>
       <!-- Secondary category nav -->
       <div class="subnav container">

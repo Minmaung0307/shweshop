@@ -487,6 +487,7 @@ onAuthStateChanged(auth, async (user) => {
   show("#btnLogoutHeader", !!user);
   show("#btnLogin", !user);
   show("#btnSignup", !user);
+  applyAuthNavUI(user);
 
   document.getElementById("accEmail").textContent = user?.email || "—";
   document.getElementById("accMember").textContent = user ? "free" : "free";
@@ -992,11 +993,55 @@ function restoreCart() {
     STATE.cart = JSON.parse(localStorage.getItem("cart") || "[]");
   } catch {}
 }
-function updateCartCount() {
-  const cnt = (STATE.cart || []).reduce((s, x) => s + (x.qty || 0), 0);
-  const el = $("#cartCount");
-  if (el) el.textContent = cnt;
+function setCartBadge(n){
+  const b = document.getElementById('cartBadge');
+  if (!b) return;
+  b.textContent = n;
+  b.style.display = n > 0 ? '' : 'none';
+  // lil' bump animation
+  b.animate([{ transform:'scale(1)' }, { transform:'scale(1.2)' }, { transform:'scale(1)' }], { duration:200 });
 }
+
+function updateCartCount(){
+  const cnt = (STATE?.cart || []).reduce((s,x)=> s + (x.qty||0), 0);
+  setCartBadge(cnt);
+}
+
+function markActiveNav(){
+  const hash = location.hash.replace('#','') || 'home';
+  const links = document.querySelectorAll('.header .nav .link.pill[href], .header .nav .link.pill');
+  links.forEach(el=>{
+    el.removeAttribute('aria-current');
+    const href = el.getAttribute('href');
+    // buttons (Account/Login/Logout/Cart) များမှာ href မရှိ… Orders/Admin မှာပဲ စစ်မယ်
+    if (href && href.startsWith('#')){
+      const key = href.replace('#','');
+      if (hash === key || hash.startsWith(key + '/')) el.setAttribute('aria-current','page');
+    }
+  });
+}
+
+// router setup ဖြစ်နေပြီးသားဆိုရင် route() အဆုံးမှာ ခေါ်ပါ
+window.addEventListener('hashchange', markActiveNav);
+document.addEventListener('DOMContentLoaded', markActiveNav, { once:true });
+
+function show(el, yes=true){ if (!el) return; el.classList.toggle('hidden', !yes); }
+
+function applyAuthNavUI(user){
+  const btnLogin  = document.getElementById('btnLogin');
+  const btnSignup = document.getElementById('btnSignup');
+  const btnAcc    = document.getElementById('btnAccount');
+  const btnOut    = document.getElementById('btnLogoutHeader');
+
+  const signedIn = !!user;
+  show(btnLogin,  !signedIn);
+  show(btnSignup, !signedIn);
+  show(btnAcc,     signedIn);
+  show(btnOut,     signedIn);
+}
+
+// Example: in your Firebase auth listener
+// onAuthStateChanged(auth, (user)=> { applyAuthNavUI(user); });
 
 // Add by product object (from product modal)
 function addToCart(p, qty = 1) {

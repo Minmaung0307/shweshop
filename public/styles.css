@@ -28,7 +28,7 @@ body {
   padding: 0 16px;
 }
 .hidden {
-  display: none;
+  display: none !important;
 }
 .muted {
   color: var(--muted);
@@ -496,4 +496,40 @@ body {
 #walletQR.active {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* ---- Pretty Nav ---- */
+.header .nav { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+.link.pill{
+  appearance:none; border:1px solid var(--line, #e5e7eb);
+  background:#fff; color:#111; padding:8px 12px; border-radius:9999px;
+  font-weight:600; display:inline-flex; align-items:center; gap:8px; line-height:1;
+  transition:all .15s ease; position:relative;
+}
+.link.pill:hover{ background:#111; color:#fff; border-color:#111; transform:translateY(-1px); }
+.link.pill:active{ transform:translateY(0); }
+
+.link.pill.danger{ border-color:#fee2e2; color:#991b1b; background:#fff5f5; }
+.link.pill.danger:hover{ background:#dc2626; color:#fff; border-color:#dc2626; }
+
+/* badge for cart */
+.link.pill.has-badge { padding-right: 34px; }
+.link.pill .badge{
+  position:absolute; right:6px; top:-6px; min-width:20px; height:20px;
+  padding:0 6px; border-radius:12px; background:#ef4444; color:#fff;
+  font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+
+/* Active (current page) */
+.link.pill[aria-current="page"]{
+  background:#111; color:#fff; border-color:#111;
+}
+
+/* Small screens: keep nav tidy */
+@media (max-width:640px){
+  .header .nav { gap:6px; }
+  .link.pill span{ display:none; } /* keep only emoji on very small */
+  .link.pill.has-badge { padding-right: 28px; }
 }
