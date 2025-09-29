@@ -36,9 +36,9 @@
           >
 
           <button id="btnLogin" class="link pill">🔑 <span>Login</span></button>
-          <button id="btnSignup" class="link pill">
+          <!-- <button id="btnSignup" class="link pill">
             ✨ <span>Sign up</span>
-          </button>
+          </button> -->
 
           <button id="btnAccount" class="link pill hidden">
             👤 <span>Account</span>
@@ -412,6 +412,7 @@
           <label for="loginEmail">Email</label>
           <input
             id="loginEmail"
+            name="email"
             type="email"
             placeholder="you@example.com"
             required
@@ -419,6 +420,7 @@
           <label for="loginPass">Password</label>
           <input
             id="loginPass"
+            name="password"
             type="password"
             placeholder="Minimum 6 characters"
             required
@@ -438,6 +440,7 @@
             </button>
           </div>
         </form>
+        <form method="dialog" class="modal-content small" onsubmit="return false;" novalidate></form>
       </dialog>
 
       <dialog id="signupModal" class="modal">
@@ -451,6 +454,7 @@
           <label for="signupEmail">Email</label>
           <input
             id="signupEmail"
+            name="email"
             type="email"
             placeholder="you@example.com"
             required
@@ -458,6 +462,7 @@
           <label for="signupPass">Password</label>
           <input
             id="signupPass"
+            name="password"
             type="password"
             placeholder="At least 6 characters"
             required
@@ -474,6 +479,7 @@
             </button>
           </div>
         </form>
+        <form method="dialog" class="modal-content small" onsubmit="return false;" novalidate></form>
       </dialog>
 
       <dialog id="forgotModal" class="modal">
@@ -487,6 +493,7 @@
           <label for="forgotEmail">Email</label>
           <input
             id="forgotEmail"
+            name="email"
             type="email"
             placeholder="you@example.com"
             required
@@ -497,6 +504,7 @@
             </button>
           </div>
         </form>
+        <form method="dialog" class="modal-content small" onsubmit="return false;" novalidate></form>
       </dialog>
 
       <!-- Admin (no inline Add/Edit form to avoid duplicate IDs) -->

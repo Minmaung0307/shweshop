@@ -285,9 +285,9 @@ const forgotModal = document.getElementById("forgotModal");
 document
   .getElementById("btnLogin")
   ?.addEventListener("click", () => loginModal.showModal());
-document
-  .getElementById("btnSignup")
-  ?.addEventListener("click", () => signupModal.showModal());
+// document
+//   .getElementById("btnSignup")
+//   ?.addEventListener("click", () => signupModal.showModal());
 
 document.getElementById("openSignup")?.addEventListener("click", () => {
   loginModal.close();
@@ -312,7 +312,10 @@ $$("[data-close]").forEach((b) =>
   b.addEventListener("click", (e) => e.target.closest("dialog").close())
 );
 
-$("#btnLogin").addEventListener("click", () => $("#loginModal").showModal());
+// $("#btnLogin").addEventListener("click", () => $("#loginModal").showModal());
+document.getElementById('btnLogin')?.addEventListener('click', () => {
+  document.getElementById('loginModal')?.showModal();
+});
 $("#btnSignup").addEventListener("click", () => $("#signupModal").showModal());
 const forgotBtn = $("#openForgot");
 if (forgotBtn)
@@ -487,7 +490,8 @@ onAuthStateChanged(auth, async (user) => {
   show("#btnAccount", !!user);
   show("#btnLogoutHeader", !!user);
   show("#btnLogin", !user);
-  show("#btnSignup", !user);
+  // show("#btnSignup", !user);
+  document.querySelector("#btnSignup")?.classList.toggle("hidden", !!user);
   applyAuthNavUI(user);
 
   document.getElementById("accEmail").textContent = user?.email || "—";
