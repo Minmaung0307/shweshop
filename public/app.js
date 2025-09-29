@@ -66,8 +66,9 @@ window.STATE = window.STATE ||
   };
 window.state = window.STATE; // alias to avoid old references
 
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => document.querySelectorAll(s);
+// -------- helpers (ensure $ exists) ----------
+const $ = window.$ || ((s) => document.querySelector(s));
+const $$ = window.$$ || ((s) => document.querySelectorAll(s));
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 // const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
@@ -817,28 +818,8 @@ function openProduct(id) {
 }
 
 // ===== Cart =====
-function addToCart(p, qty = 1) {
-  const ex = state.cart.find((x) => x.id === p.id);
-  if (ex) ex.qty += qty;
-  else
-    state.cart.push({
-      id: p.id,
-      title: p.title,
-      price: p.price,
-      imageUrl: p.imageUrl,
-      qty,
-    });
-  persistCart();
-  renderCart();
-  alert("Added to cart");
-}
-function removeFromCart(id) {
-  state.cart = state.cart.filter((x) => x.id !== id);
-  persistCart();
-  renderCart();
-}
 
-// ===== CART =====
+// ================= CART CORE =================
 function persistCart() {
   localStorage.setItem("cart", JSON.stringify(STATE.cart || []));
 }
@@ -853,15 +834,14 @@ function updateCartCount() {
   if (el) el.textContent = cnt;
 }
 
-// ---- Cart ops ----
-function addToCartId(id, qty = 1) {
-  const p = (STATE.items || []).find((x) => x.id === id);
+// Add by product object (from product modal)
+function addToCart(p, qty = 1) {
   if (!p) return;
-  const ex = (STATE.cart || []).find((x) => x.id === id);
+  const ex = (STATE.cart || []).find((x) => x.id === p.id);
   if (ex) ex.qty += qty;
   else
     STATE.cart.push({
-      id,
+      id: p.id,
       title: p.title,
       price: p.price,
       imageUrl: p.imageUrl || p.gallery?.[0],
@@ -870,36 +850,16 @@ function addToCartId(id, qty = 1) {
   persistCart();
   updateCartCount();
   renderCart();
+  // close product modal after adding
+  $("#productModal")?.close();
+  resetCheckoutUI(); // hide payment options until checkout click
 }
 
-function renderCart() {
-  const list = $("#cartItems");
-  if (!list) return;
-  list.innerHTML = (STATE.cart || [])
-    .map(
-      (c) => `
-    <div class="cart-item" style="display:grid;grid-template-columns:70px 1fr auto auto;gap:10px;align-items:center;margin:8px 0">
-      <img src="${
-        c.imageUrl || `https://picsum.photos/seed/${c.id}/100/100`
-      }" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
-      <div><b>${c.title}</b><div class="muted">${money(c.price)} × ${
-        c.qty
-      }</div></div>
-      <div class="qty">
-        <button class="btn" onclick="changeQty('${c.id}',-1)">−</button>
-        <span>${c.qty}</span>
-        <button class="btn" onclick="changeQty('${c.id}',1)">+</button>
-      </div>
-      <button class="btn" onclick="removeItem('${c.id}')">Remove</button>
-    </div>
-  `
-    )
-    .join("");
-  const sub = (STATE.cart || []).reduce(
-    (s, c) => s + (c.price || 0) * (c.qty || 1),
-    0
-  );
-  $("#cartSubtotal").textContent = money(sub);
+// Add by id (from grid “Add” buttons)
+function addToCartId(id, qty = 1) {
+  const p = (STATE.items || []).find((x) => x.id === id);
+  if (!p) return;
+  addToCart(p, qty);
 }
 
 function changeQty(id, d) {
@@ -919,29 +879,53 @@ function removeItem(id) {
 window.changeQty = changeQty;
 window.removeItem = removeItem;
 
+// Render cart list + subtotal
+function renderCart() {
+  const list = $("#cartItems");
+  if (!list) return;
+  list.innerHTML = (STATE.cart || [])
+    .map(
+      (c) => `
+      <div class="cart-item" style="display:grid;grid-template-columns:70px 1fr auto auto;gap:10px;align-items:center;margin:8px 0">
+        <img src="${c.imageUrl || `https://picsum.photos/seed/${c.id}/100/100`}" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
+        <div><b>${c.title}</b><div class="muted">${money(c.price)} × ${c.qty}</div></div>
+        <div class="qty">
+          <button class="btn" onclick="changeQty('${c.id}',-1)">−</button>
+          <span>${c.qty}</span>
+          <button class="btn" onclick="changeQty('${c.id}',1)">+</button>
+        </div>
+        <button class="btn" onclick="removeItem('${c.id}')">Remove</button>
+      </div>`
+    )
+    .join("");
+  const sub = (STATE.cart || []).reduce(
+    (s, c) => s + (c.price || 0) * (c.qty || 1),
+    0
+  );
+  $("#cartSubtotal").textContent = money(sub);
+}
+
 // Header cart button opens drawer
 $("#btnCart")?.addEventListener("click", () => {
   $("#cartDrawer")?.showModal();
 });
 
-// Hide payment UI until user actually clicks Checkout
+// ================= CHECKOUT UI =================
 function resetCheckoutUI() {
   const pc = $("#paypalContainer");
   if (pc) {
-    pc.innerHTML = "";
     pc.style.display = "none";
+    pc.innerHTML = "";
   }
   const alt = document.querySelector(".alt-pay");
-  if (alt) {
-    alt.style.display = "none";
-  }
+  if (alt) alt.style.display = "none";
+  hideWalletQR();
 }
 resetCheckoutUI();
 
-// Checkout click → show options (and render PayPal if SDK available)
+// One (and only one) Checkout handler
 $("#btnCheckout")?.addEventListener("click", async () => {
-  const cart = STATE.cart || [];
-  if (!cart.length) {
+  if (!(STATE.cart && STATE.cart.length)) {
     alert("Your cart is empty.");
     return;
   }
@@ -952,78 +936,130 @@ $("#btnCheckout")?.addEventListener("click", async () => {
   if (alt) alt.style.display = "";
 
   try {
-    await loadPayPalSdk(PAYPAL_CLIENT_ID); // will no-op if placeholder
-    renderPayPalButton(); // will no-op if SDK not loaded
-  } catch (err) {
-    console.error(err);
-    // SDK load fail → still allow local wallets
+    await loadPayPalSdk(PAYPAL_CLIENT_ID);
+    await renderPayPalButton();
+  } catch (e) {
+    console.warn("PayPal SDK not loaded; local wallets still available.", e);
   }
 });
 
-// wallet stubs
-$("#kbzPay")?.addEventListener("click", () => alert("KBZPay checkout…"));
-$("#cbPay")?.addEventListener("click", () => alert("CBPay checkout…"));
-$("#ayaPay")?.addEventListener("click", () => alert("AYAPay checkout…"));
+// ================= LOCAL WALLETS (QR) =================
+const WALLET_QR = {
+  kbz:
+    "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=KBZPay%20Invoice%20" +
+    Date.now(),
+  cb:
+    "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=CBPay%20Invoice%20" +
+    Date.now(),
+  aya:
+    "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=AYAPay%20Invoice%20" +
+    Date.now(),
+};
 
-// render PayPal
-const PAYPAL_CLIENT_ID = "AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC"; // <-- REAL ID နဲ့ အစားထိုး
+function showWalletQR(kind) {
+  const wrap = document.querySelector("#walletQR");
+  if (!wrap) return;
+  const map = { kbz: "KBZPay", cb: "CBPay", aya: "AYAPay" };
+  const title = map[kind] || "Wallet";
+  const src = WALLET_QR[kind];
 
-async function loadPayPalSdk(clientId) {
+  // Hide PayPal area when choosing wallet
+  const pc = $("#paypalContainer");
+  if (pc) pc.style.display = "none";
+
+  wrap.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="font-weight:600">${title} — Scan to pay</div>
+      <img src="${src}" alt="${title} QR" style="width:220px;height:220px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#fff"/>
+      <div class="muted">After payment, press “Done” to close.</div>
+    </div>`;
+  wrap.style.display = "";
+}
+function hideWalletQR() {
+  const wrap = document.querySelector("#walletQR");
+  if (wrap) {
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+  }
+}
+
+// Wallet buttons → show QR (✅ remove old alert stubs)
+document.querySelector("#kbzPay")?.addEventListener("click", () => showWalletQR("kbz"));
+document.querySelector("#cbPay")?.addEventListener("click", () => showWalletQR("cb"));
+document.querySelector("#ayaPay")?.addEventListener("click", () => showWalletQR("aya"));
+
+// ================= PAYPAL =================
+// Put your real client id here
+const PAYPAL_CLIENT_ID =
+  "AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC";
+
+function loadPayPalSdk(clientId) {
   return new Promise((resolve, reject) => {
     if (window.paypal) return resolve();
-    if (!clientId || clientId === "YOUR_PAYPAL_CLIENT_ID") {
-      console.warn("PayPal client id missing; not loading SDK.");
-      return resolve(); // skip loading gracefully
+    if (!clientId) {
+      console.warn("PayPal client id missing; SDK not loaded");
+      return resolve();
     }
     const s = document.createElement("script");
     s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
       clientId
     )}&currency=USD`;
     s.onload = resolve;
-    s.onerror = (e) => reject(new Error("Failed to load PayPal SDK"));
+    s.onerror = () => reject(new Error("PayPal SDK load failed"));
     document.body.appendChild(s);
   });
 }
 
 let paypalRendered = false;
-function renderPayPalButton() {
-  if (!window.paypal || paypalRendered) return;
-  const wrap = $("#paypalContainer");
+async function renderPayPalButton() {
+  if (paypalRendered) return;
+  const wrap = document.querySelector("#paypalContainer");
   if (!wrap) return;
+  wrap.style.display = "";
   wrap.innerHTML = "";
-  window.paypal
-    .Buttons({
-      createOrder: (_data, actions) => {
-        const amount = (STATE.cart || [])
-          .reduce((s, c) => s + (c.price || 0) * (c.qty || 1), 0)
-          .toFixed(2);
-        return actions.order.create({
-          purchase_units: [{ amount: { value: amount } }],
-        });
-      },
-      onApprove: async (_data, actions) => {
-        try {
+  if (!window.paypal) return;
+
+  try {
+    const amount = (STATE.cart || [])
+      .reduce((s, c) => s + (c.price || 0) * (c.qty || 1), 0)
+      .toFixed(2);
+    window.paypal
+      .Buttons({
+        createOrder: (_data, actions) =>
+          actions.order.create({
+            purchase_units: [{ amount: { value: amount } }],
+          }),
+        onApprove: async (_data, actions) => {
           await actions.order.capture();
           alert("Payment success!");
-          // TODO: save order to Firestore here if needed
           STATE.cart = [];
           persistCart();
+          renderCart();
           updateCartCount();
-          $("#cartItems").innerHTML = "";
-          $("#cartSubtotal").textContent = money(0);
           resetCheckoutUI();
-          $("#cartDrawer")?.close();
-        } catch (e) {
-          alert(e?.message || "Payment error");
-        }
-      },
-    })
-    .render("#paypalContainer");
-  paypalRendered = true;
+          hideWalletQR();
+          document.querySelector("#cartDrawer")?.close();
+        },
+        onError: (err) => {
+          console.error("PayPal error", err);
+          alert("PayPal error. Try again or use a local wallet.");
+        },
+      })
+      .render("#paypalContainer");
+    paypalRendered = true;
+  } catch (e) {
+    console.error("PayPal render error", e);
+  }
 }
 
-window.changeQty = changeQty;
-window.removeItem = removeItem;
+// Drawer close → cleanup (prevents “zoid destroyed...”)
+document.querySelector("#cartDrawer")?.addEventListener("close", () => {
+  const el = document.querySelector("#paypalContainer");
+  if (el) el.innerHTML = "";
+  paypalRendered = false;
+  resetCheckoutUI();
+  hideWalletQR();
+});
 
 // ===== ADD ITEM MODAL (button) =====
 $("#btnGoAdmin")?.addEventListener("click", () => {
