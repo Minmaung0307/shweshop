@@ -54,13 +54,21 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// helpers
-const $  = (s)=> document.querySelector(s);
-const $$ = (s)=> document.querySelectorAll(s);
-const money = (n)=> `$${Number(n||0).toFixed(2)}`;
+// ==== GLOBAL STATE (unify) ====
+window.STATE = window.STATE ||
+  window.state || {
+    user: null,
+    items: [],
+    cart: [],
+    ads: [],
+    membership: "free",
+    promo: null,
+  };
+window.state = window.STATE; // alias to avoid old references
 
-// global state (one time only)
-const STATE = window.STATE || { items: [], cart: [], user: null };
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 // const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 const today = () => Timestamp.now();
@@ -79,40 +87,54 @@ let state = {
 };
 
 // === Simple Router ===
-const PAGES = { home:'#page-home', orders:'#page-orders', account:'#page-account', admin:'#page-admin' };
-function route(){
-  document.querySelectorAll('.page').forEach(p=> p.classList.remove('active'));
-  const key = (location.hash.replace('#','') || 'home').split('/')[0];
+const PAGES = {
+  home: "#page-home",
+  orders: "#page-orders",
+  account: "#page-account",
+  admin: "#page-admin",
+};
+function route() {
+  document
+    .querySelectorAll(".page")
+    .forEach((p) => p.classList.remove("active"));
+  const key = (location.hash.replace("#", "") || "home").split("/")[0];
   const sel = PAGES[key] || PAGES.home;
   const el = document.querySelector(sel);
-  if (el) el.classList.add('active');
+  if (el) el.classList.add("active");
 }
-window.addEventListener('hashchange', route);
-document.addEventListener('DOMContentLoaded', route);
+window.addEventListener("hashchange", route);
+document.addEventListener("DOMContentLoaded", route);
 
 // ----- Auth modal open/close + switch -----
-document.querySelectorAll('[data-close]')?.forEach(btn=>{
-  btn.addEventListener('click', (e)=> e.target.closest('dialog')?.close());
+document.querySelectorAll("[data-close]")?.forEach((btn) => {
+  btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
 });
 
-const loginModal  = document.getElementById('loginModal');
-const signupModal = document.getElementById('signupModal');
-const forgotModal = document.getElementById('forgotModal');
+const loginModal = document.getElementById("loginModal");
+const signupModal = document.getElementById("signupModal");
+const forgotModal = document.getElementById("forgotModal");
 
-document.getElementById('btnLogin')?.addEventListener('click', ()=> loginModal.showModal());
-document.getElementById('btnSignup')?.addEventListener('click', ()=> signupModal.showModal());
+document
+  .getElementById("btnLogin")
+  ?.addEventListener("click", () => loginModal.showModal());
+document
+  .getElementById("btnSignup")
+  ?.addEventListener("click", () => signupModal.showModal());
 
-document.getElementById('openSignup')?.addEventListener('click', ()=>{
-  loginModal.close(); signupModal.showModal();
+document.getElementById("openSignup")?.addEventListener("click", () => {
+  loginModal.close();
+  signupModal.showModal();
 });
-document.getElementById('openForgot')?.addEventListener('click', ()=>{
-  loginModal.close(); forgotModal.showModal();
+document.getElementById("openForgot")?.addEventListener("click", () => {
+  loginModal.close();
+  forgotModal.showModal();
 });
-document.getElementById('openLoginFromSignup')?.addEventListener('click', ()=>{
-  signupModal.close(); loginModal.showModal();
-});
-
-
+document
+  .getElementById("openLoginFromSignup")
+  ?.addEventListener("click", () => {
+    signupModal.close();
+    loginModal.showModal();
+  });
 
 // ===== UI Bindings =====
 $("#year").textContent = new Date().getFullYear();
@@ -238,31 +260,48 @@ $("#btnCheckout").addEventListener("click", () => startCheckout());
 });
 
 // Login
-document.getElementById('doLogin')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPass').value;
-  try { await signInWithEmailAndPassword(auth, email, pass); loginModal.close(); }
-  catch(e){ alert(e.message); }
+document.getElementById("doLogin")?.addEventListener("click", async () => {
+  const email = document.getElementById("loginEmail").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    loginModal.close();
+  } catch (e) {
+    alert(e.message);
+  }
 });
 
 // Signup
-document.getElementById('doSignup')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('signupEmail').value.trim();
-  const pass  = document.getElementById('signupPass').value;
-  try { await createUserWithEmailAndPassword(auth, email, pass); signupModal.close(); }
-  catch(e){ alert(e.message); }
+document.getElementById("doSignup")?.addEventListener("click", async () => {
+  const email = document.getElementById("signupEmail").value.trim();
+  const pass = document.getElementById("signupPass").value;
+  try {
+    await createUserWithEmailAndPassword(auth, email, pass);
+    signupModal.close();
+  } catch (e) {
+    alert(e.message);
+  }
 });
 
 // Forgot
-document.getElementById('doForgot')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('forgotEmail').value.trim();
-  try { await sendPasswordResetEmail(auth, email); alert('Reset email sent'); forgotModal.close(); }
-  catch(e){ alert(e.message); }
+document.getElementById("doForgot")?.addEventListener("click", async () => {
+  const email = document.getElementById("forgotEmail").value.trim();
+  try {
+    await sendPasswordResetEmail(auth, email);
+    alert("Reset email sent");
+    forgotModal.close();
+  } catch (e) {
+    alert(e.message);
+  }
 });
 
 // Header logout button (and account page logout)
-document.getElementById('btnLogoutHeader')?.addEventListener('click', ()=> signOut(auth));
-document.getElementById('btnLogout')?.addEventListener('click', ()=> signOut(auth));
+document
+  .getElementById("btnLogoutHeader")
+  ?.addEventListener("click", () => signOut(auth));
+document
+  .getElementById("btnLogout")
+  ?.addEventListener("click", () => signOut(auth));
 
 // ===== Auth State =====
 onAuthStateChanged(auth, async (user) => {
@@ -277,14 +316,15 @@ onAuthStateChanged(auth, async (user) => {
   document.body.dataset.isAdmin = String(isAdmin);
   state.user = user;
 
-  const show = (sel, yes)=> document.querySelector(sel)?.classList.toggle('hidden', !yes);
-  show('#btnAccount', !!user);
-  show('#btnLogoutHeader', !!user);
-  show('#btnLogin', !user);
-  show('#btnSignup', !user);
+  const show = (sel, yes) =>
+    document.querySelector(sel)?.classList.toggle("hidden", !yes);
+  show("#btnAccount", !!user);
+  show("#btnLogoutHeader", !!user);
+  show("#btnLogin", !user);
+  show("#btnSignup", !user);
 
-  document.getElementById('accEmail').textContent  = user?.email || '—';
-  document.getElementById('accMember').textContent = user ? 'free' : 'free';
+  document.getElementById("accEmail").textContent = user?.email || "—";
+  document.getElementById("accMember").textContent = user ? "free" : "free";
 
   // Admin page/link ကို non-admin မှာ ဖျောက်
   const adminLink = document.querySelector('a[href="#admin"]');
@@ -415,22 +455,24 @@ async function loadAds() {
 // }
 
 // Open modal
-document.getElementById('btnGoAdmin')?.addEventListener('click', ()=>{
-  document.getElementById('itemModal').showModal();
+document.getElementById("btnGoAdmin")?.addEventListener("click", () => {
+  document.getElementById("itemModal").showModal();
 });
 
 // open from Admin card button
-document.getElementById('btnOpenItemModalAdmin')?.addEventListener('click', () => {
-  document.getElementById('itemModal').showModal();
-});
+document
+  .getElementById("btnOpenItemModalAdmin")
+  ?.addEventListener("click", () => {
+    document.getElementById("itemModal").showModal();
+  });
 
 // universal close for dialogs with [data-close]
-document.querySelectorAll('[data-close]').forEach(b=>{
-  b.addEventListener('click', (e)=> e.target.closest('dialog')?.close());
+document.querySelectorAll("[data-close]").forEach((b) => {
+  b.addEventListener("click", (e) => e.target.closest("dialog")?.close());
 });
 
 // ====== ADMIN VISIBILITY (toggle .admin-only controls) ======
-async function setAdminVisibility(){
+async function setAdminVisibility() {
   const u = auth.currentUser;
   let isAdmin = false;
   if (u) {
@@ -440,62 +482,83 @@ async function setAdminVisibility(){
     } catch {}
   }
   // Show/hide elements with .admin-only
-  document.querySelectorAll('.admin-only').forEach(el=>{
-    el.style.display = isAdmin ? '' : 'none';
+  document.querySelectorAll(".admin-only").forEach((el) => {
+    el.style.display = isAdmin ? "" : "none";
   });
   // Admin link/page can also be hidden if you want:
   // document.getElementById('navAdmin').style.display = isAdmin ? '' : 'none';
 }
-onAuthStateChanged(auth, ()=> setAdminVisibility());
-
+onAuthStateChanged(auth, () => setAdminVisibility());
 
 // ====== ITEMS: LOAD + RENDER + EDIT ======
 let ITEM_CACHE = [];
 
-
 // ===== LOAD + RENDER ITEMS =====
-async function loadItems(){
-  try{
+async function loadItems() {
+  try {
     // Try Firestore first
-    const snaps = await getDocs(collection(db,'items'));
-    if (snaps.size){
-      STATE.items = snaps.docs.map(d=> ({ id:d.id, ...d.data() }));
+    const snaps = await getDocs(collection(db, "items"));
+    if (snaps.size) {
+      STATE.items = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
     } else {
       // If empty, keep local demo (until you seed)
-      STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
+      STATE.items = DEMO_ITEMS.map((x, i) => ({ id: `demo-${i}`, ...x }));
     }
-  }catch(e){
+  } catch (e) {
     // If Firestore blocked, fallback to DEMO
-    STATE.items = DEMO_ITEMS.map((x,i)=> ({ id:`demo-${i}`, ...x }));
+    STATE.items = DEMO_ITEMS.map((x, i) => ({ id: `demo-${i}`, ...x }));
   }
   renderItems();
 }
 
-function renderItems(){
-  const q = ($('#searchInput')?.value||'').toLowerCase().trim();
-  const cat = ($('#filterCategory')?.value || 'all').toLowerCase();
-  const sort = $('#sortBy')?.value || 'featured';
+function renderItems() {
+  const q = ($("#searchInput")?.value || "").toLowerCase().trim();
+  const cat = ($("#filterCategory")?.value || "all").toLowerCase();
+  const sort = $("#sortBy")?.value || "featured";
 
   let rows = [...STATE.items];
-  if (cat !== 'all') rows = rows.filter(r=> (r.category||'').toLowerCase()===cat);
-  if (q) rows = rows.filter(r=> (r.title+' '+(r.description||'')).toLowerCase().includes(q));
+  if (cat !== "all")
+    rows = rows.filter((r) => (r.category || "").toLowerCase() === cat);
+  if (q)
+    rows = rows.filter((r) =>
+      (r.title + " " + (r.description || "")).toLowerCase().includes(q)
+    );
 
-  switch(sort){
-    case 'price_asc':  rows.sort((a,b)=> (a.price||0)-(b.price||0)); break;
-    case 'price_desc': rows.sort((a,b)=> (b.price||0)-(a.price||0)); break;
-    case 'rating':     rows.sort((a,b)=> (b.rating||0)-(a.rating||0)); break;
-    case 'newest':     rows.sort((a,b)=> (b.createdAt||0)-(a.createdAt||0)); break;
-    default: break;
+  switch (sort) {
+    case "price_asc":
+      rows.sort((a, b) => (a.price || 0) - (b.price || 0));
+      break;
+    case "price_desc":
+      rows.sort((a, b) => (b.price || 0) - (a.price || 0));
+      break;
+    case "rating":
+      rows.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      break;
+    case "newest":
+      rows.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      break;
+    default:
+      break;
   }
 
-  const grid = $('#grid');
-  grid.innerHTML = rows.map(p=>`
+  const grid = $("#grid");
+  grid.innerHTML = rows
+    .map(
+      (p) => `
     <div class="card product">
-      <img src="${p.imageUrl || (p.gallery?.[0]) || `https://picsum.photos/seed/${p.id}/600/400`}" alt="${p.title}" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0">
+      <img src="${
+        p.imageUrl ||
+        p.gallery?.[0] ||
+        `https://picsum.photos/seed/${p.id}/600/400`
+      }" alt="${
+        p.title
+      }" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0">
       <div class="pbody" style="padding:10px">
-        <div class="row" style="justify-content:space-between"><b>${p.title}</b><span class="muted">${p.category||''}</span></div>
+        <div class="row" style="justify-content:space-between"><b>${
+          p.title
+        }</b><span class="muted">${p.category || ""}</span></div>
         <div class="row" style="justify-content:space-between;margin-top:4px">
-          <span class="rating">★ ${(p.rating ?? '—')}</span>
+          <span class="rating">★ ${p.rating ?? "—"}</span>
           <span class="price">${money(p.price)}</span>
         </div>
         <div class="row" style="gap:6px;margin-top:8px">
@@ -504,155 +567,253 @@ function renderItems(){
         </div>
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join("");
 
   // bind
-  document.querySelectorAll('[data-open]')?.forEach(b=> b.addEventListener('click', ()=> openProduct(b.dataset.open)));
-  document.querySelectorAll('[data-add]')?.forEach(b=> b.addEventListener('click', ()=> addToCartId(b.dataset.add, 1)));
+  document
+    .querySelectorAll("[data-open]")
+    ?.forEach((b) =>
+      b.addEventListener("click", () => openProduct(b.dataset.open))
+    );
+  document
+    .querySelectorAll("[data-add]")
+    ?.forEach((b) =>
+      b.addEventListener("click", () => addToCartId(b.dataset.add, 1))
+    );
 }
 
 // ===== SUBNAV (hash like #category/men) =====
-window.addEventListener('hashchange', ()=>{
+window.addEventListener("hashchange", () => {
   const m = location.hash.match(/^#category\/(.+)$/i);
-  if (m && $('#filterCategory')){
-    $('#filterCategory').value = m[1].toLowerCase();
+  if (m && $("#filterCategory")) {
+    $("#filterCategory").value = m[1].toLowerCase();
     renderItems();
   }
 });
 
 // Home toolbar bindings
-$('#filterCategory')?.addEventListener('change', renderItems);
-$('#sortBy')?.addEventListener('change', renderItems);
-$('#searchForm')?.addEventListener('submit', (e)=>{ e.preventDefault(); renderItems(); });
+$("#filterCategory")?.addEventListener("change", renderItems);
+$("#sortBy")?.addEventListener("change", renderItems);
+$("#searchForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  renderItems();
+});
 
-function loadIntoEditor(id){
-  const p = ITEM_CACHE.find(x=> x.id === id);
-  if(!p) return alert('Item not found');
+function loadIntoEditor(id) {
+  const p = ITEM_CACHE.find((x) => x.id === id);
+  if (!p) return alert("Item not found");
 
-  document.getElementById('itemId').value = p.id;
-  document.getElementById('itemTitle').value = p.title || '';
-  document.getElementById('itemCategory').value = p.category || '';
-  document.getElementById('itemPrice').value = p.price || 0;
-  document.getElementById('itemRating').value = p.rating || 0;
-  document.getElementById('itemDesc').value = p.description || '';
-  document.getElementById('itemProCode').value = p.proCode || '';
-  document.getElementById('itemMemberCoupon').value = p.memberCoupon || '';
+  document.getElementById("itemId").value = p.id;
+  document.getElementById("itemTitle").value = p.title || "";
+  document.getElementById("itemCategory").value = p.category || "";
+  document.getElementById("itemPrice").value = p.price || 0;
+  document.getElementById("itemRating").value = p.rating || 0;
+  document.getElementById("itemDesc").value = p.description || "";
+  document.getElementById("itemProCode").value = p.proCode || "";
+  document.getElementById("itemMemberCoupon").value = p.memberCoupon || "";
 
   // go admin page
-  location.hash = 'admin';
+  location.hash = "admin";
 }
-
 
 // ===== DEMO ITEMS (all categories) =====
 const DEMO_ITEMS = [
   // men
-  { title:'Men T-Shirt Classic', category:'men', price:14.99, rating:4.2,
-    description:'Soft cotton tee for everyday wear.',
-    imageUrl:'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title:'Men Sneakers Runner', category:'men', price:59.00, rating:4.5,
-    description:'Lightweight running shoes.',
-    imageUrl:'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
+  {
+    title: "Men T-Shirt Classic",
+    category: "men",
+    price: 14.99,
+    rating: 4.2,
+    description: "Soft cotton tee for everyday wear.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
+  {
+    title: "Men Sneakers Runner",
+    category: "men",
+    price: 59.0,
+    rating: 4.5,
+    description: "Lightweight running shoes.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
 
   // women
-  { title:'Women Summer Dress', category:'women', price:29.90, rating:4.6,
-    description:'Breezy floral dress.',
-    imageUrl:'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title:'Women Handbag', category:'women', price:48.50, rating:4.4,
-    description:'Compact crossbody bag.',
-    imageUrl:'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
+  {
+    title: "Women Summer Dress",
+    category: "women",
+    price: 29.9,
+    rating: 4.6,
+    description: "Breezy floral dress.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
+  {
+    title: "Women Handbag",
+    category: "women",
+    price: 48.5,
+    rating: 4.4,
+    description: "Compact crossbody bag.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
 
   // kids
-  { title:'Kids Hoodie', category:'kids', price:19.90, rating:4.3,
-    description:'Cozy hoodie for kids.',
-    imageUrl:'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title:'Kids Sneakers', category:'kids', price:24.50, rating:4.4,
-    description:'Durable kids shoes.',
-    imageUrl:'https://images.unsplash.com/photo-1603808033192-7f21ad1d8a08?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
+  {
+    title: "Kids Hoodie",
+    category: "kids",
+    price: 19.9,
+    rating: 4.3,
+    description: "Cozy hoodie for kids.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
+  {
+    title: "Kids Sneakers",
+    category: "kids",
+    price: 24.5,
+    rating: 4.4,
+    description: "Durable kids shoes.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1603808033192-7f21ad1d8a08?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
 
   // electronics  (➡️ သင်ပြောတဲ့ ၂ခု)
-  { title:'Wireless Headphones', category:'electronics', price:89.00, rating:4.5,
-    description:'Noise-isolating, long battery life.',
-    imageUrl:'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5',
-    gallery:[
-      'https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=800&auto=format&fit=crop'
-    ]},
-  { title:'Smartwatch S2', category:'electronics', price:129.00, rating:4.4,
-    description:'Fitness + notifications.',
-    imageUrl:'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5',
-    gallery:[
-      'https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1516570161787-2fd917215a3d?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1485727749690-d091e8284ef2?q=80&w=800&auto=format&fit=crop'
-    ]},
+  {
+    title: "Wireless Headphones",
+    category: "electronics",
+    price: 89.0,
+    rating: 4.5,
+    description: "Noise-isolating, long battery life.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+    gallery: [
+      "https://images.unsplash.com/photo-1518444028785-8c8240b2f3d8?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=800&auto=format&fit=crop",
+    ],
+  },
+  {
+    title: "Smartwatch S2",
+    category: "electronics",
+    price: 129.0,
+    rating: 4.4,
+    description: "Fitness + notifications.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+    gallery: [
+      "https://images.unsplash.com/photo-1518441902110-923202b1c4f7?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1516570161787-2fd917215a3d?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1485727749690-d091e8284ef2?q=80&w=800&auto=format&fit=crop",
+    ],
+  },
 
   // home
-  { title:'Ceramic Mug Set', category:'home', price:15.99, rating:4.2,
-    description:'Set of 4, dishwasher safe.',
-    imageUrl:'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
-  { title:'Throw Pillow Cover', category:'home', price:9.99, rating:4.1,
-    description:'18x18 inch cover.',
-    imageUrl:'https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?q=80&w=800&auto=format&fit=crop',
-    proCode:'PRO10', memberCoupon:'GOLD5' },
+  {
+    title: "Ceramic Mug Set",
+    category: "home",
+    price: 15.99,
+    rating: 4.2,
+    description: "Set of 4, dishwasher safe.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
+  {
+    title: "Throw Pillow Cover",
+    category: "home",
+    price: 9.99,
+    rating: 4.1,
+    description: "18x18 inch cover.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1501045661006-fcebe0257c3f?q=80&w=800&auto=format&fit=crop",
+    proCode: "PRO10",
+    memberCoupon: "GOLD5",
+  },
 ];
 
-document.getElementById('btnSeedDemo')?.addEventListener('click', async ()=>{
+document.getElementById("btnSeedDemo")?.addEventListener("click", async () => {
   const user = auth.currentUser;
-  if (!user) { alert('Please login first.'); return; }
-  try{
-    for(const it of DEMO_ITEMS){
-      await addDoc(collection(db,'items'), it);
+  if (!user) {
+    alert("Please login first.");
+    return;
+  }
+  try {
+    for (const it of DEMO_ITEMS) {
+      await addDoc(collection(db, "items"), it);
     }
-    alert('Seeded demo items!');
-  }catch(e){
+    alert("Seeded demo items!");
+  } catch (e) {
     alert(e.message || e);
   }
 });
 
 // open product modal (ensure single impl)
-function openProduct(id){
-  const p = STATE.items.find(x=> x.id===id); if(!p) return;
-  $('#pdImg').src = p.imageUrl || p.gallery?.[0] || `https://picsum.photos/seed/${p.id}/800/600`;
-  $('#pdTitle').textContent = p.title||'';
-  $('#pdDesc').textContent  = p.description||'';
-  $('#pdPrice').textContent = money(p.price);
-  $('#pdRating').textContent= `★ ${p.rating ?? '—'}`;
-  $('#pdProCode').textContent = p.proCode || '—';
-  $('#pdMemberCoupon').textContent = p.memberCoupon || '—';
-  $('#pdQty').value = 1;
+function openProduct(id) {
+  const p = STATE.items.find((x) => x.id === id);
+  if (!p) return;
+  $("#pdImg").src =
+    p.imageUrl ||
+    p.gallery?.[0] ||
+    `https://picsum.photos/seed/${p.id}/800/600`;
+  $("#pdTitle").textContent = p.title || "";
+  $("#pdDesc").textContent = p.description || "";
+  $("#pdPrice").textContent = money(p.price);
+  $("#pdRating").textContent = `★ ${p.rating ?? "—"}`;
+  $("#pdProCode").textContent = p.proCode || "—";
+  $("#pdMemberCoupon").textContent = p.memberCoupon || "—";
+  $("#pdQty").value = 1;
 
   const thumbs = p.gallery?.length ? p.gallery : [p.imageUrl].filter(Boolean);
-  const wrap = $('#pdThumbs');
-  wrap.innerHTML = (thumbs||[]).map((src,i)=> `<img src="${src}" class="${i===0?'active':''}" data-src="${src}">`).join('');
-  wrap.querySelectorAll('img').forEach(img=>{
-    img.addEventListener('click', ()=>{
-      wrap.querySelectorAll('img').forEach(x=> x.classList.remove('active'));
-      img.classList.add('active');
-      $('#pdImg').src = img.dataset.src;
+  const wrap = $("#pdThumbs");
+  wrap.innerHTML = (thumbs || [])
+    .map(
+      (src, i) =>
+        `<img src="${src}" class="${
+          i === 0 ? "active" : ""
+        }" data-src="${src}">`
+    )
+    .join("");
+  wrap.querySelectorAll("img").forEach((img) => {
+    img.addEventListener("click", () => {
+      wrap.querySelectorAll("img").forEach((x) => x.classList.remove("active"));
+      img.classList.add("active");
+      $("#pdImg").src = img.dataset.src;
     });
   });
 
-  $('#qtyMinus').onclick = ()=> $('#pdQty').value = Math.max(1,(+$('#pdQty').value||1)-1);
-  $('#qtyPlus').onclick  = ()=> $('#pdQty').value = (+$('#pdQty').value||1)+1;
+  $("#qtyMinus").onclick = () =>
+    ($("#pdQty").value = Math.max(1, (+$("#pdQty").value || 1) - 1));
+  $("#qtyPlus").onclick = () =>
+    ($("#pdQty").value = (+$("#pdQty").value || 1) + 1);
 
   // ✅ Add to cart ⇒ add & close modal (do NOT open cart here)
-  $('#pdAdd').onclick = ()=>{
-    addToCartId(id, +$('#pdQty').value||1);
-    $('#productModal')?.close();        // close product modal
-    resetCheckoutUI();                  // reset checkout UI (hide payment buttons until user clicks Checkout)
+  $("#pdAdd").onclick = () => {
+    addToCartId(id, +$("#pdQty").value || 1);
+    $("#productModal")?.close(); // close after adding
+    resetCheckoutUI(); // hide payment options until user clicks Checkout
   };
 
-  $('#productModal').showModal();
+  $("#productModal").showModal();
 }
 
 // ===== Cart =====
@@ -678,43 +839,52 @@ function removeFromCart(id) {
 }
 
 // ===== CART =====
-function persistCart(){ localStorage.setItem('cart', JSON.stringify(STATE.cart)); }
-function restoreCart(){ try{ STATE.cart = JSON.parse(localStorage.getItem('cart')||'[]'); }catch{} }
-function updateCartCount(){
-  const c = STATE.cart.reduce((s,x)=> s + (x.qty||0), 0);
-  const el = $('#cartCount'); if (el) el.textContent = c;
+function persistCart() {
+  localStorage.setItem("cart", JSON.stringify(STATE.cart || []));
+}
+function restoreCart() {
+  try {
+    STATE.cart = JSON.parse(localStorage.getItem("cart") || "[]");
+  } catch {}
+}
+function updateCartCount() {
+  const cnt = (STATE.cart || []).reduce((s, x) => s + (x.qty || 0), 0);
+  const el = $("#cartCount");
+  if (el) el.textContent = cnt;
 }
 
 // ---- Cart ops ----
-function addToCartId(id, qty=1){
-  const p = STATE.items.find(x=> x.id===id); if(!p) return;
-  const ex = STATE.cart.find(x=> x.id===id);
+function addToCartId(id, qty = 1) {
+  const p = (STATE.items || []).find((x) => x.id === id);
+  if (!p) return;
+  const ex = (STATE.cart || []).find((x) => x.id === id);
   if (ex) ex.qty += qty;
-  else STATE.cart.push({ id, title:p.title, price:p.price, imageUrl: p.imageUrl || p.gallery?.[0], qty });
-
-  renderCart();
+  else
+    STATE.cart.push({
+      id,
+      title: p.title,
+      price: p.price,
+      imageUrl: p.imageUrl || p.gallery?.[0],
+      qty,
+    });
   persistCart();
   updateCartCount();
+  renderCart();
 }
 
-function changeQty(id, d){
-  const it = STATE.cart.find(x=> x.id===id); if(!it) return;
-  it.qty = Math.max(1, (it.qty||1)+d);
-  renderCart(); persistCart(); updateCartCount();
-}
-function removeItem(id){
-  STATE.cart = STATE.cart.filter(x=> x.id!==id);
-  renderCart(); persistCart(); updateCartCount();
-}
-window.changeQty = changeQty;
-window.removeItem = removeItem;
-
-function renderCart(){
-  const list = $('#cartItems'); if(!list) return;
-  list.innerHTML = STATE.cart.map(c=> `
+function renderCart() {
+  const list = $("#cartItems");
+  if (!list) return;
+  list.innerHTML = (STATE.cart || [])
+    .map(
+      (c) => `
     <div class="cart-item" style="display:grid;grid-template-columns:70px 1fr auto auto;gap:10px;align-items:center;margin:8px 0">
-      <img src="${c.imageUrl || `https://picsum.photos/seed/${c.id}/100/100`}" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
-      <div><b>${c.title}</b><div class="muted">${money(c.price)} × ${c.qty}</div></div>
+      <img src="${
+        c.imageUrl || `https://picsum.photos/seed/${c.id}/100/100`
+      }" style="width:70px;height:70px;object-fit:cover;border-radius:8px">
+      <div><b>${c.title}</b><div class="muted">${money(c.price)} × ${
+        c.qty
+      }</div></div>
       <div class="qty">
         <button class="btn" onclick="changeQty('${c.id}',-1)">−</button>
         <span>${c.qty}</span>
@@ -722,92 +892,161 @@ function renderCart(){
       </div>
       <button class="btn" onclick="removeItem('${c.id}')">Remove</button>
     </div>
-  `).join('');
-  const sub = STATE.cart.reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0);
-  $('#cartSubtotal').textContent = money(sub);
+  `
+    )
+    .join("");
+  const sub = (STATE.cart || []).reduce(
+    (s, c) => s + (c.price || 0) * (c.qty || 1),
+    0
+  );
+  $("#cartSubtotal").textContent = money(sub);
 }
 
+function changeQty(id, d) {
+  const it = (STATE.cart || []).find((x) => x.id === id);
+  if (!it) return;
+  it.qty = Math.max(1, (it.qty || 1) + d);
+  persistCart();
+  updateCartCount();
+  renderCart();
+}
+function removeItem(id) {
+  STATE.cart = (STATE.cart || []).filter((x) => x.id !== id);
+  persistCart();
+  updateCartCount();
+  renderCart();
+}
+window.changeQty = changeQty;
+window.removeItem = removeItem;
+
 // Header cart button opens drawer
-$('#btnCart')?.addEventListener('click', ()=>{
-  $('#cartDrawer')?.showModal();
+$("#btnCart")?.addEventListener("click", () => {
+  $("#cartDrawer")?.showModal();
 });
 
 // Hide payment UI until user actually clicks Checkout
-function resetCheckoutUI(){
-  const pc = $('#paypalContainer'); if (pc){ pc.innerHTML = ''; pc.style.display = 'none'; }
-  const alt = document.querySelector('.alt-pay'); if (alt){ alt.style.display = 'none'; }
+function resetCheckoutUI() {
+  const pc = $("#paypalContainer");
+  if (pc) {
+    pc.innerHTML = "";
+    pc.style.display = "none";
+  }
+  const alt = document.querySelector(".alt-pay");
+  if (alt) {
+    alt.style.display = "none";
+  }
 }
 resetCheckoutUI();
 
 // Checkout click → show options (and render PayPal if SDK available)
-$('#btnCheckout')?.addEventListener('click', async ()=>{
-  if (!STATE.cart.length){
-    alert('Your cart is empty.');
+$("#btnCheckout")?.addEventListener("click", async () => {
+  const cart = STATE.cart || [];
+  if (!cart.length) {
+    alert("Your cart is empty.");
     return;
   }
-  // reveal options
-  const pc = $('#paypalContainer'); const alt = document.querySelector('.alt-pay');
-  if (pc) pc.style.display = '';
-  if (alt) alt.style.display = '';
+  // show options
+  const pc = $("#paypalContainer");
+  const alt = document.querySelector(".alt-pay");
+  if (pc) pc.style.display = "";
+  if (alt) alt.style.display = "";
 
-  // lazy-load PayPal SDK if not loaded yet (replace YOUR_PAYPAL_CLIENT_ID)
-  if (!window.paypal){
-    await loadPayPalSdk('YOUR_PAYPAL_CLIENT_ID'); // <- put real client id
+  try {
+    await loadPayPalSdk(PAYPAL_CLIENT_ID); // will no-op if placeholder
+    renderPayPalButton(); // will no-op if SDK not loaded
+  } catch (err) {
+    console.error(err);
+    // SDK load fail → still allow local wallets
   }
-  renderPayPalButton();  // (idempotent)
 });
 
 // wallet stubs
-$('#kbzPay')?.addEventListener('click', ()=> alert('KBZPay flow goes here.'));
-$('#cbPay')?.addEventListener('click', ()=> alert('CBPay flow goes here.'));
-$('#ayaPay')?.addEventListener('click', ()=> alert('AYAPay flow goes here.'));
+$("#kbzPay")?.addEventListener("click", () => alert("KBZPay checkout…"));
+$("#cbPay")?.addEventListener("click", () => alert("CBPay checkout…"));
+$("#ayaPay")?.addEventListener("click", () => alert("AYAPay checkout…"));
 
 // load PayPal SDK dynamically
-function loadPayPalSdk(clientId){
-  return new Promise((resolve,reject)=>{
-    const exists = document.querySelector('script[data-paypal-sdk]');
-    if (exists){ resolve(); return; }
-    const s = document.createElement('script');
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`;
-    s.dataset.paypalSdk = '1';
-    s.onload = resolve; s.onerror = reject;
+function loadPayPalSdk(clientId) {
+  return new Promise((resolve, reject) => {
+    const exists = document.querySelector("script[data-paypal-sdk]");
+    if (exists) {
+      resolve();
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+      clientId
+    )}&currency=USD`;
+    s.dataset.paypalSdk = "1";
+    s.onload = resolve;
+    s.onerror = reject;
     document.body.appendChild(s);
   });
 }
 
 // render PayPal
-let paypalRendered = false;
-function renderPayPalButton(){
-  if (paypalRendered || !window.paypal) return;
-  const wrap = $('#paypalContainer'); if (!wrap) return;
-  wrap.innerHTML = ''; // clear
-  window.paypal.Buttons({
-    createOrder: (_data, actions)=>{
-      const amount = STATE.cart.reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0).toFixed(2);
-      return actions.order.create({ purchase_units: [{ amount: { value: amount } }] });
-    },
-    onApprove: async (_data, actions)=>{
-      try{
-        await actions.order.capture();
-        alert('Payment success!');
-        // you can save order to Firestore here
-        // clear cart AFTER success:
-        STATE.cart = []; persistCart(); renderCart(); updateCartCount();
-        resetCheckoutUI();
-        $('#cartDrawer')?.close();
-      }catch(e){
-        alert(e?.message || 'Payment error');
-      }
+const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID"; // <-- REAL ID နဲ့ အစားထိုး
+
+async function loadPayPalSdk(clientId) {
+  return new Promise((resolve, reject) => {
+    if (window.paypal) return resolve();
+    if (!clientId || clientId === "YOUR_PAYPAL_CLIENT_ID") {
+      console.warn("PayPal client id missing; not loading SDK.");
+      return resolve(); // skip loading gracefully
     }
-  }).render('#paypalContainer');
+    const s = document.createElement("script");
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+      clientId
+    )}&currency=USD`;
+    s.onload = resolve;
+    s.onerror = (e) => reject(new Error("Failed to load PayPal SDK"));
+    document.body.appendChild(s);
+  });
+}
+
+let paypalRendered = false;
+function renderPayPalButton() {
+  if (!window.paypal || paypalRendered) return;
+  const wrap = $("#paypalContainer");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  window.paypal
+    .Buttons({
+      createOrder: (_data, actions) => {
+        const amount = (STATE.cart || [])
+          .reduce((s, c) => s + (c.price || 0) * (c.qty || 1), 0)
+          .toFixed(2);
+        return actions.order.create({
+          purchase_units: [{ amount: { value: amount } }],
+        });
+      },
+      onApprove: async (_data, actions) => {
+        try {
+          await actions.order.capture();
+          alert("Payment success!");
+          // TODO: save order to Firestore here if needed
+          STATE.cart = [];
+          persistCart();
+          updateCartCount();
+          $("#cartItems").innerHTML = "";
+          $("#cartSubtotal").textContent = money(0);
+          resetCheckoutUI();
+          $("#cartDrawer")?.close();
+        } catch (e) {
+          alert(e?.message || "Payment error");
+        }
+      },
+    })
+    .render("#paypalContainer");
   paypalRendered = true;
 }
 
-window.changeQty = changeQty; window.removeItem = removeItem;
+window.changeQty = changeQty;
+window.removeItem = removeItem;
 
 // ===== ADD ITEM MODAL (button) =====
-$('#btnGoAdmin')?.addEventListener('click', ()=>{
-  $('#addItemModal').showModal();
+$("#btnGoAdmin")?.addEventListener("click", () => {
+  $("#addItemModal").showModal();
 });
 
 // ===== Checkout (PayPal) =====
@@ -940,76 +1179,107 @@ $$("#page-admin [data-range]").forEach((b) =>
 $("#btnSendBlast").addEventListener("click", sendEmailBlast);
 
 async function requireAdmin() {
-  const u = auth.currentUser; if (!u) throw new Error('Sign in required');
+  const u = auth.currentUser;
+  if (!u) throw new Error("Sign in required");
   const t = await u.getIdTokenResult(true);
-  if (!t.claims?.admin) throw new Error('Admin only');
+  if (!t.claims?.admin) throw new Error("Admin only");
 }
 
 // ===== SAVE / DELETE ITEM (modal) =====
-$('#btnSaveItem')?.addEventListener('click', saveItem);
-$('#btnDeleteItem')?.addEventListener('click', deleteItem);
+$("#btnSaveItem")?.addEventListener("click", saveItem);
+$("#btnDeleteItem")?.addEventListener("click", deleteItem);
 
-async function saveItem(){
-  try{
-    const id    = $('#itemId').value.trim();
-    const title = $('#itemTitle').value.trim();
-    const category = $('#itemCategory').value.trim().toLowerCase();
-    const price = Number($('#itemPrice').value||0);
-    const rating = Number($('#itemRating').value||0);
-    const description = $('#itemDesc').value.trim();
-    const proCode = $('#itemProCode').value.trim();
-    const memberCoupon = $('#itemMemberCoupon').value.trim();
-    const file = $('#itemImage').files[0];
+async function saveItem() {
+  try {
+    const id = $("#itemId").value.trim();
+    const title = $("#itemTitle").value.trim();
+    const category = $("#itemCategory").value.trim().toLowerCase();
+    const price = Number($("#itemPrice").value || 0);
+    const rating = Number($("#itemRating").value || 0);
+    const description = $("#itemDesc").value.trim();
+    const proCode = $("#itemProCode").value.trim();
+    const memberCoupon = $("#itemMemberCoupon").value.trim();
+    const file = $("#itemImage").files[0];
 
-    if(!title){ alert('Title required'); return; }
+    if (!title) {
+      alert("Title required");
+      return;
+    }
 
-    const payload = { title, category, price, rating, description, proCode, memberCoupon, createdAt: Date.now() };
+    const payload = {
+      title,
+      category,
+      price,
+      rating,
+      description,
+      proCode,
+      memberCoupon,
+      createdAt: Date.now(),
+    };
 
-    if (file){
+    if (file) {
       const rid = id || crypto.randomUUID();
       const r = ref(storage, `items/${rid}/${file.name}`);
       await uploadBytes(r, file);
       payload.imageUrl = await getDownloadURL(r);
-      if(!id) $('#itemId').value = rid;
+      if (!id) $("#itemId").value = rid;
     }
 
-    if (id){ await setDoc(doc(db,'items', id), payload, {merge:true}); }
-    else { const refDoc = await addDoc(collection(db,'items'), payload); $('#itemId').value = refDoc.id; }
+    if (id) {
+      await setDoc(doc(db, "items", id), payload, { merge: true });
+    } else {
+      const refDoc = await addDoc(collection(db, "items"), payload);
+      $("#itemId").value = refDoc.id;
+    }
 
-    alert('Saved item');
-    $('#addItemModal').close();
+    alert("Saved item");
+    $("#addItemModal").close();
     await loadItems();
-  }catch(e){ alert(e.message||e); }
+  } catch (e) {
+    alert(e.message || e);
+  }
 }
-async function deleteItem(){
-  try{
-    const id = $('#itemId').value.trim(); if(!id){ alert('No ID'); return; }
-    await deleteDoc(doc(db,'items', id));
-    alert('Deleted'); $('#addItemModal').close(); await loadItems();
-  }catch(e){ alert(e.message||e); }
+async function deleteItem() {
+  try {
+    const id = $("#itemId").value.trim();
+    if (!id) {
+      alert("No ID");
+      return;
+    }
+    await deleteDoc(doc(db, "items", id));
+    alert("Deleted");
+    $("#addItemModal").close();
+    await loadItems();
+  } catch (e) {
+    alert(e.message || e);
+  }
 }
 
 // ===== SEED DEMO =====
-$('#btnSeedDemo')?.addEventListener('click', async ()=>{
-  try{
+$("#btnSeedDemo")?.addEventListener("click", async () => {
+  try {
     // login required if your rules need it; otherwise remove this check
     // if (!auth.currentUser) { alert('Please login first.'); return; }
-    for (const it of DEMO_ITEMS) await addDoc(collection(db,'items'), it);
-    alert('Seeded demo items!');
+    for (const it of DEMO_ITEMS) await addDoc(collection(db, "items"), it);
+    alert("Seeded demo items!");
     await loadItems();
-  }catch(e){ alert(e.message||e); }
+  } catch (e) {
+    alert(e.message || e);
+  }
 });
 
 // Save item
-document.getElementById('btnSaveItem')?.addEventListener('click', async ()=>{
+document.getElementById("btnSaveItem")?.addEventListener("click", async () => {
   try {
-    const title = document.getElementById('itemTitle').value.trim();
-    const category = document.getElementById('itemCategory').value.trim();
-    const price = parseFloat(document.getElementById('itemPrice').value);
-    const desc = document.getElementById('itemDesc').value.trim();
-    const proCode = document.getElementById('itemProCode').value.trim();
-    const memberCoupon = document.getElementById('itemMemberCoupon').value.trim();
-    const thumb = document.getElementById('itemThumb').value.trim();
+    const title = document.getElementById("itemTitle").value.trim();
+    const category = document.getElementById("itemCategory").value.trim();
+    const price = parseFloat(document.getElementById("itemPrice").value);
+    const desc = document.getElementById("itemDesc").value.trim();
+    const proCode = document.getElementById("itemProCode").value.trim();
+    const memberCoupon = document
+      .getElementById("itemMemberCoupon")
+      .value.trim();
+    const thumb = document.getElementById("itemThumb").value.trim();
 
     if (!title || !category || isNaN(price)) {
       alert("Please fill required fields");
@@ -1017,19 +1287,25 @@ document.getElementById('btnSaveItem')?.addEventListener('click', async ()=>{
     }
 
     await addDoc(collection(db, "items"), {
-      title, category, price, desc, proCode, memberCoupon, thumb,
-      createdAt: serverTimestamp()
+      title,
+      category,
+      price,
+      desc,
+      proCode,
+      memberCoupon,
+      thumb,
+      createdAt: serverTimestamp(),
     });
     alert("Item saved!");
-    document.getElementById('itemModal').close();
+    document.getElementById("itemModal").close();
     await loadItems(); // refresh
-  } catch(e) {
+  } catch (e) {
     console.error("Save item error:", e);
     alert(e.message || e);
   }
 });
 
-document.getElementById('btnDeleteItem')?.addEventListener('click', deleteItem);
+document.getElementById("btnDeleteItem")?.addEventListener("click", deleteItem);
 
 async function savePromo() {
   await requireAdmin();
@@ -1182,61 +1458,80 @@ window.addEventListener("load", () => {
 });
 
 // ---------- Robust DOM attach for Home buttons + Router kick ----------
-function ready(fn){ if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn, {once:true}); }
+function ready(fn) {
+  if (document.readyState !== "loading") fn();
+  else document.addEventListener("DOMContentLoaded", fn, { once: true });
+}
 
-ready(()=>{
+ready(() => {
   // Router first render (in case script loaded before hash listeners)
-  if (typeof route === 'function') route();
+  if (typeof route === "function") route();
 
   // +Add Item -> go to Admin
-  const goAdminBtn = document.getElementById('btnGoAdmin');
+  const goAdminBtn = document.getElementById("btnGoAdmin");
   if (goAdminBtn) {
-    goAdminBtn.addEventListener('click', (e)=>{
-      e.preventDefault();
-      location.hash = 'admin';
-      if (typeof route === 'function') route();
-    }, {once:false});
+    goAdminBtn.addEventListener(
+      "click",
+      (e) => {
+        e.preventDefault();
+        location.hash = "admin";
+        if (typeof route === "function") route();
+      },
+      { once: false }
+    );
   } else {
-    console.warn('btnGoAdmin not found');
+    console.warn("btnGoAdmin not found");
   }
 
   // 🌱 Seed Demo Items
-  const seedBtn = document.getElementById('btnSeedDemo');
+  const seedBtn = document.getElementById("btnSeedDemo");
   if (seedBtn) {
-    seedBtn.addEventListener('click', async ()=>{
-      try{
-        if (!auth.currentUser) { alert('Please login first.'); return; }
+    seedBtn.addEventListener(
+      "click",
+      async () => {
+        try {
+          if (!auth.currentUser) {
+            alert("Please login first.");
+            return;
+          }
 
-        // OPTIONAL: dev-only — allow any signed-in to seed; in prod gate with requireAdmin()
-        // await requireAdmin();
+          // OPTIONAL: dev-only — allow any signed-in to seed; in prod gate with requireAdmin()
+          // await requireAdmin();
 
-        const batch = DEMO_ITEMS || [];
-        if (!batch.length) { alert('No demo items defined.'); return; }
+          const batch = DEMO_ITEMS || [];
+          if (!batch.length) {
+            alert("No demo items defined.");
+            return;
+          }
 
-        // Create items one by one (show progress)
-        let ok = 0;
-        for (const it of batch){
-          await addDoc(collection(db,'items'), it);
-          ok++;
+          // Create items one by one (show progress)
+          let ok = 0;
+          for (const it of batch) {
+            await addDoc(collection(db, "items"), it);
+            ok++;
+          }
+          alert(`Seeded ${ok} demo item(s)!`);
+          // Reload items on home
+          if (typeof loadItems === "function") await loadItems();
+        } catch (err) {
+          // Show clear message if rules are blocking writes
+          alert(err && err.message ? err.message : String(err));
+          console.error("Seed demo error:", err);
         }
-        alert(`Seeded ${ok} demo item(s)!`);
-        // Reload items on home
-        if (typeof loadItems === 'function') await loadItems();
-      }catch(err){
-        // Show clear message if rules are blocking writes
-        alert((err && err.message) ? err.message : String(err));
-        console.error('Seed demo error:', err);
-      }
-    }, {once:false});
+      },
+      { once: false }
+    );
   } else {
-    console.warn('btnSeedDemo not found');
+    console.warn("btnSeedDemo not found");
   }
 });
 
 // ============= SINGLE, SAFE INIT (use this only) =============
 async function init() {
   // close buttons on dialogs
-  $$('[data-close]').forEach(b=> b.addEventListener('click', (e)=> e.target.closest('dialog')?.close()));
+  $$("[data-close]").forEach((b) =>
+    b.addEventListener("click", (e) => e.target.closest("dialog")?.close())
+  );
 
   // 1) Cart first (local state) — no network
   restoreCart?.();
@@ -1244,23 +1539,23 @@ async function init() {
   updateCartCount?.();
 
   // your route() if you have SPA
-  if (typeof route === 'function'){
+  if (typeof route === "function") {
     route();
-    window.addEventListener('hashchange', route);
+    window.addEventListener("hashchange", route);
   }
 
   // load items last (don’t clear cart inside!)
-  if (typeof loadItems === 'function') await loadItems();
+  if (typeof loadItems === "function") await loadItems();
 
   // 2) Router once
   route?.();
-  window.addEventListener('hashchange', route, { once: false });
+  window.addEventListener("hashchange", route, { once: false });
 
   // 3) Load data (parallel where safe)
   await Promise.allSettled([
-    loadItems?.(),   // renders grid inside
+    loadItems?.(), // renders grid inside
     loadPromo?.(),
-    loadAds?.()
+    loadAds?.(),
   ]);
 
   // 4) Secondary loads (non-blocking)
@@ -1268,11 +1563,12 @@ async function init() {
   listFeedback?.();
 
   // 5) Universal dialog close buttons
-  document.querySelectorAll('[data-close]').forEach(b=>{
-    b.addEventListener('click', (e)=> e.target.closest('dialog')?.close());
+  document.querySelectorAll("[data-close]").forEach((b) => {
+    b.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 }
 
 // Kick off after DOM is ready
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+if (document.readyState === "loading")
+  document.addEventListener("DOMContentLoaded", init, { once: true });
 else init();
