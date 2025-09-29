@@ -965,27 +965,8 @@ $("#kbzPay")?.addEventListener("click", () => alert("KBZPay checkout…"));
 $("#cbPay")?.addEventListener("click", () => alert("CBPay checkout…"));
 $("#ayaPay")?.addEventListener("click", () => alert("AYAPay checkout…"));
 
-// load PayPal SDK dynamically
-function loadPayPalSdk(clientId) {
-  return new Promise((resolve, reject) => {
-    const exists = document.querySelector("script[data-paypal-sdk]");
-    if (exists) {
-      resolve();
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
-      clientId
-    )}&currency=USD`;
-    s.dataset.paypalSdk = "1";
-    s.onload = resolve;
-    s.onerror = reject;
-    document.body.appendChild(s);
-  });
-}
-
 // render PayPal
-const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID"; // <-- REAL ID နဲ့ အစားထိုး
+const PAYPAL_CLIENT_ID = "AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC"; // <-- REAL ID နဲ့ အစားထိုး
 
 async function loadPayPalSdk(clientId) {
   return new Promise((resolve, reject) => {
