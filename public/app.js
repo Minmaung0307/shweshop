@@ -953,18 +953,13 @@ const PAYPAL_CLIENT_ID =
   "AVpfmQ8DyyatFaAGQ3Jg58XtUt_2cJDr1leqcc_JI8LvKIR2N5WB_yljqCOTTCtvK1hFJ7Q9X0ojXsEC";
 
 // ==== HELPERS ====
-function resetCheckoutUI(){
-  const pc  = $('#paypalContainer');  // parent
-  const slot= $('#paypalSlot');       // child
-  if (pc){ pc.style.display='none'; pc.style.visibility=''; }
-  if (!paypalRendering && !paypalRendered && slot){
-    // slot ကို render မရှိသေး/ပြီးသွားပြီး cleanup ပြုစုပြီးမှပဲ clear
-    slot.replaceChildren();
-  }
+function resetCheckoutUI() {
+  const pc = document.querySelector('#paypalContainer');
+  if (pc) { pc.style.display='none'; pc.innerHTML=''; }
   const alt = document.querySelector('.alt-pay');
-  if (alt) alt.style.display = 'none';
-  const qr  = $('#walletQR');
-  if (qr){ qr.style.display='none'; qr.innerHTML=''; }
+  if (alt) alt.style.display='none';
+  const qr = document.querySelector('#walletQR');
+  if (qr) { qr.style.display='none'; qr.innerHTML=''; }
 }
 resetCheckoutUI();
 
