@@ -205,8 +205,8 @@ window.STATE = window.STATE ||
 window.state = window.STATE; // alias to avoid old references
 
 // -------- helpers (ensure $ exists) ----------
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 const raf2 = () => new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
@@ -1692,7 +1692,6 @@ async function listFeedback() {
 }
 
 async function sendEmailBlast() {
-  await requireAdmin();
   await requireAdmin(); // add this guard
   const msg = $("#emailBlastMsg").value.trim();
   if (!msg) return alert("Message required");
