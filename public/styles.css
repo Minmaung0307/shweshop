@@ -19,7 +19,9 @@ body {
   font-family: Inter, sans-serif;
   background: #f6f7fb;
 }
-.admin-only { display: none; }
+.admin-only {
+  display: none;
+}
 .container {
   max-width: 1120px;
   margin: auto;
@@ -356,22 +358,46 @@ body {
   }
 }
 
-
 /* SPA routing */
-.page{display:none}
-.page.active{display:block}
-
+.page {
+  display: none;
+}
+.page.active {
+  display: block;
+}
 
 /* large cart */
-.drawer-lg .drawer-content{ min-width:min(840px,100%); }
+.drawer-lg .drawer-content {
+  min-width: min(840px, 100%);
+}
 
 /* modal base */
-.modal::backdrop,.drawer::backdrop{ background:rgba(0,0,0,.35) }
-.modal .modal-content{ background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;min-width:min(560px,100%) }
-.modal .modal-content.small{ min-width:min(420px,100%) }
-.modal .close,.drawer .close{ background:transparent;border:0;font-size:20px;float:right;cursor:pointer }
-.modal { max-width: 480px; }
-.modal-content input, 
+.modal::backdrop,
+.drawer::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+.modal .modal-content {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 16px;
+  min-width: min(560px, 100%);
+}
+.modal .modal-content.small {
+  min-width: min(420px, 100%);
+}
+.modal .close,
+.drawer .close {
+  background: transparent;
+  border: 0;
+  font-size: 20px;
+  float: right;
+  cursor: pointer;
+}
+.modal {
+  max-width: 480px;
+}
+.modal-content input,
 .modal-content textarea {
   width: 100%;
   margin: 6px 0;
@@ -379,16 +405,75 @@ body {
 }
 
 /* product detail */
-.pdetail{ display:grid;grid-template-columns:1fr 1fr;gap:16px }
-.pdetail img{ width:100%;height:260px;object-fit:cover;border-radius:12px }
-.thumbs{ display:flex;gap:8px;margin:8px 0;flex-wrap:wrap }
-.thumbs img{ width:68px;height:68px;border-radius:8px;object-fit:cover;border:2px solid transparent;cursor:pointer }
-.thumbs img.active{ border-color:#2563eb }
-.qty{ display:flex;gap:8px;align-items:center }
-.qty input[type=number]{ width:80px;padding:8px;border:1px solid #ddd;border-radius:8px }
+.pdetail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.pdetail img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.thumbs {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+.thumbs img {
+  width: 68px;
+  height: 68px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.thumbs img.active {
+  border-color: #2563eb;
+}
+.qty {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.qty input[type="number"] {
+  width: 80px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
 
 /* responsive */
-@media (max-width: 960px){ .pdetail{ grid-template-columns:1fr } .drawer-lg .drawer-content{ min-width:100% } }
+@media (max-width: 960px) {
+  .pdetail {
+    grid-template-columns: 1fr;
+  }
+  .drawer-lg .drawer-content {
+    min-width: 100%;
+  }
+}
+
+/* Payment area layout */
+#paymentArea { margin-top: 12px; }
+.pay-choose { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+
+/* One shared panel where PayPal and QR swap on top of each other */
+.pay-panel {
+  position: relative;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 260px;      /* enough room for buttons or QR */
+  background: #fff;
+}
+
+/* Layers sit exactly in the same spot */
+.pay-layer {
+  position: absolute;
+  inset: 12px;            /* padding visual */
+}
 
 /* Keep PayPal container always in DOM (no display:none) */
 #paypalContainer {
@@ -402,6 +487,13 @@ body {
   pointer-events: auto;
 }
 
-/* Wallet QR area hidden helper */
-#walletQR { display: none; }
-#walletQR.active { display: block; }
+/* QR layer toggled similarly */
+#walletQR {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+#walletQR.active {
+  opacity: 1;
+  pointer-events: auto;
+}

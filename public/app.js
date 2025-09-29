@@ -932,14 +932,14 @@ function resetCheckoutUI(){
   const qr   = $('#walletQR');
   const area = $('#paymentArea');
 
-  if ($('#btnCheckout')) $('#btnCheckout').style.display = ''; // show back
-  if (slot) slot.replaceChildren();          // clear child only
+  if ($('#btnCheckout')) $('#btnCheckout').style.display = '';
+  if (slot) slot.replaceChildren();
+
   paypalRendered = false; paypalRendering = false;
 
-  // hide via classes (not display none)
-  if (pc) pc.classList.remove('active');
-  if (qr){ qr.innerHTML=''; qr.classList.remove('active'); }
-  if (area) hide(area);
+  pc?.classList.remove('active');      // PayPal overlay hide (opacity)
+  qr?.classList.remove('active');      // QR overlay hide (opacity)
+  hide(area);                          // whole payment block hide
 }
 // resetCheckoutUI();
 
@@ -990,11 +990,12 @@ $('#btnCheckout')?.addEventListener('click', ()=>{
 $$('input[name="payMethod"]').forEach(r=>{
   r.addEventListener('change', async (e)=>{
     const v = e.target.value;
-    if (v === 'paypal'){
-      // Show PayPal (opacity on)
-      $('#walletQR')?.classList.remove('active');
-      $('#paypalContainer')?.classList.add('active');
+    const pc = $('#paypalContainer');
+    const qr = $('#walletQR');
 
+    if (v === 'paypal'){
+      qr?.classList.remove('active');     // hide QR
+      pc?.classList.add('active');        // show PayPal layer
       try{
         await loadPayPalSdk(PAYPAL_CLIENT_ID);
         await renderPayPal();
@@ -1003,7 +1004,6 @@ $$('input[name="payMethod"]').forEach(r=>{
         alert('PayPal unavailable. Choose a wallet.');
       }
     }else{
-      // Wallet path
       showWalletQR(v);
     }
   });
@@ -1056,18 +1056,13 @@ async function ensureStable(){
   const pc     = $('#paypalContainer');
   const slot   = $('#paypalSlot');
   if (!drawer || !area || !pc || !slot) return false;
-
-  // open dialog if closed
   if (!drawer.open) drawer.showModal();
 
-  // area visible; PayPal parent visible via .active (opacity 1)
+  // show block + show paypal layer (for rendering)
   show(area);
   pc.classList.add('active');
 
-  // Give layout 2 frames
   await raf2();
-
-  // container must stay connected & not display:none
   const visible = el => {
     const st = getComputedStyle(el);
     return el.isConnected && st.display !== 'none' && st.visibility !== 'hidden';
@@ -1086,7 +1081,6 @@ async function renderPayPal(){
 
   try{
     const amount = (STATE.cart||[]).reduce((s,c)=> s + (c.price||0)*(c.qty||1), 0).toFixed(2);
-
     await window.paypal.Buttons({
       createOrder: (_d, actions)=> actions.order.create({
         purchase_units: [{ amount: { value: amount } }]
@@ -1095,10 +1089,9 @@ async function renderPayPal(){
         await actions.order.capture();
         alert('Payment success!');
         STATE.cart = []; persistCart?.(); renderCart?.(); updateCartCount?.();
-        resetCheckoutUI();
-        $('#cartDrawer')?.close();
+        resetCheckoutUI(); $('#cartDrawer')?.close();
       },
-      onError: (err)=>{
+      onError: (err)=> {
         console.error('PayPal error', err);
         alert('PayPal error. Try again or choose a wallet.');
       }
@@ -1160,9 +1153,12 @@ async function renderPayPalButton() {
 function showWalletQR(kind){
   const map = { kbz:'KBZPay', cb:'CBPay', aya:'AYAPay' };
   const name = map[kind] || 'Wallet';
-  const pc = $('#paypalContainer');
+
+  // Hide PayPal layer visually (keep DOM alive)
+  $('#paypalContainer')?.classList.remove('active');
+
   const qr = $('#walletQR');
-  if (pc) pc.classList.remove('active'); // opacity 0 (still in DOM)
+  if (!qr) return;
 
   const src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(name+' Invoice '+Date.now())}`;
   qr.innerHTML = `
@@ -1175,12 +1171,9 @@ function showWalletQR(kind){
 
   $('#qrDone')?.addEventListener('click', ()=>{
     qr.innerHTML=''; qr.classList.remove('active');
-    // user can switch back to PayPal later
   }, { once:true });
 }
 
-// $('#kbzPay')?.addEventListener('click', ()=> showWalletQR('kbz'));
-// $('#cbPay') ?.addEventListener('click', ()=> showWalletQR('cb'));
 // $('#ayaPay')?.addEventListener('click', ()=> showWalletQR('aya'));
 
 function hideWalletQR() {

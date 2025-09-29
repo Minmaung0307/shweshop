@@ -152,19 +152,19 @@
               <button id="btnCheckout" class="btn primary">Checkout</button>
             </div>
             <!-- Payment Area (hidden until user clicks Checkout) -->
-            <div id="paymentArea" class="hidden" style="margin-top:12px">
-  <div class="pay-choose" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <div id="paymentArea" class="hidden">
+  <div class="pay-choose">
     <label><input type="radio" name="payMethod" value="paypal"> PayPal</label>
     <label><input type="radio" name="payMethod" value="kbz"> KBZPay</label>
     <label><input type="radio" name="payMethod" value="cb"> CBPay</label>
     <label><input type="radio" name="payMethod" value="aya"> AYAPay</label>
   </div>
 
-  <!-- DO NOT remove this container; we only toggle .active -->
-  <div id="paypalContainer"><div id="paypalSlot"></div></div>
-
-  <!-- Wallet QR -->
-  <div id="walletQR"></div>
+  <!-- Shared panel: both layers overlap here -->
+  <div class="pay-panel">
+    <div id="paypalContainer" class="pay-layer"><div id="paypalSlot"></div></div>
+    <div id="walletQR" class="pay-layer"></div>
+  </div>
 </div>
           </div>
         </div>
