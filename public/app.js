@@ -2271,7 +2271,105 @@ $('#btnApplyMembership')?.addEventListener('click', async ()=>{
   if ($('#accMember')) $('#accMember').textContent = level;
 });
 
+// ---------------- AUTH WIRING (SAFE) ----------------
+function applyAuthNavUI(user) {
+  // hide Login when signed in; show Account + Logout
+  document.getElementById('btnLogin')?.classList.toggle('hidden', !!user);
+  document.getElementById('btnAccount')?.classList.toggle('hidden', !user);
+  document.getElementById('btnLogoutHeader')?.classList.toggle('hidden', !user);
 
+  // account page email / membership (optional)
+  const accEmail = document.getElementById('accEmail');
+  if (accEmail) accEmail.textContent = user?.email || '—';
+}
+
+function wireAuthUI() {
+  // open login modal
+  const btnLogin = document.getElementById('btnLogin');
+  const loginModal = document.getElementById('loginModal');
+  btnLogin?.addEventListener('click', () => loginModal?.showModal());
+
+  // universal [x] close buttons for dialogs
+  document.querySelectorAll('[data-close]')?.forEach(b => {
+    b.addEventListener('click', (e) => e.target.closest('dialog')?.close());
+  });
+
+  // ---- LOGIN ----
+  const doLogin    = document.getElementById('doLogin');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPass  = document.getElementById('loginPass');
+
+  doLogin?.addEventListener('click', async () => {
+    try {
+      const email = loginEmail?.value.trim();
+      const pass  = loginPass?.value;
+      if (!email || !pass) return alert('Enter email and password');
+      // uses already-imported auth instance
+      const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+      await signInWithEmailAndPassword(auth, email, pass);
+      loginModal?.close();
+    } catch (e) {
+      alert(e?.message || String(e));
+      console.error(e);
+    }
+  });
+
+  // ---- FORGOT PASSWORD ----
+  const openForgot   = document.getElementById('openForgot');
+  const forgotModal  = document.getElementById('forgotModal');
+  const doForgot     = document.getElementById('doForgot');
+  const forgotEmail  = document.getElementById('forgotEmail');
+
+  openForgot?.addEventListener('click', () => {
+    loginModal?.close();
+    forgotModal?.showModal();
+  });
+
+  doForgot?.addEventListener('click', async () => {
+    try {
+      const email = forgotEmail?.value.trim();
+      if (!email) return alert('Enter your email');
+      const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+      await sendPasswordResetEmail(auth, email);
+      alert('Password reset email sent.');
+      forgotModal?.close();
+    } catch (e) {
+      alert(e?.message || String(e));
+      console.error(e);
+    }
+  });
+
+  // ---- LOGOUT (header + account page) ----
+  const btnLogout        = document.getElementById('btnLogout');
+  const btnLogoutHeader  = document.getElementById('btnLogoutHeader');
+  const doLogout = async () => {
+    try {
+      const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+      await signOut(auth);
+    } catch (e) {
+      alert(e?.message || String(e));
+      console.error(e);
+    }
+  };
+  btnLogout?.addEventListener('click', doLogout);
+  btnLogoutHeader?.addEventListener('click', doLogout);
+}
+
+// Bind only AFTER DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    wireAuthUI();
+    // auth state → adjust nav
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').then(({ onAuthStateChanged }) => {
+      onAuthStateChanged(auth, (user) => applyAuthNavUI(user));
+    });
+  }, { once: true });
+} else {
+  wireAuthUI();
+  import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').then(({ onAuthStateChanged }) => {
+    onAuthStateChanged(auth, (user) => applyAuthNavUI(user));
+  });
+}
 
 // ============= SINGLE, SAFE INIT (use this only) =============
 async function init() {
