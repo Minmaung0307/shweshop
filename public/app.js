@@ -33,6 +33,13 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
+// Global application state
+const STATE = {
+  items: [],     // all items loaded from Firestore or demo seed
+  cart: [],      // user’s shopping cart
+  user: null     // logged in user object
+};
+
 // ===== EmailJS init (replace with your keys) =====
 const EMAILJS_PUBLIC_KEY = "WT0GOYrL9HnDKvLUf";
 const EMAILJS_SERVICE_ID = "service_z9tkmvr";
