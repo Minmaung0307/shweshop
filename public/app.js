@@ -2272,16 +2272,16 @@ $('#btnApplyMembership')?.addEventListener('click', async ()=>{
 });
 
 // ---------------- AUTH WIRING (SAFE) ----------------
-function applyAuthNavUI(user) {
-  // hide Login when signed in; show Account + Logout
-  document.getElementById('btnLogin')?.classList.toggle('hidden', !!user);
-  document.getElementById('btnAccount')?.classList.toggle('hidden', !user);
-  document.getElementById('btnLogoutHeader')?.classList.toggle('hidden', !user);
+// function applyAuthNavUI(user) {
+//   // hide Login when signed in; show Account + Logout
+//   document.getElementById('btnLogin')?.classList.toggle('hidden', !!user);
+//   document.getElementById('btnAccount')?.classList.toggle('hidden', !user);
+//   document.getElementById('btnLogoutHeader')?.classList.toggle('hidden', !user);
 
-  // account page email / membership (optional)
-  const accEmail = document.getElementById('accEmail');
-  if (accEmail) accEmail.textContent = user?.email || '—';
-}
+//   // account page email / membership (optional)
+//   const accEmail = document.getElementById('accEmail');
+//   if (accEmail) accEmail.textContent = user?.email || '—';
+// }
 
 function wireAuthUI() {
   // open login modal
