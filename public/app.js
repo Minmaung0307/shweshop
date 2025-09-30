@@ -2283,6 +2283,100 @@ $('#btnApplyMembership')?.addEventListener('click', async ()=>{
 //   if (accEmail) accEmail.textContent = user?.email || '—';
 // }
 
+// ==== AUTH WIRING SHIM (map DOM ids to variables the auth block uses) ====
+(() => {
+  const $ = (s) => document.querySelector(s);
+  // dialog element
+  const dlg = document.getElementById('loginModal');
+  // buttons (match index.html ids)
+  window.loginBtn  = document.getElementById('doLogin');
+  window.signupBtn = document.getElementById('doSignup');
+  window.forgotBtn = document.getElementById('doForgot');
+  // fields
+  window.$ = $; // used by auth block below
+})();
+
+/* ========= ADMIN ITEMS: one-time wiring + local fallback (table-optional) ========= */
+(function wireAdminItemsOnce(){
+  if (window.__adminItemsWired) return; window.__adminItemsWired = true;
+
+  const $ = (s)=>document.querySelector(s);
+  const openBtn = $('#btnOpenItemModalAdmin'); // index.html has this (Admin Console)
+  // use existing #itemModal from index.html (already present)
+  const dlg = document.getElementById('itemModal');
+  const idEl = $('#itemId'), tEl = $('#itemTitle'), cEl = $('#itemCategory');
+  const pEl = $('#itemPrice'), proEl = $('#itemProCode'), memEl = $('#itemMemberCoupon');
+  const dEl = $('#itemDesc'), thEl = $('#itemThumb'), gEl = $('#itemGallery');
+  const saveBtn = $('#btnSaveItem'), delBtn = $('#btnDeleteItem');
+
+  // simple local storage store
+  const KEY = 'ol_items';
+  const read = ()=>{ try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch{return[]} };
+  const write= (a)=>{ try{localStorage.setItem(KEY, JSON.stringify(a));}catch{} };
+
+  function openEditor(item=null){
+    if (item){
+      $('#itemModalTitle').textContent = 'Edit Item';
+      idEl.value = item.id||'';
+      tEl.value = item.title||'';
+      cEl.value = item.category||'';
+      pEl.value = item.price!=null ? item.price : '';
+      proEl.value = item.proCode||'';
+      memEl.value = item.memberCoupon||'';
+      dEl.value = item.desc||'';
+      thEl.value = item.thumb||'';
+      gEl.value = Array.isArray(item.gallery)? item.gallery.join(', ') : (item.gallery||'');
+      delBtn.style.display = '';
+    } else {
+      $('#itemModalTitle').textContent = 'Add Item';
+      idEl.value = ''; tEl.value=''; cEl.value=''; pEl.value=''; proEl.value=''; memEl.value='';
+      dEl.value = ''; thEl.value=''; gEl.value='';
+      delBtn.style.display = 'none';
+    }
+    dlg.showModal?.();
+  }
+
+  openBtn?.addEventListener('click', ()=> openEditor(null));
+
+  saveBtn?.addEventListener('click', ()=>{
+    const items = read();
+    const id = idEl.value || ('item_'+Date.now());
+    const gallery = (gEl.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const obj = {
+      id,
+      title: tEl.value.trim(),
+      category: cEl.value.trim(),
+      price: Number(pEl.value||0),
+      proCode: proEl.value.trim(),
+      memberCoupon: memEl.value.trim(),
+      desc: dEl.value.trim(),
+      thumb: thEl.value.trim(),
+      gallery
+    };
+    const i = items.findIndex(x=>x.id===id);
+    if (i>=0) items[i]=obj; else items.push(obj);
+    write(items);
+    dlg.close?.();
+    toast?.('Saved item');
+  });
+
+  delBtn?.addEventListener('click', ()=>{
+    const items = read();
+    const id = idEl.value;
+    if (!id) return;
+    const next = items.filter(x=>x.id!==id);
+    write(next);
+    dlg.close?.();
+    toast?.('Deleted item');
+  });
+
+  // close buttons in dialog (× / data-close)
+  dlg?.addEventListener('click', (e)=>{
+    const t = e.target;
+    if (t && (t.matches('.close,[data-close]'))) dlg.close?.();
+  });
+})();
+
 function wireAuthUI() {
   // open login modal
   const btnLogin = document.getElementById('btnLogin');
