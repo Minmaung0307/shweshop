@@ -2417,3 +2417,231 @@ async function init() {
 if (document.readyState === "loading")
   document.addEventListener("DOMContentLoaded", init, { once: true });
 else init();
+
+/* ========= AUTH: one-time safe wiring ========= */
+(function wireAuthOnce(){
+  if (window.__authWired) return; window.__authWired = true;
+
+  // helpers
+  const $ = (s)=>document.querySelector(s);
+  const dlg = $('#authModal'); // index.html has this dialog
+  // guard existing modal markup
+  if (!dlg) return;
+
+  const loginBtn  = $('#doLogin');
+  const signupBtn = $('#doSignup');
+  const forgotBtn = $('#doForgot');
+
+  // single-submit guard to avoid double fire
+  function once(fn){
+    let busy = false;
+    return async (...args)=>{
+      if (busy) return;
+      busy = true;
+      try{ await fn(...args); } finally { busy=false; }
+    };
+  }
+
+  // role helpers (keep same API as rest of app)
+  function setUser(u){ try { window.__USER__ = u; localStorage.setItem('ol_user', JSON.stringify(u||null)); } catch{} }
+  function getUser(){ try { return window.__USER__ || JSON.parse(localStorage.getItem('ol_user')||'null'); } catch { return null; } }
+  function setLogged(on, email){ /* UI refresh hooks if you had */ }
+
+  // Firebase available?
+  function hasFB(){
+    try { return !!window.firebase && !!window.auth && !!auth.signInWithEmailAndPassword; } catch { return false; }
+  }
+
+  // Fallback “soft auth” store
+  const UKEY='ol_fake_users';
+  const readUsers = ()=>{ try{ return JSON.parse(localStorage.getItem(UKEY)||'{}'); }catch{return{}}; };
+  const writeUsers = (o)=>{ try{ localStorage.setItem(UKEY, JSON.stringify(o)); }catch{} };
+
+  // LOGIN
+  loginBtn?.addEventListener('click', once(async (e)=>{
+    e.preventDefault();
+    const email = ($('#loginEmail')?.value||'').trim().toLowerCase();
+    const pass  = ($('#loginPass')?.value||'').trim();
+    if (!email || !pass) return;
+
+    try {
+      if (hasFB()){
+        // Firebase path (adjust to your SDK shape if using modular v9)
+        await firebase.auth().signInWithEmailAndPassword(email, pass);
+        setUser({email, role: 'admin'}); // role will be resolved later if you already do
+      } else {
+        // Local fallback
+        const users = readUsers();
+        if (!users[email] || users[email].pass !== pass) {
+          toast?.('Invalid email or password'); return;
+        }
+        setUser({email, role: users[email].role||'admin'});
+      }
+      dlg.close?.();
+      setLogged(true, email);
+      // optional: refresh gates / pages
+      window.renderCatalog?.(); window.renderProfilePanel?.(); window.enforceRoleGates?.();
+      toast?.('Logged in');
+    } catch (err){
+      toast?.(err?.message || 'Login failed');
+    }
+  }));
+
+  // SIGNUP
+  signupBtn?.addEventListener('click', once(async (e)=>{
+    e.preventDefault();
+    const email = ($('#signupEmail')?.value||'').trim().toLowerCase();
+    const pass  = ($('#signupPass')?.value||'').trim();
+    if (!email || pass.length<6) { toast?.('Password must be ≥ 6'); return; }
+    try{
+      if (hasFB()){
+        await firebase.auth().createUserWithEmailAndPassword(email, pass);
+        setUser({email, role:'admin'});
+      } else {
+        const users = readUsers();
+        if (users[email]) { toast?.('Account already exists'); return; }
+        users[email] = { pass, role:'admin' }; // give admin so you can manage items
+        writeUsers(users);
+        setUser({email, role:'admin'});
+      }
+      dlg.close?.(); setLogged(true, email);
+      window.enforceRoleGates?.(); toast?.('Account created');
+    }catch(err){ toast?.(err?.message||'Signup failed'); }
+  }));
+
+  // FORGOT (no-op in local mode)
+  forgotBtn?.addEventListener('click', once(async (e)=>{
+    e.preventDefault();
+    const email = ($('#forgotEmail')?.value||'').trim().toLowerCase();
+    if (!email) return;
+    try{
+      if (hasFB()){
+        await firebase.auth().sendPasswordResetEmail(email);
+        toast?.('Reset link sent');
+      } else {
+        toast?.('Reset only works when Firebase Auth is connected');
+      }
+    }catch(err){ toast?.(err?.message||'Reset failed'); }
+  }));
+
+  // open login programmatically if needed:
+  window.openLogin = ()=> dlg.showModal?.();
+})();
+
+/* ========= ADMIN ITEMS: one-time wiring + local fallback ========= */
+(function wireAdminItemsOnce(){
+  if (window.__adminItemsWired) return; window.__adminItemsWired = true;
+
+  const $ = (s)=>document.querySelector(s);
+  const table = $('#adminTable tbody');
+  const openBtn = $('#btnOpenItemModalAdmin'); // index.html (admin section) has this
+  const dlg = document.getElementById('itemModal') || (function createModal(){
+    const d = document.createElement('dialog');
+    d.id='itemModal';
+    d.className='ol-modal card';
+    d.innerHTML = `
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b class="modal-title" id="itemModalTitle">Add Item</b>
+        <button class="btn small" id="closeItemModal" type="button">Close</button>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:8px">
+        <label>Title<input id="fmTitle" class="input"/></label>
+        <label>Category<input id="fmCategory" class="input"/></label>
+        <label>Level<input id="fmLevel" class="input"/></label>
+        <label>Hours<input id="fmHours" class="input" type="number"/></label>
+        <label>Price<input id="fmPrice" class="input" type="number"/></label>
+        <label>Rating<input id="fmRating" class="input" type="number" step="0.1"/></label>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:10px;gap:8px">
+        <button class="btn" id="btnDeleteItem" type="button" style="display:none">Delete</button>
+        <button class="btn primary" id="btnSaveItem" type="button">Save</button>
+      </div>`;
+    document.body.appendChild(d);
+    d.querySelector('#closeItemModal').onclick = ()=> d.close();
+    return d;
+  })();
+
+  // simple in-memory + localStorage helpers
+  const CK='ol_catalog';
+  const readCatalog = ()=>{ try{ return JSON.parse(localStorage.getItem(CK)||'[]'); }catch{return[]} };
+  const writeCatalog= (arr)=>{ try{ localStorage.setItem(CK, JSON.stringify(arr)); }catch{} };
+
+  // render table rows
+  function renderAdminTable(){
+    if (!table) return;
+    const data = readCatalog();
+    table.innerHTML = data.map((c, i)=> `
+      <tr data-idx="${i}">
+        <td>${c.title||'-'}</td>
+        <td>${c.category||'-'}</td>
+        <td>${c.level||'-'}</td>
+        <td>${c.rating||'-'}</td>
+        <td>${c.hours||'-'}</td>
+        <td>${c.price||0}</td>
+        <td style="text-align:right">
+          <button class="btn small" data-edit="${i}">Edit</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function openEditor(idx=null){
+    dlg.showModal?.();
+    const isEdit = idx!=null;
+    const data = readCatalog();
+    const row = isEdit ? data[idx] : {};
+    $('#itemModalTitle').textContent = isEdit ? 'Edit Item' : 'Add Item';
+    $('#fmTitle').value    = row?.title    || '';
+    $('#fmCategory').value = row?.category || '';
+    $('#fmLevel').value    = row?.level    || '';
+    $('#fmHours').value    = row?.hours    || '';
+    $('#fmPrice').value    = row?.price    || '';
+    $('#fmRating').value   = row?.rating   || '';
+    const delBtn = dlg.querySelector('#btnDeleteItem');
+    delBtn.style.display = isEdit ? '' : 'none';
+    delBtn.onclick = ()=>{
+      const arr = readCatalog();
+      arr.splice(idx,1);
+      writeCatalog(arr);
+      dlg.close(); renderAdminTable(); toast?.('Deleted');
+    };
+    dlg.querySelector('#btnSaveItem').onclick = ()=>{
+      const item = {
+        title:    $('#fmTitle').value.trim(),
+        category: $('#fmCategory').value.trim(),
+        level:    $('#fmLevel').value.trim(),
+        hours:    Number($('#fmHours').value||0),
+        price:    Number($('#fmPrice').value||0),
+        rating:   Number($('#fmRating').value||0),
+      };
+      const arr = readCatalog();
+      if (isEdit) arr[idx] = item; else arr.push(item);
+      writeCatalog(arr);
+      dlg.close(); renderAdminTable(); toast?.('Saved');
+    };
+  }
+
+  // open button + row edit (single delegation)
+  openBtn?.addEventListener('click', ()=> openEditor(null));
+  table?.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-edit]');
+    if (!btn) return;
+    const idx = Number(btn.getAttribute('data-edit'));
+    if (Number.isFinite(idx)) openEditor(idx);
+  });
+
+  // first draw
+  renderAdminTable();
+})();
+
+(function(){
+  // prevent re-wiring the same DOM ids repeatedly
+  const _addEvent = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function(type, listener, opts){
+    // mark once per node+type+toString(listener)
+    const key = '__once_'+type+'_'+(listener && (listener._id || (listener._id = Math.random().toString(36).slice(2))));
+    if (this[key]) return;
+    this[key] = true;
+    return _addEvent.call(this, type, listener, opts);
+  };
+})();
