@@ -1,592 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MegaShop</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="icon" href="favicon.ico" />
-    <!-- EmailJS -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <!-- Chart.js for Admin Analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  </head>
-  <body>
-    <!-- Header / Top Nav -->
-    <header class="header">
-      <div class="container header-inner">
-        <a class="logo" href="#home">MegaShop</a>
-        <form id="searchForm" class="search">
-          <input
-            id="searchInput"
-            type="search"
-            placeholder="Search products…"
-          />
-          <button class="btn" type="submit">Search</button>
-        </form>
-        <nav class="nav">
-          <a class="link pill" id="navAdmin" href="#admin"
-            >🛠️ <span>Admin</span></a
-          >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenLearn Lite — Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="#home">OpenLearn Lite</a>
+      <nav class="nav">
+        <button id="btnLogin" class="link pill">🔑 <span>Login</span></button>
+        <button id="btnAccount" class="link pill hidden">👤 <span id="who">Account</span></button>
+        <button id="btnLogoutHeader" class="link pill danger hidden">🚪 <span>Logout</span></button>
+        <a class="link pill" href="#admin">🛠️ <span>Admin</span></a>
+      </nav>
+    </div>
+  </header>
 
-          <button id="btnLogin" class="link pill">🔑 <span>Login</span></button>
-          <!-- <button id="btnSignup" class="link pill">
-            ✨ <span>Sign up</span>
-          </button> -->
-
-          <button id="btnAccount" class="link pill hidden">
-            👤 <span>Account</span>
-          </button>
-          <button id="btnLogoutHeader" class="link pill danger hidden">
-            🚪 <span>Logout</span>
-          </button>
-
-          <a class="link pill" href="#orders">📦 <span>Orders</span></a>
-
-          <button id="btnCart" class="link pill has-badge">
-            🛒 <span>Cart</span>
-            <span id="cartBadge" class="badge">0</span>
-          </button>
-        </nav>
-      </div>
-      <!-- Secondary category nav -->
-      <div class="subnav container">
-        <a href="#category/men">Men</a>
-        <a href="#category/women">Women</a>
-        <a href="#category/kids">Kids</a>
-        <a href="#category/electronics">Electronics</a>
-        <a href="#category/home">Home</a>
-        <a href="#category/all">All</a>
-      </div>
-    </header>
-
-    <!-- Promotions / Event Days Banner -->
-    <section id="promoBar" class="promo hidden"></section>
-
-    <!-- Main -->
-    <main class="container">
-      <!-- Home / Catalog -->
-      <section id="page-home" class="page active">
-        <div class="hero">
-          <div>
-            <h1>Shop everything in one place</h1>
-            <p>Fast, affordable, and reliable — like the big guys.</p>
-          </div>
-          <img
-            src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=1200&auto=format&fit=crop"
-            alt="shopping"
-          />
-        </div>
-
-        <!-- <div class="item-card" data-id="1">
-    <h3>Wireless Headphones</h3>
-    <button class="btn-feedback">Leave Feedback</button>
-    <div class="feedback-list"></div>
-  </div>
-
-  <div class="item-card" data-id="2">
-    <h3>Smartwatch S2</h3>
-    <button class="btn-feedback">Leave Feedback</button>
-    <div class="feedback-list"></div>
-  </div> -->
-
-        <!-- Toolbar (kept) -->
-        <div class="toolbar">
-          <select id="filterCategory">
-            <option value="all">All Categories</option>
-            <option>men</option>
-            <option>women</option>
-            <option>kids</option>
-            <option>electronics</option>
-            <option>home</option>
-          </select>
-          <select id="sortBy">
-            <option value="featured">Featured</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
-            <option value="rating">Top Rated</option>
-            <option value="newest">Newest</option>
-          </select>
-          <button
-            id="btnSeedDemo"
-            class="btn outline"
-            style="margin-left: auto"
-          >
-            🌱 Seed Demo Items
-          </button>
-          <button id="btnGoAdmin" class="btn">➕ Add Item</button>
-        </div>
-
-        <!-- ❌ Removed duplicate row with same buttons to avoid duplicate IDs -->
-
-        <div id="grid" class="grid"></div>
-      </section>
-
-      <!-- Product Details Modal -->
-      <dialog id="productModal" class="modal">
-        <div class="modal-content">
-          <button class="close" data-close>×</button>
-          <div class="pdetail">
-            <img id="pdImg" alt="product" />
-            <div class="pinfo">
-              <h2 id="pdTitle"></h2>
-              <p id="pdDesc" class="muted"></p>
-              <div class="price-line">
-                <span id="pdPrice" class="price"></span>
-                <span id="pdRating" class="rating"></span>
-              </div>
-              <div class="codes">
-                <div>Pro Code: <code id="pdProCode">—</code></div>
-                <div>Member Coupon: <code id="pdMemberCoupon">—</code></div>
-              </div>
-              <!-- thumbnails -->
-              <div id="pdThumbs" class="thumbs"></div>
-              <!-- qty + add -->
-              <div class="qty">
-                <button class="btn" id="qtyMinus">−</button>
-                <input id="pdQty" type="number" min="1" value="1" />
-                <button class="btn" id="qtyPlus">+</button>
-                <button
-                  id="pdAdd"
-                  class="btn primary"
-                  style="margin-left: auto"
-                >
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </dialog>
-
-      <!-- Cart Drawer (large) -->
-      <dialog id="cartDrawer" class="drawer drawer-lg">
-        <div class="drawer-content">
-          <button class="close" data-close>×</button>
-          <h3>Your Cart</h3>
-          <div id="cartItems"></div>
-          <div class="cart-sum">
-            <div>Subtotal: <b id="cartSubtotal">$0.00</b></div>
-            <!-- Delivery / Pickup options -->
-            <div class="card" style="margin: 10px 0">
-              <h4>Fulfillment</h4>
-              <label
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 6px;
-                  margin: 6px 0;
-                "
-              >
-                <input
-                  type="radio"
-                  name="fulfill"
-                  id="optDelivery"
-                  value="delivery"
-                  checked
-                />
-                Delivery to shipping address
-              </label>
-              <label
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 6px;
-                  margin: 6px 0;
-                "
-              >
-                <input
-                  type="radio"
-                  name="fulfill"
-                  id="optPickup"
-                  value="pickup"
-                />
-                Store pickup
-              </label>
-
-              <!-- Delivery: address mini-form / preview -->
-              <div id="shipForm" style="margin-top: 8px">
-                <div
-                  id="shipPreview"
-                  class="muted"
-                  style="margin-bottom: 6px"
-                ></div>
-                <div style="display: flex; flex-direction: column; gap: 8px">
-                  <input id="shipNameCart" placeholder="Full name" required />
-                  <input id="shipPhoneCart" placeholder="Phone" required />
-                  <input
-                    id="shipLine1Cart"
-                    placeholder="Street / House / Block"
-                    required
-                  />
-                  <input
-                    id="shipCityCart"
-                    placeholder="City / Township"
-                    required
-                  />
-                  <input id="shipZipCart" placeholder="Postal code" />
-                </div>
-                <button
-                  id="btnUseAccountAddr"
-                  class="btn outline"
-                  style="margin-top: 8px"
-                >
-                  Use account address
-                </button>
-              </div>
-
-              <!-- Pickup: locations -->
-              <div id="pickupList" style="display: none; margin-top: 8px">
-                <div class="muted">Choose a pickup location:</div>
-                <select id="pickupSelect" style="margin-top: 6px">
-                  <option value="YGN-01">Yangon • Junction City Counter</option>
-                  <option value="MDY-02">
-                    Mandalay • Diamond Plaza Counter
-                  </option>
-                  <option value="NPT-03">Nay Pyi Taw • Central Counter</option>
-                </select>
-              </div>
-            </div>
-            <div class="row pay-opts">
-  <label class="method"><input type="radio" name="paym" id="optPayPal"> PayPal</label>
-  <label class="method"><input type="radio" name="paym" id="optKBZ"> KBZPay</label>
-  <label class="method"><input type="radio" name="paym" id="optCB"> CBPay</label>
-  <label class="method"><input type="radio" name="paym" id="optAYA"> AYAPay</label>
-  <button id="btnShowMethods" class="btn primary">Checkout</button>
-</div>
-<div id="paypalContainer" class="paypal-wrap" style="display:none"></div>
-<div id="walletQR" style="display:none"></div>
-            <!-- Payment Area (hidden until user clicks Checkout) -->
-            <div id="paymentArea" class="hidden">
-              <div class="pay-choose">
-                <label
-                  ><input type="radio" name="payMethod" value="paypal" />
-                  PayPal</label
-                >
-                <label
-                  ><input type="radio" name="payMethod" value="kbz" />
-                  KBZPay</label
-                >
-                <label
-                  ><input type="radio" name="payMethod" value="cb" />
-                  CBPay</label
-                >
-                <label
-                  ><input type="radio" name="payMethod" value="aya" />
-                  AYAPay</label
-                >
-              </div>
-
-              <!-- Shared panel: both layers overlap here -->
-              <!-- <div class="pay-panel">
-                <div id="paypalContainer" class="pay-layer">
-                  <div id="paypalSlot"></div>
-                </div>
-                <div id="walletQR" class="pay-layer"></div>
-              </div> -->
-            </div>
-          </div>
-        </div>
-      </dialog>
-
-      <!-- ✅ Single Add/Edit Item MODAL (keep only this) -->
-      <dialog id="itemModal" class="modal">
-        <div class="modal-content">
-          <button class="close" data-close>×</button>
-          <h3 id="itemModalTitle">Add / Edit Item</h3>
-          <input id="itemId" type="hidden" />
-          <label for="itemTitle">Title</label>
-          <input id="itemTitle" placeholder="e.g., Wireless Headphones" />
-          <label for="itemCategory">Category</label>
-          <input
-            id="itemCategory"
-            placeholder="men / women / kids / electronics / home"
-          />
-          <label for="itemPrice">Price</label>
-          <input
-            id="itemPrice"
-            type="number"
-            step="0.01"
-            placeholder="e.g., 99.99"
-          />
-          <label for="itemProCode">Pro Code</label>
-          <input id="itemProCode" placeholder="e.g., PRO10" />
-          <label for="itemMemberCoupon">Member Coupon</label>
-          <input id="itemMemberCoupon" placeholder="e.g., GOLD5" />
-          <label for="itemDesc">Description</label>
-          <textarea id="itemDesc" placeholder="Product description…"></textarea>
-          <label for="itemThumb">Thumbnail image URL</label>
-          <input id="itemThumb" type="url" placeholder="https://…" />
-          <label for="itemGallery">Gallery image URLs (comma-separated)</label>
-          <textarea
-            id="itemGallery"
-            placeholder="https://.../img1.jpg, https://.../img2.jpg"
-          ></textarea>
-          <div class="row" style="margin-top: 10px">
-            <button id="btnSaveItem" class="btn primary">Save Item</button>
-            <button id="btnDeleteItem" class="btn danger" type="button">
-              Delete Item
-            </button>
-          </div>
-        </div>
-      </dialog>
-
-      <!-- Orders / Re-order -->
-      <section id="page-orders" class="page">
-        <h2>Order History</h2>
-        <div id="ordersList" class="orders"></div>
-      </section>
-
-      <!-- Account / Membership -->
-      <section id="page-account" class="page">
-        <h2>My Account</h2>
-        <div class="card">
-          <p>Signed in as: <b id="accEmail">—</b></p>
-          <p>Membership: <b id="accMember">free</b></p>
-          <div class="row">
-            <select id="membershipLevel">
-              <option value="free">Free</option>
-              <option value="silver">Silver</option>
-              <option value="gold">Gold</option>
-              <option value="platinum">Platinum</option>
-            </select>
-            <button id="btnApplyMembership" class="btn">
-              Apply Membership
-            </button>
-          </div>
-          <!-- <div class="row">
-            <button id="btnLogout" class="btn danger">Logout</button>
-          </div> -->
-          <div class="card">
-            <h3>Shipping Address</h3>
-            <div class="row" style="gap: 8px; flex-wrap: wrap">
-              <input id="shipName" placeholder="Full name" />
-              <input id="shipPhone" placeholder="Phone" />
-              <input
-                id="shipLine1"
-                placeholder="Street / House / Block"
-                style="flex: 1"
-              />
-              <input id="shipCity" placeholder="City / Township" />
-              <input id="shipZip" placeholder="Postal code" />
-            </div>
-            <button id="btnSaveAddress" class="btn" style="margin-top: 8px">
-              Save Address
-            </button>
-            <p
-              id="addrSavedMsg"
-              class="muted"
-              style="display: none; margin-top: 6px"
-            >
-              Saved ✅
-            </p>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Email Marketing Opt-in</h3>
-          <p>Get promo emails on event days.</p>
-          <label
-            ><input id="emailOptIn" type="checkbox" /> I agree to receive
-            emails.</label
-          >
-          <button id="btnSaveOpt" class="btn">Save</button>
-        </div>
-      </section>
-
-      <!-- Auth Modals -->
-      <dialog id="loginModal" class="modal">
-        <form
-          method="dialog"
-          class="modal-content small"
-          onsubmit="return false;"
-        >
-          <button class="close" data-close>×</button>
-          <h3>Sign in to your account</h3>
-          <label for="loginEmail">Email</label>
-          <input
-            id="loginEmail"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
-          <label for="loginPass">Password</label>
-          <input
-            id="loginPass"
-            name="password"
-            type="password"
-            placeholder="Minimum 6 characters"
-            required
-          />
-          <div
-            class="row"
-            style="justify-content: space-between; margin-top: 8px"
-          >
-            <button id="doLogin" class="btn primary" type="button">
-              Login
-            </button>
-            <button id="openSignup" class="link" type="button">
-              Create account
-            </button>
-            <button id="openForgot" class="link" type="button">
-              Forgot password?
-            </button>
-          </div>
-        </form>
-        <form method="dialog" class="modal-content small" onsubmit="return false;" novalidate></form>
-      </dialog>
-
-      <dialog id="signupModal" class="modal">
-        <form
-          method="dialog"
-          class="modal-content small"
-          onsubmit="return false;"
-        >
-          <button class="close" data-close>×</button>
-          <h3>Create an account</h3>
-          <label for="signupEmail">Email</label>
-          <input
-            id="signupEmail"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
-          <label for="signupPass">Password</label>
-          <input
-            id="signupPass"
-            name="password"
-            type="password"
-            placeholder="At least 6 characters"
-            required
-          />
-          <div
-            class="row"
-            style="justify-content: space-between; margin-top: 8px"
-          >
-            <button id="doSignup" class="btn primary" type="button">
-              Sign up
-            </button>
-            <button id="openLoginFromSignup" class="link" type="button">
-              Back to login
-            </button>
-          </div>
-        </form>
-        <form method="dialog" class="modal-content small" onsubmit="return false;" novalidate></form>
-      </dialog>
-
-      <dialog id="forgotModal" class="modal">
-        <form
-          method="dialog"
-          class="modal-content small"
-          onsubmit="return false;"
-        >
-          <button class="close" data-close>×</button>
-          <h3>Reset your password</h3>
-          <label for="forgotEmail">Email</label>
-          <input
-            id="forgotEmail"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
-          <div class="row" style="justify-content: flex-end; margin-top: 8px">
-            <button id="doForgot" class="btn" type="button">
-              Send reset email
-            </button>
-          </div>
-        </form>
-        <form method="dialog" class="modal-content small" onsubmit="return false;" novalidate></form>
-      </dialog>
-
-      <!-- Admin (no inline Add/Edit form to avoid duplicate IDs) -->
-      <section id="page-admin" class="page">
-        <h2>Admin Console</h2>
-        <div class="grid admin-grid">
-          <div class="card">
-            <h3>Items</h3>
-            <p class="muted">Use the button below to add or edit items.</p>
-            <button id="btnOpenItemModalAdmin" class="btn">
-              Open Add Item Modal
-            </button>
-          </div>
-
-          <div class="card">
-            <h3>Promotions & Ads</h3>
-            <input
-              id="promoTitle"
-              placeholder="Event title (e.g., Thingyan Mega Sale)"
-            />
-            <input id="promoMessage" placeholder="Short message" />
-            <label><input id="promoActive" type="checkbox" /> Active</label>
-            <button id="btnSavePromo" class="btn">Save Promotion</button>
-
-            <h4 style="margin-top: 12px">Ad Card</h4>
-            <input id="adTitle" placeholder="Ad title" />
-            <input id="adImageUrl" placeholder="Image URL" />
-            <input id="adHref" placeholder="Link URL" />
-            <button id="btnSaveAd" class="btn">Save Ad</button>
-            <div id="adsPreview" class="ads"></div>
-          </div>
-
-          <div class="card">
-            <h3>Analytics</h3>
-            <div class="row">
-              <button class="btn" data-range="7">Last 7 days</button>
-              <button class="btn" data-range="30">Last 30 days</button>
-              <button class="btn" data-range="365">Last 365 days</button>
-            </div>
-            <canvas id="salesChart" height="220"></canvas>
-          </div>
-
-          <div class="card">
-            <h3>Customer Feedback</h3>
-            <div id="feedbackList"></div>
-            <hr />
-            <h3>Email Marketing</h3>
-            <textarea
-              id="emailBlastMsg"
-              placeholder="Promo message to all opted-in users"
-            ></textarea>
-            <button id="btnSendBlast" class="btn primary">
-              Send Email Blast
-            </button>
-            <p class="muted">
-              Uses EmailJS to send to users who opted in. Consider rate limits.
-            </p>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="container footer-inner">
+  <main class="container">
+    <!-- HOME / CATALOG -->
+    <section id="page-home" class="page active">
+      <div class="hero">
         <div>
-          <b>MegaShop</b>
-          <p class="muted">
-            © <span id="year"></span> MegaShop. All rights reserved.
-          </p>
+          <h1>Welcome 👋</h1>
+          <p class="muted">This is a clean starter with working login + CRUD admin.</p>
+          <div class="row" style="margin-top:10px">
+            <button id="btnSeedDemo" class="btn outline">🌱 Seed Demo Courses</button>
+            <a class="btn" href="#admin">➕ Add Course</a>
+          </div>
         </div>
-        <nav>
-          <a href="#home">Home</a>
-          <a href="#orders">Orders</a>
-          <a href="#account">Account</a>
-          <a href="#admin">Admin</a>
-        </nav>
+        <img src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=80&w=1280&auto=format&fit=crop" alt="learning" />
       </div>
-    </footer>
 
-    <!-- Firebase v10 Modular (CDN) -->
-    <script type="module" src="app.js"></script>
-    <!-- PayPal SDK: injected dynamically by app.js (loadPayPal) -->
-  </body>
+      <div class="toolbar">
+        <select id="filterCategory">
+          <option value="all">All Categories</option>
+        </select>
+        <select id="sortBy">
+          <option value="featured">Featured</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="rating">Top Rated</option>
+          <option value="newest">Newest</option>
+        </select>
+      </div>
+
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="page-admin" class="page">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <h3 class="h4">Manage Courses</h3>
+          <button class="btn primary" id="btnAddItemTop">Add Course</button>
+        </div>
+        <table class="ol-table pretty" id="adminTable">
+          <thead>
+            <tr>
+              <th>Title</th><th>Category</th><th>Level</th><th>Price</th><th>Rating</th><th>Updated</th><th style="text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- DETAILS -->
+  <dialog id="courseModal" class="modal">
+    <div class="modal-content">
+      <button class="close" data-close>×</button>
+      <div class="pdetail">
+        <img id="pdImg" alt="cover" />
+        <div class="pinfo">
+          <h2 id="pdTitle"></h2>
+          <p id="pdDesc" class="muted"></p>
+          <div class="price-line">
+            <span id="pdPrice" class="price"></span>
+            <span id="pdRating" class="rating"></span>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="pdEnroll" class="btn primary">Enroll</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ADD / EDIT ITEM -->
+  <dialog id="itemModal" class="modal">
+    <div class="modal-content small">
+      <button class="close" data-close>×</button>
+      <h3 id="itemModalTitle">Add / Edit Course</h3>
+      <input id="itemId" type="hidden" />
+      <label>Title</label>
+      <input id="itemTitle" placeholder="e.g., JavaScript Essentials" />
+      <label>Category</label>
+      <input id="itemCategory" placeholder="web / data / design / business" />
+      <label>Level</label>
+      <input id="itemLevel" placeholder="Beginner / Intermediate / Advanced" />
+      <label>Price</label>
+      <input id="itemPrice" type="number" step="0.01" placeholder="0.00" />
+      <label>Rating</label>
+      <input id="itemRating" type="number" min="0" max="5" step="0.1" placeholder="4.6" />
+      <label>Summary</label>
+      <textarea id="itemDesc" placeholder="Course summary…"></textarea>
+      <label>Cover Image URL</label>
+      <input id="itemThumb" type="url" placeholder="https://…" />
+      <div class="row" style="margin-top:10px">
+        <button id="btnSaveItem" class="btn primary">Save</button>
+        <button id="btnDeleteItem" class="btn danger" type="button">Delete</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- LOGIN -->
+  <dialog id="loginModal" class="modal">
+    <div class="modal-content small">
+      <button class="close" data-close>×</button>
+      <h3>Login</h3>
+      <p class="muted">Demo-only. Just enter an email.</p>
+      <input id="loginEmail" type="email" placeholder="you@example.com" />
+      <div class="row" style="margin-top:10px">
+        <button id="btnDoLogin" class="btn primary">Login</button>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="muted">© OpenLearn Lite (Local only demo)</div>
+      <a href="#admin">Admin</a>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
 </html>
