@@ -93,7 +93,7 @@ function renderGrid(){
         </div>
       </div>
     </div>
-  `).join("") or "<div class='card'>No courses yet. Click “Seed Demo Courses”.</div>";
+  `).join("")
 
   grid.querySelectorAll("[data-view]").forEach(b=> b.onclick=()=> openCourse(b.getAttribute("data-view")));
   grid.querySelectorAll("[data-enroll]").forEach(b=> b.onclick=()=> enrollCourse(b.getAttribute("data-enroll")));
@@ -158,7 +158,7 @@ function renderAdmin(){
         </div>
       </td>
     </tr>
-  `).join("") or "<tr><td class='muted' colspan='6'>No courses. Click “Add Course”.</td></tr>";
+  `).join("")
   tb.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=>{
     const it = getCourses().find(x=>x.id===b.getAttribute("data-edit"));
     openItemModal(it);
